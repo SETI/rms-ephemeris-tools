@@ -1,0 +1,149 @@
+"""Enhanced BODMAT with time-shift and tidally-locked moon fallback (rspk_bodmat.f)."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING
+
+import cspyce
+
+logger = logging.getLogger(__name__)
+
+from ephemeris_tools.spice.common import get_state
+from ephemeris_tools.spice.observer import observer_state
+
+if TYPE_CHECKING:
+    import numpy as np
+
+
+def _is_moon(body_id: int) -> bool:
+    return 300 < body_id < 999 and (body_id % 100) != 99
+
+
+def _body_fixed_frame(body_id: int) -> str:
+    """Return IAU body-fixed frame name for body ID (e.g. IAU_SATURN)."""
+    name = cspyce.bodc2n(body_id)
+    return f"IAU_{name.upper()}"
+
+
+def bodmat(body_id: int, et: float) -> "np.ndarray":
+    """Rotation matrix body-fixed to J2000, with time-shift and moon fallback.
+
+    Uses cspyce.pxform (body-fixed frame -> J2000); cspyce has no bodmat.
+    """
+    import numpy as np
+
+    state = get_state()
+    for i in range(state.nshifts):
+        if state.shift_id[i] == body_id:
+            frame = _body_fixed_frame(body_id)
+            mat = cspyce.pxform(frame, "J2000", et + state.shift_dt[i])
+            return np.array(mat, dtype=np.float64)
+    try:
+        frame = _body_fixed_frame(body_id)
+        mat = cspyce.pxform(frame, "J2000", et)
+        mat = np.array(mat, dtype=np.float64)
+    except (KeyError, RuntimeError, Exception) as e:
+        msg = str(e)
+        expected = (
+            "UNKNOWNFRAME" in msg
+            or "FRAMEDATANOTFOUND" in msg
+            or "not recognized" in msg
+            or "were not found" in msg
+        )
+        if _is_moon(body_id) and expected:
+            logger.debug(
+                "cspyce.pxform no frame/PCK for moon body_id=%s, using orbit fallback: %s",
+                body_id,
+                msg[:80],
+            )
+        else:
+            logger.error(
+                "cspyce.pxform failed for body_id=%s et=%s: %s",
+                body_id,
+                et,
+                e,
+                exc_info=True,
+            )
+        mat = np.zeros((3, 3), dtype=np.float64)
+    if not _is_moon(body_id):
+        return mat
+    if np.any(mat != 0):
+        return mat
+    return bodmat_from_orbit(body_id, et)
+
+
+def _spkez_state(state_planet) -> list[float]:
+    """Return 6-element state [x,y,z,vx,vy,vz] from cspyce.spkez return (handles tuple or array)."""
+    import numpy as np
+    arr = np.asarray(state_planet, dtype=np.float64)
+    flat = arr.flatten()
+    return [float(flat[i]) for i in range(min(6, len(flat)))]
+
+
+def bodmat_from_orbit(body_id: int, et: float) -> "np.ndarray":
+    """Rotation matrix for tidally-locked moon from orbit geometry (X toward planet, Z = pole)."""
+    import numpy as np
+
+    state = get_state()
+    obs_pv = observer_state(et)
+    body_dpv, lt = cspyce.spkapp(
+        body_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+    )
+    body_time = et - lt
+    state_planet = cspyce.spkez(
+        state.planet_id, body_time, "J2000", "NONE", body_id
+    )
+    if isinstance(state_planet, (tuple, list)) and len(state_planet) >= 1:
+        state_planet = state_planet[0]
+    state_vec = _spkez_state(state_planet)
+    if len(state_vec) < 6:
+        return _identity_rotmat()
+    pos = state_vec[:3]
+    vel = state_vec[3:6]
+    if state.planet_num == 7:
+        vel = [-vel[0], -vel[1], -vel[2]]
+
+    pos_norm = cspyce.vnorm(pos)
+    if pos_norm < 1e-10:
+        return _identity_rotmat()
+
+    orbit_normal = list(cspyce.ucrss(pos, vel))
+    if float(cspyce.vnorm(orbit_normal)) < 1e-10:
+        return _bodmat_from_orbit_fallback(body_id, et, pos, pos_norm)
+
+    try:
+        rotmat = cspyce.twovec(pos, 1, vel, 2)
+        return np.array(rotmat, dtype=np.float64)
+    except Exception:
+        return _bodmat_from_orbit_fallback(body_id, et, pos, pos_norm)
+
+
+def _identity_rotmat() -> "np.ndarray":
+    import numpy as np
+    return np.eye(3, dtype=np.float64)
+
+
+def _bodmat_from_orbit_fallback(
+    body_id: int, et: float, pos: list[float], pos_norm: float
+) -> "np.ndarray":
+    """Fallback when twovec fails (parallel pos/vel): Z = planet pole, X = pos."""
+    import numpy as np
+
+    state = get_state()
+    planet_frame = _body_fixed_frame(state.planet_id)
+    planet_mat = cspyce.pxform(planet_frame, "J2000", et)
+    z = [float(planet_mat[2][i]) for i in range(3)]
+    if state.planet_num == 7:
+        z = [-z[0], -z[1], -z[2]]
+    x = [pos[i] / pos_norm for i in range(3)]
+    y = list(cspyce.ucrss(z, x))
+    yn = float(cspyce.vnorm(y))
+    if yn < 1e-10:
+        y = list(cspyce.ucrss(x, [0, 0, 1] if abs(x[2]) < 0.9 else [0, 1, 0]))
+        yn = float(cspyce.vnorm(y))
+    y = [float(y[i]) / yn for i in range(3)]
+    z = list(cspyce.ucrss(x, y))
+    zn = float(cspyce.vnorm(z))
+    z = [float(z[i]) / zn for i in range(3)]
+    return np.array([x, y, z], dtype=np.float64).T
