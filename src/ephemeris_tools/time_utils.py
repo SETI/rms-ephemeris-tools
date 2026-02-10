@@ -130,3 +130,38 @@ def utc_to_et(day: int, sec: float) -> float:
     """Convert UTC (day, sec) to ET (TDB) seconds for SPICE. Common convenience."""
     tai = tai_from_day_sec(day, sec)
     return tdb_from_tai(tai)
+
+
+def interval_seconds(
+    interval: float,
+    time_unit: str,
+    *,
+    min_seconds: float = 1.0,
+    round_to_minutes: bool = False,
+) -> float:
+    """Convert interval and time_unit to seconds.
+
+    Parameters:
+        interval: Numeric interval value.
+        time_unit: One of 'sec', 'min', 'hour', 'day' (case-insensitive, first 4 chars).
+        min_seconds: Minimum returned value (e.g. 60.0 for tracker).
+        round_to_minutes: If True, round result to nearest minute (60 * n).
+
+    Returns:
+        Interval in seconds, at least min_seconds, optionally rounded to minutes.
+    """
+    u = time_unit.lower()[:4]
+    if u == "sec":
+        dsec = abs(interval)
+    elif u == "min":
+        dsec = abs(interval) * 60.0
+    elif u == "hour":
+        dsec = abs(interval) * 3600.0
+    elif u == "day":
+        dsec = abs(interval) * 86400.0
+    else:
+        dsec = abs(interval) * 3600.0
+    dsec = max(dsec, min_seconds)
+    if round_to_minutes:
+        dsec = 60.0 * int(dsec / 60.0 + 0.5)
+    return dsec

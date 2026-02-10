@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import date, datetime
 from typing import TextIO
 
 # FORTRAN planet_names(4:8) - no Pluto in original; we add 9 for compatibility
@@ -153,8 +153,12 @@ def _label_yaxis(
     day_sec_from_tai: callable,
     ymd_from_day: callable,
     tai_from_day_sec: callable,
+    use_doy_format: bool = False,
 ) -> None:
-    """RSPK_LabelYAxis: time axis ticks and date labels."""
+    """RSPK_LabelYAxis: time axis ticks and date labels.
+
+    use_doy_format: if True (spacecraft observer, not JWST/HST), use YYYY-DDD HHh (rspk_trackmoonc).
+    """
     max_mark1_mins = (tai2 - tai1) / 60.0 / 4.0
     i = len(STEP1_MINS) - 1
     while i >= 1 and STEP1_MINS[i] > max_mark1_mins:
@@ -208,7 +212,11 @@ def _label_yaxis(
         if qmark1:
             k1_use = 1 if first_mark1 else k1
             first_mark1 = False
-            label = f"{y:4d}-{MONTH_NAMES[m - 1]}-{d:02d} {h:2d}h"
+            if use_doy_format:
+                doy = (date(y, m, d) - date(y, 1, 1)).days + 1
+                label = f"{y:4d}-{doy:03d} {h:2d}h"
+            else:
+                label = f"{y:4d}-{MONTH_NAMES[m - 1]}-{d:02d} {h:2d}h"
             label = label[k1_use - 1 : k2]
             y_index = (tai - tai1) / dt + 1.0
             _emit(out, f"{y_index:7.2f} ({label}) YT1")
@@ -241,8 +249,12 @@ def draw_moon_tracks(
     rcaptions: list[str],
     align_loc: float,
     filename: str,
+    use_doy_format: bool = False,
 ) -> None:
-    """Emit PostScript identical to RSPK_TrackMoons (rspk_trackmoons.f)."""
+    """Emit PostScript identical to RSPK_TrackMoons (rspk_trackmoons.f).
+
+    use_doy_format: when True, Y-axis uses YYYY-DDD HHh (rspk_trackmoonc, spacecraft).
+    """
     from ephemeris_tools.time_utils import (
         day_sec_from_tai,
         tai_from_day_sec,
@@ -360,6 +372,7 @@ def draw_moon_tracks(
     _label_yaxis(
         output, time1_tai, time2_tai, dt,
         day_sec_from_tai, ymd_from_day, tai_from_day_sec,
+        use_doy_format,
     )
 
     _emit(output, "grestore")

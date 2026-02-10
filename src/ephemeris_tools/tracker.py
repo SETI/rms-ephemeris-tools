@@ -11,20 +11,6 @@ from ephemeris_tools.spice.common import get_state
 _RAD_TO_ARCSEC = 180.0 / math.pi * 3600.0
 
 
-def _interval_seconds(interval: float, time_unit: str) -> float:
-    """Convert interval and time_unit to seconds."""
-    u = time_unit.lower()[:4]
-    if u == "sec":
-        return max(abs(interval), 1.0)
-    if u == "min":
-        return max(abs(interval) * 60.0, 1.0)
-    if u == "hour":
-        return max(abs(interval) * 3600.0, 1.0)
-    if u == "day":
-        return max(abs(interval) * 86400.0, 1.0)
-    return max(abs(interval) * 3600.0, 1.0)
-
-
 def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int) -> list[bool]:
     """Convert CGI ring option codes to ring_flags (FORTRAN tracker3_xxx.f logic)."""
     flags = [False] * max(nrings, 1)
@@ -68,7 +54,12 @@ def run_tracker(
     from ephemeris_tools.spice.load import load_spice_files
     from ephemeris_tools.spice.observer import set_observer_id
     from ephemeris_tools.constants import EARTH_ID
-    from ephemeris_tools.time_utils import parse_datetime, tai_from_day_sec, tdb_from_tai
+    from ephemeris_tools.time_utils import (
+        interval_seconds,
+        parse_datetime,
+        tai_from_day_sec,
+        tdb_from_tai,
+    )
     from ephemeris_tools.spice.geometry import moon_tracker_offsets
     from ephemeris_tools.viewer import get_planet_config
 
@@ -85,7 +76,9 @@ def run_tracker(
     day2, sec2 = stop_parsed
     tai1 = tai_from_day_sec(day1, sec1)
     tai2 = tai_from_day_sec(day2, sec2)
-    dsec = _interval_seconds(interval, time_unit)
+    dsec = interval_seconds(
+        interval, time_unit, min_seconds=60.0, round_to_minutes=True
+    )
     ntimes = int((tai2 - tai1) / dsec) + 1
     if ntimes < 2:
         raise ValueError("Time range too short or interval too large")
@@ -163,6 +156,12 @@ def run_tracker(
     lcaptions = ["Ephemeris:", "Viewpoint:"]
     rcaptions = [ephem_caption, viewpoint_caption]
 
+    use_doy_format = bool(
+        viewpoint
+        and "Earth" not in viewpoint
+        and "JWST" not in viewpoint.upper()
+        and "HST" not in viewpoint.upper()
+    )
     if output_ps:
         draw_moon_tracks(
             output_ps,
@@ -188,4 +187,35 @@ def run_tracker(
             rcaptions=rcaptions,
             align_loc=180.0,
             filename=filename,
+            use_doy_format=use_doy_format,
         )
+
+    if output_txt:
+        from ephemeris_tools.time_utils import (
+            day_sec_from_tai,
+            hms_from_sec,
+            mjd_from_tai,
+            ymd_from_day,
+        )
+        header = " mjd        year mo dy hr mi   limb"
+        for name in moon_names[:25]:
+            header += " " + (name[:9] if len(name) >= 9 else name + " " * (9 - len(name)))
+        output_txt.write(header + "\n")
+        for irec in range(ntimes):
+            tai = times_tai[irec]
+            day, sec = day_sec_from_tai(tai)
+            _, _, sec_frac = hms_from_sec(sec)
+            if sec_frac >= 30.0:
+                tai = tai + 30.0
+                day, sec = day_sec_from_tai(tai)
+            year, month, day = ymd_from_day(day)
+            hour, minute, _ = hms_from_sec(sec)
+            mjd = mjd_from_tai(tai)
+            limb = limb_arcsec[irec]
+            row = f"{mjd:11.4f}{year:5d}{month:3d}{day:3d}{hour:3d}{minute:3d}{limb:7.3f}"
+            for j in range(len(track_moon_ids)):
+                row += f"{moon_offsets_arcsec[j][irec]:10.3f}"
+            for _ in range(len(track_moon_ids), 25):
+                row += " " * 10
+            output_txt.write(row + "\n")
+        output_txt.flush()

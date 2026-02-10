@@ -79,20 +79,6 @@ SPR = DPR * 3600.0
 MAXSECS = 360.0 * 60.0 * 60.0
 
 
-def _interval_seconds(interval: float, time_unit: str) -> float:
-    """Convert interval and time_unit to seconds."""
-    u = time_unit.lower()[:4]
-    if u == "sec":
-        return max(abs(interval), 1.0)
-    if u == "min":
-        return max(abs(interval) * 60.0, 1.0)
-    if u == "hour":
-        return max(abs(interval) * 3600.0, 1.0)
-    if u == "day":
-        return max(abs(interval) * 86400.0, 1.0)
-    return max(abs(interval) * 3600.0, 1.0)
-
-
 def _set_observer_from_params(params: EphemerisParams) -> None:
     """Set SPICE observer from params (viewpoint, observatory, or latlon)."""
     if params.viewpoint == "latlon" and params.latitude_deg is not None and params.longitude_deg is not None:
@@ -144,7 +130,9 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     day2, sec2 = stop_parsed
     tai1 = tai_from_day_sec(day1, _round_sec_to_min(sec1) if params.time_unit.startswith("min") else sec1)
     tai2 = tai_from_day_sec(day2, _round_sec_to_min(sec2) if params.time_unit.startswith("min") else sec2)
-    dsec = _interval_seconds(params.interval, params.time_unit)
+    from ephemeris_tools.time_utils import interval_seconds
+
+    dsec = interval_seconds(params.interval, params.time_unit)
     ntimes = int((tai2 - tai1) / dsec) + 1
     if ntimes < 2:
         raise ValueError("Time range too short or interval too large")
@@ -418,7 +406,10 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
 
 
 def _moon_prefix(moon_id: int, planet_num: int) -> str:
-    """Short prefix for moon column labels (e.g. 'Mima_')."""
+    """Short prefix for moon column labels: first 4 chars of uppercased name + '_'.
+
+    If name has fewer than 4 chars, pad with '_'. FORTRAN: 5-char prefix (e.g. Io -> IO___).
+    """
     from ephemeris_tools.planets import (
         JUPITER_CONFIG,
         MARS_CONFIG,
@@ -435,6 +426,7 @@ def _moon_prefix(moon_id: int, planet_num: int) -> str:
     if cfg:
         m = cfg.moon_by_id(moon_id)
         if m:
-            name = m.name[:4] if len(m.name) >= 4 else m.name + "_" * (4 - len(m.name))
-            return name + "_"
+            s = m.name.upper()[:4]
+            s = (s + "_" * 4)[:4]
+            return s + "_"
     return "moon_"

@@ -123,6 +123,13 @@ def compute_planet_grid(
         SUN_ID, planet_time, "J2000", planet_pv[:6], "LT+S"
     )
     rot = bodmat(planet_id, planet_time)
+    state = get_state()
+    if state.planet_num == 7:
+        rot = [
+            list(rot[0]),
+            list(rot[1]),
+            [-rot[2][0], -rot[2][1], -rot[2][2]],
+        ]
     rot_t = [list(col) for col in zip(rot[0], rot[1], rot[2])]
     radii = cspyce.bodvrd(str(planet_id), "RADII")
     a, b, c = float(radii[0]), float(radii[1]), float(radii[2])

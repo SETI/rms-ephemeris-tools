@@ -29,6 +29,181 @@ _RAD2DEG = 180.0 / math.pi
 _RAD2ARCSEC = 180.0 / math.pi * 3600.0
 _AU_KM = 149597870.7
 _MAX_ARCSEC = 360.0 * 3600.0
+_SEC_PER_DAY = 86400.0
+
+
+def _propagated_uranus_rings(et: float, cfg) -> tuple[list[float], list[float]]:
+    """Propagate Uranus ring elements to et. Returns (peri_deg_list, node_deg_list)."""
+    from ephemeris_tools.planets.uranus import (
+        B1950_TO_J2000_URANUS,
+        URANUS_REF_EPOCH_YMD,
+        URANUS_REF_EPOCH_HOUR,
+    )
+    from ephemeris_tools.spice.common import get_state
+    from ephemeris_tools.spice.observer import observer_state
+    from ephemeris_tools.time_utils import day_from_ymd, tai_from_day_sec, tdb_from_tai
+
+    import cspyce
+    y, m, d = URANUS_REF_EPOCH_YMD
+    day0 = day_from_ymd(y, m, d)
+    ref_tai = tai_from_day_sec(day0, float(URANUS_REF_EPOCH_HOUR * 3600))
+    ref_et = tdb_from_tai(ref_tai)
+    obs_pv = observer_state(et)
+    state = get_state()
+    planet_dpv, dt = cspyce.spkapp(
+        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+    )
+    ddays = (et - ref_et - dt) / _SEC_PER_DAY
+    peri_deg_list = []
+    node_deg_list = []
+    for r in cfg.rings:
+        peri_deg = r.peri_rad * _RAD2DEG + r.dperi_dt * ddays + B1950_TO_J2000_URANUS
+        node_deg = r.node_rad * _RAD2DEG + r.dnode_dt * ddays + B1950_TO_J2000_URANUS
+        peri_deg = peri_deg % 360.0
+        if peri_deg < 0.0:
+            peri_deg += 360.0
+        node_deg = node_deg % 360.0
+        if node_deg < 0.0:
+            node_deg += 360.0
+        peri_deg_list.append(peri_deg)
+        node_deg_list.append(node_deg)
+    return (peri_deg_list, node_deg_list)
+
+
+def _propagated_neptune_arcs(et: float, cfg) -> list[tuple[float, float]]:
+    """Propagate Neptune arc longitudes to et. Returns [(minlon_deg, maxlon_deg), ...]."""
+    from ephemeris_tools.spice.common import get_state
+    from ephemeris_tools.spice.observer import observer_state
+    from ephemeris_tools.time_utils import tai_from_jd, tdb_from_tai
+
+    import cspyce
+    NEPTUNE_REF_JED = 2447757.0
+    ref_tai = tai_from_jd(NEPTUNE_REF_JED)
+    ref_et = tdb_from_tai(ref_tai)
+    obs_pv = observer_state(et)
+    state = get_state()
+    planet_dpv, dt = cspyce.spkapp(
+        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+    )
+    ddays = (et - ref_et - dt) / _SEC_PER_DAY
+    B1950_TO_J2000_NEP = 0.334321
+    result = []
+    for arc in cfg.arcs:
+        minlon = (arc.minlon_deg + arc.motion_deg_day * ddays + B1950_TO_J2000_NEP) % 360.0
+        maxlon = (arc.maxlon_deg + arc.motion_deg_day * ddays + B1950_TO_J2000_NEP) % 360.0
+        if minlon < 0.0:
+            minlon += 360.0
+        if maxlon < 0.0:
+            maxlon += 360.0
+        result.append((minlon, maxlon))
+    return result
+
+
+def _propagated_saturn_f_ring(et: float, cfg) -> tuple[float, float] | None:
+    """Propagate Saturn F ring to et. Returns (peri_rad, node_rad) or None."""
+    if cfg.f_ring_index is None or cfg.planet_num != 6:
+        return None
+    from ephemeris_tools.planets.saturn import FRING_DPERI_DT, FRING_DNODE_DT
+    from ephemeris_tools.spice.common import get_state
+    from ephemeris_tools.spice.observer import observer_state
+    from ephemeris_tools.time_utils import tai_from_day_sec, tdb_from_tai
+
+    import cspyce
+    ref_tai = tai_from_day_sec(0, 12.0 * 3600.0)
+    ref_et = tdb_from_tai(ref_tai)
+    obs_pv = observer_state(et)
+    state = get_state()
+    planet_dpv, dt = cspyce.spkapp(
+        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+    )
+    ddays = (et - ref_et - dt) / _SEC_PER_DAY
+    r = cfg.rings[cfg.f_ring_index]
+    peri_rad = r.peri_rad + FRING_DPERI_DT * ddays * _SEC_PER_DAY
+    node_rad = r.node_rad + FRING_DNODE_DT * ddays * _SEC_PER_DAY
+    return (peri_rad, node_rad)
+
+
+def _compute_ring_center_offsets(et: float, cfg) -> list[tuple[float, float, float]]:
+    """Compute ring center offset vectors (J2000 km) for Mars and Pluto. FORTRAN ring_offsets."""
+    from ephemeris_tools.constants import SUN_ID
+    from ephemeris_tools.spice.common import get_state
+    from ephemeris_tools.spice.observer import observer_state
+
+    import cspyce
+    nrings = len(cfg.rings)
+    offsets = [(0.0, 0.0, 0.0)] * nrings
+    state = get_state()
+    obs_pv = observer_state(et)
+
+    if cfg.planet_num == 4 and cfg.ring_offsets_km:
+        from ephemeris_tools.spice.bodmat import bodmat
+        planet_dpv, dt = cspyce.spkapp(
+            state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+        )
+        planet_time = et - dt
+        planet_pv = cspyce.spkssb(state.planet_id, planet_time, "J2000")
+        sun_dpv, _ = cspyce.spkapp(
+            SUN_ID, planet_time, "J2000", planet_pv[:6], "LT+S"
+        )
+        rotmat = bodmat(state.planet_id, planet_time)
+        eq_pole = (rotmat[2][0], rotmat[2][1], rotmat[2][2])
+        anti_sun = (-sun_dpv[0], -sun_dpv[1], -sun_dpv[2])
+        dot = eq_pole[0] * anti_sun[0] + eq_pole[1] * anti_sun[1] + eq_pole[2] * anti_sun[2]
+        antisun = [
+            anti_sun[0] - dot * eq_pole[0],
+            anti_sun[1] - dot * eq_pole[1],
+            anti_sun[2] - dot * eq_pole[2],
+        ]
+        n = math.sqrt(antisun[0]**2 + antisun[1]**2 + antisun[2]**2)
+        if n > 1e-12:
+            antisun = [antisun[0] / n, antisun[1] / n, antisun[2] / n]
+            for i, shift_km in cfg.ring_offsets_km.items():
+                if i < nrings:
+                    offsets[i] = (
+                        shift_km * antisun[0],
+                        shift_km * antisun[1],
+                        shift_km * antisun[2],
+                    )
+
+    if cfg.planet_num == 9 and cfg.barycenter_id is not None:
+        bary_dpv, _ = cspyce.spkapp(
+            cfg.barycenter_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+        )
+        planet_dpv, _ = cspyce.spkapp(
+            state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+        )
+        dx = bary_dpv[0] - planet_dpv[0]
+        dy = bary_dpv[1] - planet_dpv[1]
+        dz = bary_dpv[2] - planet_dpv[2]
+        for i in range(1, nrings):
+            offsets[i] = (dx, dy, dz)
+
+    return offsets
+
+
+def _compute_jupiter_torus_node(et: float) -> float | None:
+    """Compute Io torus ring node (radians) from Jupiter BODMAT. System III ascending node at 248°."""
+    from ephemeris_tools.spice.bodmat import bodmat
+    from ephemeris_tools.spice.common import get_state
+    from ephemeris_tools.spice.observer import observer_state
+
+    import cspyce
+    state = get_state()
+    if state.planet_num != 5:
+        return None
+    obs_pv = observer_state(et)
+    planet_dpv, dt = cspyce.spkapp(
+        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
+    )
+    planet_time = et - dt
+    rotmat = bodmat(state.planet_id, planet_time)
+    eq_pole = [rotmat[2][0], rotmat[2][1], rotmat[2][2]]
+    j2000_pole = [0.0, 0.0, 1.0]
+    ascnode = cspyce.ucrss(j2000_pole, eq_pole)
+    tempvec = cspyce.mxv(rotmat, ascnode)
+    reflon = math.atan2(tempvec[1], tempvec[0])
+    torus_node_rad = math.radians(248.0) - reflon
+    return torus_node_rad
 
 
 def get_planet_config(planet_num: int):
@@ -152,6 +327,79 @@ def _write_fov_table(
         stream.write(f"  Observer-planet distance (km): {obs_dist / 1e6:12.6f} x 10^6\n")
         stream.write("\n")
 
+        if cfg.f_ring_index is not None and cfg.planet_num == 6:
+            propagated = _propagated_saturn_f_ring(et, cfg)
+            if propagated is not None:
+                peri_rad, node_rad = propagated
+                peri_deg = (peri_rad * _RAD2DEG) % 360.0
+                if peri_deg < 0.0:
+                    peri_deg += 360.0
+                node_deg = (node_rad * _RAD2DEG) % 360.0
+                if node_deg < 0.0:
+                    node_deg += 360.0
+            else:
+                ring = cfg.rings[cfg.f_ring_index]
+                peri_deg = (ring.peri_rad * _RAD2DEG) % 360.0
+                if peri_deg < 0.0:
+                    peri_deg += 360.0
+                node_deg = (ring.node_rad * _RAD2DEG) % 360.0
+                if node_deg < 0.0:
+                    node_deg += 360.0
+            stream.write("\n")
+            stream.write(
+                f"      F Ring pericenter (deg): {peri_deg:9.5f}  "
+                "from ring plane ascending node\n"
+            )
+            stream.write(f"  F Ring ascending node (deg): {node_deg:9.5f}\n")
+
+    if cfg.rings and cfg.planet_num == 7:
+        peri_deg_list, node_deg_list = _propagated_uranus_rings(et, cfg)
+        stream.write("\n")
+        stream.write(
+            "     Ring          Pericenter   Ascending Node "
+            "(deg, from ring plane ascending node)\n"
+        )
+        for i, r in enumerate(cfg.rings):
+            name = (r.name or "")[:10].ljust(10)
+            peri_deg = 0.0 if r.ecc == 0.0 else peri_deg_list[i]
+            node_deg = 0.0 if r.inc_rad == 0.0 else node_deg_list[i]
+            stream.write(f"     {name}   {peri_deg:8.3f}     {node_deg:8.3f}\n")
+
+    if cfg.arcs and cfg.planet_num == 8:
+        arc_minmax = _propagated_neptune_arcs(et, cfg)
+        stream.write("\n")
+        for i in range(len(cfg.arcs) - 1, -1, -1):
+            minlon, maxlon = arc_minmax[i]
+            arc = cfg.arcs[i]
+            name = (arc.name or "")[:12].ljust(12)
+            suffix = "from ring plane ascending node" if i == len(cfg.arcs) - 1 else ""
+            stream.write(
+                f"  {name} longitude (deg): {minlon:9.5f}  to {maxlon:9.5f}  {suffix}\n"
+            )
+
+
+# FOV unit multipliers (deg) when fov is scale factor. FORTRAN viewer3_*.f fov_unit parsing.
+_FOV_UNIT_MULT_DEG = {
+    "galileo": 8.1e-3,
+    "galileo ssi": 8.1e-3,
+    "cassini": 6.1e-3,
+    "vims 64x64": 32e-3,
+    "vims 12x12": 6e-3,
+    "uvis slit": 59e-3,
+    "lorri": 0.2907,
+}
+
+
+def _fov_deg_from_unit(fov: float, fov_unit: str | None) -> float:
+    """Apply fov_unit multiplier; return FOV in degrees."""
+    if not fov_unit or "fov" not in fov_unit.lower():
+        return fov
+    s = fov_unit.lower()
+    for key, mult in _FOV_UNIT_MULT_DEG.items():
+        if key in s:
+            return fov * mult
+    return fov
+
 
 def run_viewer(
     planet_num: int,
@@ -165,6 +413,7 @@ def run_viewer(
     blank_disks: bool = False,
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
+    fov_unit: str | None = None,
 ) -> None:
     """Generate planet viewer PostScript diagram and Field of View table."""
     cfg = get_planet_config(planet_num)
@@ -187,7 +436,8 @@ def run_viewer(
     day, sec = parsed
     et = tdb_from_tai(tai_from_day_sec(day, sec))
 
-    fov_rad = fov * _DEG2RAD
+    fov_deg = _fov_deg_from_unit(fov, fov_unit)
+    fov_rad = fov_deg * _DEG2RAD
 
     _, limb_rad_rad = limb_radius(et)
     planet_ra, planet_dec = body_radec(et, cfg.planet_id)
@@ -213,14 +463,16 @@ def run_viewer(
             output_txt, et, cfg, planet_ra, planet_dec, table_body_ids, id_to_name
         )
 
-    # Plot: 400x400 pt, center (200, 200). Scale: half_plot / fov_rad rad per pt.
-    half_plot = 200.0
-    scale = half_plot / fov_rad
+    # Plot: FOV_PTS diameter, scale = FOV_PTS / (2*tan(fov/2)) for camera projection.
+    from ephemeris_tools.rendering.draw_view import FOV_PTS, radec_to_plot
+
+    half_plot = FOV_PTS / 2.0
+    scale = FOV_PTS / (2.0 * math.tan(fov_rad / 2.0))
 
     def to_plot(ra: float, dec: float) -> tuple[float, float]:
-        dx = (ra - center_ra_rad) * math.cos(center_dec_rad)
-        dy = dec - center_dec_rad
-        return (-dx * scale, dy * scale)
+        return radec_to_plot(
+            ra, dec, center_ra_rad, center_dec_rad, fov_rad
+        )
 
     bodies: list[tuple[float, float, str, bool]] = []
     px, py = to_plot(planet_ra, planet_dec)
@@ -259,4 +511,18 @@ def run_viewer(
             bodies_plot=bodies,
             title=title,
             planet_grid_segments=planet_grid_segments,
+            ring_segments=None,
+            ring_method=0,
+            arcs_plot=None,
+            pericenters_plot=None,
+            arc_width_pts=4.0,
+            ra_dec_tick_marks=None,
+            ra_dec_tick_labels=None,
+            caption_lines=None,
+            show_compass=True,
+            stars_plot=None,
+            star_labels=False,
+            moon_diam_pts=4.0,
+            blank_disks=blank_disks,
+            limb_ellipse_plot=None,
         )

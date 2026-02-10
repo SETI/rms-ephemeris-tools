@@ -28,7 +28,8 @@ def test_draw_planetary_view_produces_diagram_not_stub() -> None:
     assert "Saturn" in s
     assert "TITAN" in s
     assert "arc" in s
-    assert "%%Creator: ephemeris_tools" in s
+    assert "%%Creator:" in s
+    assert "PDS Ring-Moon Systems Node" in s
     assert "showpage" in s
 
 
@@ -53,4 +54,4 @@ def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
     assert "stroke" in s
     assert "0 setgray" in s
     assert "0.85 setgray" in s
-    assert "%%Creator: ephemeris_tools" in s
+    assert "%%Creator:" in s

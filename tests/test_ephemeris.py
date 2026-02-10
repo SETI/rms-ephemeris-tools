@@ -44,18 +44,12 @@ def test_ephemeris_params_defaults() -> None:
 
 
 def test_interval_seconds() -> None:
-    """Interval conversion (same logic as ephemeris._interval_seconds)."""
-    def interval_sec(interval: float, time_unit: str) -> float:
-        u = time_unit.lower()[:4]
-        if u == "sec":
-            return max(abs(interval), 1.0)
-        if u == "min":
-            return max(abs(interval) * 60.0, 1.0)
-        if u == "hour":
-            return max(abs(interval) * 3600.0, 1.0)
-        if u == "day":
-            return max(abs(interval) * 86400.0, 1.0)
-        return max(abs(interval) * 3600.0, 1.0)
-    assert interval_sec(1, "hour") == 3600.0
-    assert interval_sec(1, "day") == 86400.0
-    assert interval_sec(5, "min") == 300.0
+    """Interval conversion via time_utils.interval_seconds (ephemeris default)."""
+    from ephemeris_tools.time_utils import interval_seconds
+
+    assert interval_seconds(1, "hour") == 3600.0
+    assert interval_seconds(1, "day") == 86400.0
+    assert interval_seconds(5, "min") == 300.0
+    assert interval_seconds(0.5, "sec") == 1.0  # min_seconds=1 default
+    assert interval_seconds(1, "min", min_seconds=60.0, round_to_minutes=True) == 60.0
+    assert interval_seconds(90, "sec", min_seconds=60.0, round_to_minutes=True) == 120.0

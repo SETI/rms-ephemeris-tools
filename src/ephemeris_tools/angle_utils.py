@@ -82,5 +82,5 @@ def dms_string(
         frac = f"{ims:04d}"
     out = f"{ideg:3d}{sep1} {imin:02d}{sep2} {isec:02d}.{frac}{sep3}"
     if isign < 0 and ideg == 0:
-        out = "-" + out[1:]
+        out = out[0:1] + "-" + out[2:]
     return out

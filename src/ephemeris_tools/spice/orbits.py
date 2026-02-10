@@ -72,5 +72,5 @@ def moon_distances(
         offsets[i] = math.atan2(vector[1], vector[0])
     radii = cspyce.bodvrd(str(state.planet_id), "RADII")
     r_eq = radii[0]
-    limb = math.asin(r_eq / cspyce.vnorm(planet_dpv[:3]))
+    limb = math.asin(min(1.0, r_eq / cspyce.vnorm(planet_dpv[:3])))
     return (offsets, limb)
