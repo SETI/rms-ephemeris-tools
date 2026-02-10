@@ -30,3 +30,27 @@ def test_draw_planetary_view_produces_diagram_not_stub() -> None:
     assert "arc" in s
     assert "%%Creator: ephemeris_tools" in s
     assert "showpage" in s
+
+
+def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
+    """With planet_grid_segments, planet is drawn with limb + lat/lon lines (no fill)."""
+    out = StringIO()
+    bodies = [(0.0, 0.0, "Saturn", True)]
+    grid_segments: list[tuple[list[tuple[float, float]], str]] = [
+        ([(10.0, 0.0), (-10.0, 0.0)], "lit"),
+        ([(0.0, 10.0), (0.0, -10.0)], "dark"),
+    ]
+    draw_planetary_view(
+        out,
+        planet_name="Saturn",
+        limb_radius_plot=40.0,
+        bodies_plot=bodies,
+        title="Saturn",
+        planet_grid_segments=grid_segments,
+    )
+    s = out.getvalue()
+    assert "lineto" in s
+    assert "stroke" in s
+    assert "0 setgray" in s
+    assert "0.85 setgray" in s
+    assert "%%Creator: ephemeris_tools" in s

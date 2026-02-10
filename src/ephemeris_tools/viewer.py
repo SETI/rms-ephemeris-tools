@@ -162,6 +162,7 @@ def run_viewer(
     viewpoint: str,
     ephem_version: int = 1,
     moon_ids: list[int] | None = None,
+    blank_disks: bool = False,
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
 ) -> None:
@@ -234,12 +235,28 @@ def run_viewer(
     limb_plot = limb_rad_rad * scale
     title = f"{cfg.planet_name}  {time_str}"
 
+    planet_grid_segments: list[tuple[list[tuple[float, float]], str]] | None
+    if blank_disks:
+        planet_grid_segments = None
+    else:
+        from ephemeris_tools.rendering.planet_grid import compute_planet_grid
+
+        limb_plot, planet_grid_segments = compute_planet_grid(
+            et,
+            cfg.planet_id,
+            center_ra_rad,
+            center_dec_rad,
+            scale,
+        )
+
     if output_ps:
         from ephemeris_tools.rendering.draw_view import draw_planetary_view
+
         draw_planetary_view(
             output_ps,
             planet_name=cfg.planet_name,
             limb_radius_plot=limb_plot,
             bodies_plot=bodies,
             title=title,
+            planet_grid_segments=planet_grid_segments,
         )

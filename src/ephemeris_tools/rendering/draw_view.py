@@ -32,13 +32,15 @@ def draw_planetary_view(
     limb_radius_plot: float,
     bodies_plot: list[tuple[float, float, str, bool]],
     title: str,
+    planet_grid_segments: list[tuple[list[tuple[float, float]], str]] | None = None,
 ) -> None:
     """Generate PostScript diagram of planet and moons in field of view.
 
     bodies_plot: list of (x, y, label, is_planet) in plot coordinates (origin
-    at center of field). Planet entry is drawn as a filled disk; moons as
-    small circles with labels. Uses point coordinates (no 72x scale) so the
-    diagram fits on the page.
+    at center of field). When planet_grid_segments is provided (FORTRAN
+    blank_disks=False), the planet is drawn with latitude/longitude lines at
+    15° spacing: lit=black, dark=light gray, terminator=black. Otherwise the
+    planet is a shaded disk. Moons are small circles with labels.
     """
     _emit(output, "%!PS-Adobe-3.0")
     _emit(output, "%%Creator: ephemeris_tools")
@@ -62,10 +64,27 @@ def draw_planetary_view(
         px = _VIEW_CX + x
         py = _VIEW_CY + y
         if is_planet:
-            _emit(output, "0.85 setgray")
-            _emit(output, f"{px} {py} {limb_radius_plot} 0 360 arc closepath fill")
-            _emit(output, "0 setgray")
-            _emit(output, f"{px} {py} {limb_radius_plot} 0 360 arc stroke")
+            if planet_grid_segments is not None:
+                # Draw limb outline then lat/lon grid (FORTRAN: lit=black, dark=gray, term=black).
+                _emit(output, "0 setgray")
+                _emit(output, f"{px} {py} {limb_radius_plot} 0 360 arc stroke")
+                for points, line_type in planet_grid_segments:
+                    if len(points) < 2:
+                        continue
+                    if line_type == "dark":
+                        _emit(output, "0.85 setgray")
+                    else:
+                        _emit(output, "0 setgray")
+                    _emit(output, f"{_VIEW_CX + points[0][0]} {_VIEW_CY + points[0][1]} moveto")
+                    for qx, qy in points[1:]:
+                        _emit(output, f"{_VIEW_CX + qx} {_VIEW_CY + qy} lineto")
+                    _emit(output, "stroke")
+                _emit(output, "0 setgray")
+            else:
+                _emit(output, "0.85 setgray")
+                _emit(output, f"{px} {py} {limb_radius_plot} 0 360 arc closepath fill")
+                _emit(output, "0 setgray")
+                _emit(output, f"{px} {py} {limb_radius_plot} 0 360 arc stroke")
         else:
             _emit(output, f"{px} {py} {_MOON_RADIUS_PT} 0 360 arc closepath fill")
             _write_string_safe(

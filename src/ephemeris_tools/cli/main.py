@@ -258,6 +258,9 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
     moon_ids = None
     if getattr(args, "moons", None):
         moon_ids = [100 * args.planet + idx for idx in args.moons]
+    blank = (getattr(args, "blank", None) or "").strip().lower()
+    blank_disks = blank in ("yes", "y", "true", "1")
+
     try:
         run_viewer(
             planet_num=args.planet,
@@ -268,6 +271,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             viewpoint=(args.viewpoint or "Earth").strip() or "Earth",
             ephem_version=getattr(args, "ephem", 1),
             moon_ids=moon_ids,
+            blank_disks=blank_disks,
             output_ps=out,
             output_txt=out_txt,
         )
