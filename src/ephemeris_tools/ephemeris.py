@@ -235,14 +235,16 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                     rec.append("  obs_dist")
                 else:
                     s = f"{obs_dist:10.0f}"
-                    if len(s) > 10 or s.strip().startswith("*"):
-                        s = f"{obs_dist:10.4e}"
+                    # FORTRAN f10.0 includes a trailing decimal point,
+                    # so it overflows one digit earlier than Python.
+                    if len(s) > 10 or (len(s) == 10 and s[0] != " "):
+                        s = f"{obs_dist:10.4E}"
                     rec.append(s[:10])
             elif col == COL_SUNDIST:
                 if irec == 0:
                     rec.append("  sun_dist")
                 else:
-                    rec.append(f"{sun_dist:10.4e}")
+                    rec.append(f"{sun_dist:10.4E}")
             elif col == COL_PHASE:
                 if irec == 0:
                     rec.append("    phase")
@@ -336,8 +338,10 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                     else:
                         _, obs_d = body_ranges(et, mid)
                         s = f"{obs_d:10.0f}"
-                        if len(s) > 10:
-                            s = f"{obs_d:10.4e}"
+                        # FORTRAN f10.0 includes trailing decimal point,
+                        # so it overflows one digit earlier than Python.
+                        if len(s) > 10 or (len(s) == 10 and s[0] != " "):
+                            s = f"{obs_d:10.4E}"
                         rec.append(s[:10])
                 elif mcol == MCOL_PHASE:
                     if irec == 0:

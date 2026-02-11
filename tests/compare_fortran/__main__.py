@@ -21,7 +21,11 @@ from pathlib import Path
 
 from tests.compare_fortran.spec import RunSpec, DEFAULT_TRACKER_MOONS_SATURN
 from tests.compare_fortran.runner import run_python, run_fortran
-from tests.compare_fortran.diff_utils import compare_tables, compare_postscript
+from tests.compare_fortran.diff_utils import (
+    compare_postscript,
+    compare_postscript_images,
+    compare_tables,
+)
 
 
 def _parse_planet(s: str) -> int:
@@ -215,6 +219,14 @@ def main() -> int:
                 print(d)
             if not res.same:
                 exit_code = 1
+            # Pixel comparison via Ghostscript rendering
+            diff_img = out_dir / "diff.png"
+            res_img = compare_postscript_images(
+                py_ps_use, fort_ps_use, diff_image_path=diff_img,
+            )
+            print(res_img.message)
+            for d in res_img.details:
+                print(d)
         return exit_code
 
     print("Outputs written to", out_dir)

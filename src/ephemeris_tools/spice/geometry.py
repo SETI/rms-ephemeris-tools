@@ -56,7 +56,11 @@ def body_ranges(et: float, body_id: int) -> tuple[float, float]:
 
 
 def planet_phase(et: float) -> float:
-    """Solar phase angle of planet as seen from observer (radians)."""
+    """Solar phase angle of planet as seen from observer (radians).
+
+    Port of RSPK_Phase: VMINUS(planet_dpv) gives direction from planet
+    to observer, then VSEP with sun direction gives the phase angle.
+    """
     state = get_state()
     obs_pv = observer_state(et)
     planet_dpv, dt = cspyce.spkapp(
@@ -67,11 +71,7 @@ def planet_phase(et: float) -> float:
     sun_dpv, _ = cspyce.spkapp(
         SUN_ID, planet_time, "J2000", planet_pv[:6], "LT"
     )
-    obs_dp = [
-        obs_pv[0] - planet_dpv[0],
-        obs_pv[1] - planet_dpv[1],
-        obs_pv[2] - planet_dpv[2],
-    ]
+    obs_dp = cspyce.vminus(planet_dpv[:3])
     return cspyce.vsep(sun_dpv[:3], obs_dp)
 
 
