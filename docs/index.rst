@@ -1,7 +1,7 @@
-.. RMS-XXX documentation master file
+.. rms-ephemeris-tools documentation master file
 
-Welcome to the Documentation for RMS-XXX!
-=========================================
+Welcome to the Documentation for rms-ephemeris-tools!
+=====================================================
 
 .. include:: ../README.md
    :parser: myst_parser.sphinx_

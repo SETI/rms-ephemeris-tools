@@ -53,7 +53,7 @@ pythonpath = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-"src.ephemeris_tools" = ["py.typed"]
+"ephemeris_tools" = ["py.typed"]
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
@@ -75,7 +75,7 @@ dev = [
 ]
 
 [project.scripts]
-TODO = "src.ephemeris_tools.main:main"
+ephemeris_tools = "ephemeris_tools.main:main"
 
 # Tool configuration
 

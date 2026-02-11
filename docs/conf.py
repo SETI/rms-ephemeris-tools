@@ -12,13 +12,13 @@ sys.path.insert(0, os.path.abspath('../src'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'REPONAME'
+project = 'rms-ephemeris-tools'
 copyright = '2025, SETI Institute'
 author = 'SETI Institute'
 
 # The full version, including alpha/beta/rc tags
 try:
-    release = importlib.metadata.version('rms-xxx')
+    release = importlib.metadata.version('rms-ephemeris-tools')
 except importlib.metadata.PackageNotFoundError:
     release = '1.0.0'  # fallback for development
 

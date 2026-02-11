@@ -1,6 +1,6 @@
-# Contributing to RMS-XXX
+# Contributing to rms-ephemeris-tools
 
-Thank you for your interest in contributing to RMS-XXX! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to rms-ephemeris-tools! This document provides guidelines and instructions for contributing to the project.
 
 ## Code of Conduct
 
@@ -13,8 +13,8 @@ See CODE_OF_CONDUCT.md.
 2. Clone your fork locally:
 
    ```bash
-   git clone https://github.com/your-username/rms-xxx.git
-   cd rms-xxx
+   git clone https://github.com/your-username/rms-ephemeris-tools.git
+   cd rms-ephemeris-tools
    ```
    
 3. Create a virtual environment and install the package with dev dependencies:
@@ -149,4 +149,4 @@ If you find a bug or have a suggestion for improvement:
    * Your environment information (Python version, OS, etc.)
    * Any relevant logs or screenshots
 
-Thank you for contributing to RMS-XXX!
+Thank you for contributing to rms-ephemeris-tools!

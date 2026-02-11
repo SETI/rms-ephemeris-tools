@@ -1,5 +1,5 @@
 name: Run Tests
-run-name: Run Tests triggered by ${{ github.ref_type }} ${{ github.ref_name }} or ${{ github.triggering_actor }}
+run-name: Run Tests on ${{ github.ref_type }} ${{ github.ref_name }} by ${{ github.triggering_actor }}
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   lint:
-    name: Lint REPONAME
+    name: Lint rms-ephemeris-tools
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,7 +48,7 @@ jobs:
           pymarkdown scan docs/ .cursor/ README.md CONTRIBUTING.md
 
   test:
-    name: Test REPONAME
+    name: Test rms-ephemeris-tools
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
