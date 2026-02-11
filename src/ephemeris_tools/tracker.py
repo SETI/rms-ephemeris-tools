@@ -42,7 +42,7 @@ def run_tracker(
     time_unit: str,
     viewpoint: str,
     moon_ids: list[int],
-    ephem_version: int = 1,
+    ephem_version: int = 0,
     xrange: float | None = None,
     xscaled: bool = False,
     title: str = "",
@@ -148,10 +148,9 @@ def run_tracker(
     filename = str(out_name) if out_name else "tracker.ps"
 
     # Captions: Ephemeris and Viewpoint (match original FORTRAN output).
-    # FORTRAN: rcaptions(1) = WWW_GetKey('ephem')(5:) — first 4 chars stripped.
-    # CGI value "15" → (5:) is empty. For longer values like "SAT345" → (5:) = "45".
-    ephem_str = str(ephem_version)
-    ephem_caption = ephem_str[4:] if len(ephem_str) >= 5 else ""
+    # FORTRAN: rcaptions(1) = WWW_GetKey('ephem')(5:) — kernel description.
+    from ephemeris_tools.constants import EPHEM_DESCRIPTIONS_BY_PLANET
+    ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, "DE440")
 
     # FORTRAN: rcaptions(2) = observatory_name + " (" + sc_trajectory(5:) + ")"
     # For Earth's center with sc_trajectory=0: "Earth's center ()"

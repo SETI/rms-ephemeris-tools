@@ -1,21 +1,23 @@
 """CLI to run Python and (optionally) FORTRAN with the same inputs and compare outputs.
 
+The FORTRAN binary is auto-detected from repo_root/fortran/Tools/ (ephem3_xxx.bin,
+tracker3_xxx.bin, or viewer3_<planet>.bin by tool and --planet). Use --fortran-cmd
+to override.
+
 Usage:
   python -m tests.compare_fortran ephemeris --planet 6 --start 2022-01-01 --stop 2022-01-02 -o /tmp/out
-  python -m tests.compare_fortran ephemeris --planet 6 --start 2022-01-01 --stop 2022-01-02 \\
-    --fortran-cmd /path/to/ephem3_xxx.bin -o /tmp/out
-  python -m tests.compare_fortran tracker --planet 6 --start 2022-01-01 --stop 2022-01-03 \\
-    --fortran-cmd /path/to/tracker3_xxx.bin -o /tmp/out
-  python -m tests.compare_fortran viewer --planet 6 --time 2022-01-01 12:00 --fov 0.1 \\
-    --fortran-cmd /path/to/viewer3_sat.bin -o /tmp/out
+  python -m tests.compare_fortran tracker --planet 6 --start 2022-01-01 --stop 2022-01-03 -o /tmp/out
+  python -m tests.compare_fortran viewer --planet 6 --time 2022-01-01 12:00 --fov 0.1 -o /tmp/out
+  python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.bin -o /tmp/out
 
-With --fortran-cmd: runs both, compares table and/or PostScript, reports differences.
-Without --fortran-cmd: runs only Python and writes outputs (no comparison).
+With a FORTRAN binary (auto-detected or --fortran-cmd): runs both, compares outputs.
+Without: runs only Python and writes outputs (no comparison).
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -28,11 +30,41 @@ from tests.compare_fortran.diff_utils import (
 )
 
 
+# Planet number (4-9) → viewer FORTRAN binary suffix (viewer3_<suffix>.bin).
+_VIEWER_BINARY_SUFFIX: dict[int, str] = {
+    4: "mar",
+    5: "jup",
+    6: "sat",
+    7: "ura",
+    8: "nep",
+    9: "plu",
+}
+
+
 def _parse_planet(s: str) -> int:
     v = int(s)
     if not (4 <= v <= 9):
         raise ValueError("planet must be 4-9")
     return v
+
+
+def _default_fortran_binary(tool: str, planet: int, repo_root: Path) -> Path | None:
+    """Return path to FORTRAN binary in repo_root/fortran/Tools/ if it exists and is executable."""
+    if tool == "ephemeris":
+        name = "ephem3_xxx.bin"
+    elif tool == "tracker":
+        name = "tracker3_xxx.bin"
+    elif tool == "viewer":
+        suffix = _VIEWER_BINARY_SUFFIX.get(planet)
+        if suffix is None:
+            return None
+        name = f"viewer3_{suffix}.bin"
+    else:
+        return None
+    path = repo_root / "fortran" / "Tools" / name
+    if path.is_file() and os.access(path, os.X_OK):
+        return path
+    return None
 
 
 def main() -> int:
@@ -49,7 +81,7 @@ def main() -> int:
     parser.add_argument("--stop", type=str, default="2022-01-02 00:00", help="Stop time")
     parser.add_argument("--interval", type=float, default=1.0, help="Time step")
     parser.add_argument("--time-unit", type=str, default="hour", choices=["sec", "min", "hour", "day"])
-    parser.add_argument("--ephem", type=int, default=1, help="Ephemeris version")
+    parser.add_argument("--ephem", type=int, default=0, help="Ephemeris version (0=latest, matches web/FORTRAN)")
     parser.add_argument("--viewpoint", type=str, default="observatory")
     parser.add_argument("--observatory", type=str, default="Earth's Center")
     parser.add_argument("--latitude", type=float, default=None)
@@ -73,7 +105,7 @@ def main() -> int:
         "--fortran-cmd",
         type=str,
         default=None,
-        help="FORTRAN executable path (or 'env args... /path/to/bin'). If set, run FORTRAN and compare.",
+        help="Override FORTRAN executable (default: repo_root/fortran/Tools/<tool>.bin).",
     )
     parser.add_argument(
         "-o", "--output-dir",
@@ -88,6 +120,14 @@ def main() -> int:
         help="Compare numeric table fields to this many significant digits (0 = exact)",
     )
     args = parser.parse_args()
+
+    # Repo root: this file is tests/compare_fortran/__main__.py.
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    if args.fortran_cmd:
+        fort_cmd = args.fortran_cmd.split()
+    else:
+        derived = _default_fortran_binary(args.tool, args.planet, repo_root)
+        fort_cmd = [str(derived)] if derived is not None else None
 
     out_dir = Path(args.output_dir or ".")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -162,9 +202,8 @@ def main() -> int:
         return 1
     print("Python OK.", flush=True)
 
-    if args.fortran_cmd:
+    if fort_cmd:
         print("Running FORTRAN...", flush=True)
-        fort_cmd = args.fortran_cmd.split()
         result_fort = run_fortran(
             spec,
             fort_cmd,

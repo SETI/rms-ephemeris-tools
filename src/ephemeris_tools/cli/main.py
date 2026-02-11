@@ -60,7 +60,7 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
             stop_time=args.stop,
             interval=args.interval,
             time_unit=args.time_unit,
-            ephem_version=getattr(args, "ephem", 1),
+            ephem_version=getattr(args, "ephem", 0),
             viewpoint=viewpoint,
             observatory=observatory,
             latitude_deg=args.latitude if viewpoint == "latlon" else None,
@@ -109,7 +109,7 @@ def main() -> int:
     ephem_parser.add_argument("--interval", type=float, default=1.0, help="Time step; env: interval")
     ephem_parser.add_argument("--time-unit", type=str, default="hour", choices=["sec", "min", "hour", "day"],
                               help="env: time_unit")
-    ephem_parser.add_argument("--ephem", type=int, default=1, help="Ephemeris version; env: ephem")
+    ephem_parser.add_argument("--ephem", type=int, default=0, help="Ephemeris version (0=latest); env: ephem")
     ephem_parser.add_argument("--viewpoint", type=str, default="", help="observatory, latlon, or Earth's Center; env: viewpoint")
     ephem_parser.add_argument("--observatory", type=str, default="", help="Observatory name when viewpoint=observatory; env: observatory")
     ephem_parser.add_argument("--latitude", type=float, default=None, help="Latitude (deg) when viewpoint=latlon; env: latitude")
@@ -131,7 +131,7 @@ def main() -> int:
     track_parser.add_argument("--interval", type=float, default=1.0, help="Time step; env: interval")
     track_parser.add_argument("--time-unit", type=str, default="hour", choices=["sec", "min", "hour", "day"],
                               help="env: time_unit")
-    track_parser.add_argument("--ephem", type=int, default=1, help="Ephemeris version; env: ephem")
+    track_parser.add_argument("--ephem", type=int, default=0, help="Ephemeris version (0=latest); env: ephem")
     track_parser.add_argument("--viewpoint", type=str, default="", help="observatory, latlon, or Earth's Center; env: viewpoint")
     track_parser.add_argument("--observatory", type=str, default="", help="Observatory when viewpoint=observatory; env: observatory")
     track_parser.add_argument("--latitude", type=float, default=None, help="Latitude (deg); env: latitude")
@@ -153,7 +153,7 @@ def main() -> int:
     view_parser = subparsers.add_parser("viewer", help="Planet viewer diagram")
     view_parser.add_argument("--planet", type=int, choices=[4, 5, 6, 7, 8, 9], default=6, help="Planet; env: NPLANET")
     view_parser.add_argument("--time", type=str, default="", help="Observation time; env: time")
-    view_parser.add_argument("--ephem", type=int, default=1, help="Ephemeris version; env: ephem")
+    view_parser.add_argument("--ephem", type=int, default=0, help="Ephemeris version (0=latest); env: ephem")
     view_parser.add_argument("--fov", type=float, default=1.0, help="Field of view; env: fov")
     view_parser.add_argument("--fov-unit", type=str, default="deg", choices=["deg", "arcmin", "arcsec"],
                              help="env: fov_unit")
@@ -223,7 +223,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
             time_unit=getattr(args, "time_unit", "hour"),
             viewpoint=(args.viewpoint or "Earth").strip() or "Earth",
             moon_ids=moon_ids,
-            ephem_version=getattr(args, "ephem", 1),
+            ephem_version=getattr(args, "ephem", 0),
             xrange=getattr(args, "xrange", None),
             xscaled=(getattr(args, "xunit", "arcsec") == "radii"),
             title=(getattr(args, "title", None) or "").strip(),
@@ -271,7 +271,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             center_ra=getattr(args, "center_ra", 0.0),
             center_dec=getattr(args, "center_dec", 0.0),
             viewpoint=(args.viewpoint or "Earth").strip() or "Earth",
-            ephem_version=getattr(args, "ephem", 1),
+            ephem_version=getattr(args, "ephem", 0),
             moon_ids=moon_ids,
             blank_disks=blank_disks,
             output_ps=out,

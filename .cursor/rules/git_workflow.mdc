@@ -1,6 +1,6 @@
 ---
-alwaysApply: true
-description: Git commit, branching, and merge standards for a clean, auditable history.
+description: Conventional commits, branching, and PR workflow for source control and code review.
+alwaysApply: false
 ---
 
 # Git Workflow
@@ -10,7 +10,7 @@ description: Git commit, branching, and merge standards for a clean, auditable h
 Use the **Conventional Commits** format:
 
 ```
-<type>(<scope>): <imperative summary>   (50 chars max for subject)
+<type>[(<scope>)]: <imperative summary>   (50 chars max for subject)
 
 [Optional body — wrap at 72 chars. Explain *what* and *why*, not *how*.]
 

@@ -54,7 +54,7 @@ class EphemerisParams:
     stop_time: str
     interval: float = 1.0
     time_unit: str = "hour"
-    ephem_version: int = 1
+    ephem_version: int = 0
     viewpoint: str = "Earth"
     observatory: str = "Earth's Center"
     latitude_deg: float | None = None
@@ -124,12 +124,12 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
     if time_unit.lower()[:3] not in ("sec", "min", "hou", "day"):
         time_unit = "hour"
 
-    ephem_s = _get_env("ephem", "1")
+    ephem_s = _get_env("ephem", "0")
     try:
         ephem_version = int(ephem_s.split()[0])
     except (ValueError, IndexError) as e:
-        logger.error("Invalid ephem %r (must be integer): %s; using 1", ephem_s, e)
-        ephem_version = 1
+        logger.error("Invalid ephem %r (must be integer): %s; using 0 (latest)", ephem_s, e)
+        ephem_version = 0
 
     viewpoint = _get_env("viewpoint", "observatory")
     observatory = _get_env("observatory", "Earth's Center")

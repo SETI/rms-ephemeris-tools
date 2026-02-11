@@ -1,76 +1,121 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools", "setuptools_scm[toml]"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "rms-ephemeris-tools"
-version = "0.1.0"
-description = "Ephemeris generator, moon tracker, and planet viewer tools (Python port of FORTRAN tools)"
+dynamic = ["version"]
+description = "Ephemeris generator, moon tracker, and planet viewer tools"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
-authors = [
-    { name = "PDS Ring-Moon Systems Node, SETI Institute" }
-]
-keywords = ["ephemeris", "SPICE", "planetary", "astronomy"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Scientific/Engineering :: Astronomy",
-]
 dependencies = [
     "cspyce>=2.3.0",
     "numpy>=2.0",
     "rms-julian>=2.0",
 ]
-
-[project.optional-dependencies]
-render = ["matplotlib>=3.8"]
-dev = [
-    "pillow>=12.1.0",
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-xdist>=3.0",
-    "mypy>=1.0",
-    "ruff>=0.1.0",
+license = {text = "Apache-2.0"}
+maintainers = [
+  {name = "Robert S. French", email = "rfrench@seti.org"}
+]
+keywords = ["ephemeris", "SPICE", "planetary", "astronomy"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Astronomy",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Utilities",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX :: Linux"
 ]
 
-[project.scripts]
-ephemeris-tools = "ephemeris_tools.cli.main:cli_main"
+[project.urls]
+Homepage = "https://github.com/SETI/rms-ephemeris-tools"
+Documentation = "https://rms-ephemeris-tools.readthedocs.io/en/latest"
+Repository = "https://github.com/SETI/rms-ephemeris-tools"
+Source = "https://github.com/SETI/rms-ephemeris-tools"
+Issues = "https://github.com/SETI/rms-ephemeris-tools/issues"
 
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
+
+[tool.setuptools]
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--tb=short"
-filterwarnings = ["ignore::DeprecationWarning"]
+[tool.setuptools.package-data]
+"src/ephemeris_tools" = ["py.typed"]
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+write_to = "src/ephemeris_tools/_version.py"
+
+[project.optional-dependencies]
+dev = [
+  "coverage>=7.0",
+  "mypy>=1.0",
+  "pymarkdownlnt>=0.9.35",
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "pytest-profiling",
+  "ruff>=0.8",
+]
+docs = [
+  "myst-parser",
+  "sphinx>=7",
+  "sphinxcontrib-mermaid",
+  "sphinx-rtd-theme",
+]
+
+[project.scripts]
+TODO = "src.ephemeris_tools.main:main"
+
+# Tool configuration
 
 [tool.coverage.run]
-source = ["src/ephemeris_tools"]
 branch = true
+source = ["src"]
+omit = ["tests/*"]
 
 [tool.coverage.report]
-fail_under = 80
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise NotImplementedError",
+]
 
 [tool.mypy]
-python_version = "3.10"
 strict = true
-warn_return_any = true
-warn_unused_ignores = true
+disallow_subclassing_any = false
+
+[[tool.mypy.overrides]]
+module = "TODO._version"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["src.ephemeris_tools.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
-line-length = 100
 target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "W", "F", "I", "UP", "B", "SIM", "C4", "A", "N", "PT", "RUF"]
-ignore = []
+line-length = 100
 
 [tool.ruff.format]
-quote-style = "double"
+quote-style = "single"
+
+[tool.ruff.lint]
+# Explicit rule set (recommended for library projects). Categories:
+# E, W = pycodestyle errors/warnings; F = Pyflakes; I = isort; UP = pyupgrade;
+# B = bugbear; SIM = simplify; C4 = comprehensions; A = builtins (no shadowing);
+# N = pep8-naming; PT = pytest-style; RUF = Ruff-specific (e.g. unused noqa).
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "A", "N", "PT", "RUF"]
+extend-ignore = ["E129"]

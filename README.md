@@ -1,6 +1,38 @@
 # rms-ephemeris-tools
 
-Planetary ephemeris generator, moon tracker, and planet viewer (Python port of the PDS Ring-Moon Systems Node FORTRAN tools). Uses SPICE kernels via [cspyce](https://github.com/SetiInstitute/cspyce) and [rms-julian](https://github.com/SetiInstitute/rms-julian) for time conversions.
+<!-- pyml disable MD025 -->
+
+[![GitHub release; latest by date](https://img.shields.io/github/v/release/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/releases)
+[![GitHub Release Date](https://img.shields.io/github/release-date/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/releases)
+[![Test Status](https://img.shields.io/github/actions/workflow/status/SETI/rms-ephemeris-tools/run-tests.yml?branch=main)](https://github.com/SETI/rms-ephemeris-tools/actions)
+[![Documentation Status](https://readthedocs.org/projects/rms-ephemeris-tools/badge/?version=latest)](https://rms-ephemeris-tools.readthedocs.io/en/latest/?badge=latest)
+[![Code coverage](https://img.shields.io/codecov/c/github/SETI/rms-ephemeris-tools/main?logo=codecov)](https://codecov.io/gh/SETI/rms-ephemeris-tools)
+<br />
+[![PyPI - Version](https://img.shields.io/pypi/v/rms-ephemeris-tools)](https://pypi.org/project/rms-ephemeris-tools)
+[![PyPI - Format](https://img.shields.io/pypi/format/rms-ephemeris-tools)](https://pypi.org/project/rms-ephemeris-tools)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/rms-ephemeris-tools)](https://pypi.org/project/rms-ephemeris-tools)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/rms-ephemeris-tools)](https://pypi.org/project/rms-ephemeris-tools)
+<br />
+[![GitHub commits since latest release](https://img.shields.io/github/commits-since/SETI/rms-ephemeris-tools/latest)](https://github.com/SETI/rms-ephemeris-tools/commits/main/)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/m/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/commits/main/)
+[![GitHub last commit](https://img.shields.io/github/last-commit/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/commits/main/)
+<br />
+[![Number of GitHub open issues](https://img.shields.io/github/issues-raw/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/issues)
+[![Number of GitHub closed issues](https://img.shields.io/github/issues-closed-raw/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/issues)
+[![Number of GitHub open pull requests](https://img.shields.io/github/issues-pr-raw/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/pulls)
+[![Number of GitHub closed pull requests](https://img.shields.io/github/issues-pr-closed-raw/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/pulls)
+<br />
+![GitHub License](https://img.shields.io/github/license/SETI/rms-ephemeris-tools)
+[![Number of GitHub stars](https://img.shields.io/github/stars/SETI/rms-ephemeris-tools)](https://github.com/SETI/rms-ephemeris-tools/stargazers)
+![GitHub forks](https://img.shields.io/github/forks/SETI/rms-ephemeris-tools)
+[![DOI](https://zenodo.org/badge/rms-ephemeris-tools.svg)](https://zenodo.org/badge/latestdoi/{rms-ephemeris-tools})
+<!-- start-after-point -->
+
+# Introduction
+
+Planetary ephemeris generator, moon tracker, and planet viewer (Python port of the PDS Ring-Moon Systems Node FORTRAN tools).
+
+# Quick Start
 
 ## Environment setup
 
@@ -123,6 +155,66 @@ ruff format src tests
 mypy src
 ```
 
-## License
+# Installation
 
-Apache-2.0.
+## Setup
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/SETI/rms-ephemeris-tools.git
+   cd rms-ephemeris-tools
+   ```
+
+2. Create and activate a virtual environment (recommended):
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install the package (editable with dev tools):
+
+   ```bash
+   pip install -e ".[dev]"
+   ```
+   Or install only runtime dependencies: `pip install -e .`
+
+4. Set up SPICE kernels:
+   - Download the required SPICE kernels for your mission
+   - Set the `SPICE_PATH` environment variable to point to your kernels directory:
+
+     ```bash
+     export SPICE_PATH=/path/to/your/spice/kernels
+     ```
+
+> **Note**: To fix mypy operability with editable pip installs:
+> ```bash
+> export SETUPTOOLS_ENABLE_FEATURES="legacy-editable"
+> ```
+
+# Quick Start
+
+TODO
+
+# Documentation
+
+Comprehensive documentation is available in the `docs` directory.
+
+To build the documentation:
+
+```bash
+cd docs
+make html
+```
+
+The built documentation will be available in `docs/_build/html`.
+
+# Contributing
+
+Information on contributing to this package can be found in the
+[Contributing Guide](https://github.com/SETI/rms-ephemeris-tools/blob/main/CONTRIBUTING.md).
+
+# Licensing
+
+This code is licensed under the [Apache License v2.0](https://github.com/SETI/rms-ephemeris-tools/blob/main/LICENSE).

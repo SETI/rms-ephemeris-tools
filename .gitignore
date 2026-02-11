@@ -161,11 +161,11 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-csmithing/
 .code_planner_cache.db
 prof/
 _work/
 **/_version.py
-nav_default_config.yaml
 
-original/
+# Fortran binaries and object files
+*.a
+*.bin

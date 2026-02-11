@@ -51,6 +51,18 @@ PLANET_NAMES: dict[int, str] = {
     9: "Pluto",
 }
 
+# Planet number → ephemeris kernel description (chars 5+ of web "ephem" value).
+# FORTRAN reads first 3 chars as integer, prints string(5:) in "Ephemeris:" header.
+# Values match web/tools/EPHEMERIS_INFO.shtml hidden inputs.
+EPHEM_DESCRIPTIONS_BY_PLANET: dict[int, str] = {
+    4: "MAR097 + DE440",
+    5: "JUP365 + DE440",
+    6: "SAT415 + SAT441 + DE440",
+    7: "URA111 + URA115 + DE440",
+    8: "NEP095 + NEP097 + NEP101 + DE440",
+    9: "PLU058 + DE440",
+}
+
 
 def _fortran_fov(fov: float, fov_unit: str) -> tuple[str, str]:
     """Return (fov_value, fov_unit) translated for FORTRAN QUERY_STRING.
@@ -81,9 +93,12 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
     if "time_unit" in p:
         pairs.append(("time_unit", str(p["time_unit"])))
 
-    # Ephemeris selection
+    # Ephemeris selection: web format "NNN DESCRIPTION" (FORTRAN (i3) + header string(5:)).
     if "ephem" in p:
-        pairs.append(("ephem", str(p["ephem"])))
+        version = int(p["ephem"])
+        planet = int(p.get("planet", 6))
+        desc = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet, "DE440")
+        pairs.append(("ephem", f"{version:03d} {desc}"))
 
     # Viewpoint / observatory
     if "viewpoint" in p:

@@ -54,6 +54,17 @@ PLANET_NUM_TO_ID: dict[int, int] = {
 # NAIF planet ID -> planet number
 PLANET_ID_TO_NUM: dict[int, int] = {v: k for k, v in PLANET_NUM_TO_ID.items()}
 
+# Planet number → ephemeris kernel description (right-hand side of "Ephemeris:" in plot).
+# FORTRAN/web use "NNN DESCRIPTION"; we show DESCRIPTION. Matches web/tools/EPHEMERIS_INFO.shtml.
+EPHEM_DESCRIPTIONS_BY_PLANET: dict[int, str] = {
+    4: "MAR097 + DE440",
+    5: "JUP365 + DE440",
+    6: "SAT415 + SAT441 + DE440",
+    7: "URA111 + URA115 + DE440",
+    8: "NEP095 + NEP097 + NEP101 + DE440",
+    9: "PLU058 + DE440",
+}
+
 
 def spacecraft_code_to_id(sc_code: int) -> str | None:
     """Return spacecraft abbreviation for NAIF code, or None if unknown."""

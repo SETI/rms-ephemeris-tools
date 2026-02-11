@@ -96,7 +96,7 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace) -> None:
     interval_s = str(interval).strip() if interval is not None else "1"
     time_unit = getattr(args, "time_unit", "hour")
     _w(stream, f"       Interval: {interval_s} {time_unit}")
-    _w(stream, f"      Ephemeris: {getattr(args, 'ephem', 1)}")
+    _w(stream, f"      Ephemeris: {getattr(args, 'ephem', 0)}")
 
     # Viewpoint
     viewpoint = (getattr(args, "viewpoint", None) or " ").strip()
@@ -167,7 +167,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     _w(stream, f"  Observation time: {time_str}")
 
     # Ephemeris
-    _w(stream, f"         Ephemeris: {getattr(args, 'ephem', 1)}")
+    _w(stream, f"         Ephemeris: {getattr(args, 'ephem', 0)}")
 
     # Field of view
     fov = getattr(args, "fov", 1.0)

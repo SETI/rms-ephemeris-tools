@@ -408,7 +408,7 @@ def run_viewer(
     center_ra: float,
     center_dec: float,
     viewpoint: str,
-    ephem_version: int = 1,
+    ephem_version: int = 0,
     moon_ids: list[int] | None = None,
     blank_disks: bool = False,
     output_ps: TextIO | None = None,
@@ -515,13 +515,11 @@ def run_viewer(
         lc.append("Time (UTC):")
         rc.append(time_str)
 
-        # Caption 2: Ephemeris — FORTRAN strips first 4 chars via (5:)
+        # Caption 2: Ephemeris — show kernel description (FORTRAN uses ephem string(5:))
         lc.append("Ephemeris:")
-        # ephem_version as string, then take from position 5 onward
-        # In an 80-char FORTRAN string, "15" → positions 1-2, rest blank
-        # (5:) = blank. This matches the FORTRAN behavior.
-        ephem_str_f = str(ephem_version)
-        rc.append(ephem_str_f[4:] if len(ephem_str_f) > 4 else "")
+        from ephemeris_tools.constants import EPHEM_DESCRIPTIONS_BY_PLANET
+        ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, "DE440")
+        rc.append(ephem_caption)
 
         # Caption 3: Viewpoint
         lc.append("Viewpoint:")
