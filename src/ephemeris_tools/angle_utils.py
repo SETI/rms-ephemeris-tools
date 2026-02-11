@@ -16,7 +16,7 @@ def parse_angle(string: str) -> float | None:
     if len(s) == 0:
         return None
     # Try 3, 2, or 1 space-separated numbers
-    parts = re.split(r"\s+", s)
+    parts = re.split(r'\s+', s)
     if len(parts) >= 3:
         try:
             v1 = float(parts[0])
@@ -45,7 +45,7 @@ def parse_angle(string: str) -> float | None:
         return None
     # Leading minus
     first_nonblank = len(s) - len(s.lstrip())
-    if first_nonblank < len(s) and s[first_nonblank] == "-":
+    if first_nonblank < len(s) and s[first_nonblank] == '-':
         angle = -angle
     return angle
 
@@ -62,7 +62,7 @@ def dms_string(
     ndecimal: 3 or 4 decimal places for seconds.
     """
     if len(separator) < 3:
-        sep1 = sep2 = sep3 = " "
+        sep1 = sep2 = sep3 = ' '
     else:
         sep1, sep2, sep3 = separator[0], separator[1], separator[2]
     isign = 1 if value >= 0 else -1
@@ -77,10 +77,10 @@ def dms_string(
     imin = imin - 60 * ideg
     ideg = ideg * isign
     if ndecimal == 3:
-        frac = f"{ims:03d}"
+        frac = f'{ims:03d}'
     else:
-        frac = f"{ims:04d}"
-    out = f"{ideg:3d}{sep1} {imin:02d}{sep2} {isec:02d}.{frac}{sep3}"
+        frac = f'{ims:04d}'
+    out = f'{ideg:3d}{sep1} {imin:02d}{sep2} {isec:02d}.{frac}{sep3}'
     if isign < 0 and ideg == 0:
-        out = out[0:1] + "-" + out[2:]
+        out = out[0:1] + '-' + out[2:]
     return out

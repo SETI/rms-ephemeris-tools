@@ -27,7 +27,7 @@ class Record:
             return
         to_add = string[:remaining] if len(string) > remaining else string
         if self._parts:
-            self._parts.append(" ")
+            self._parts.append(' ')
             self._length += 1
         self._parts.append(to_add)
         self._length += len(to_add)
@@ -35,13 +35,13 @@ class Record:
     def write(self, stream: TextIO) -> None:
         """Write the current record line and re-initialize (FORTRAN Rec_Write)."""
         if self._length >= 0:
-            line = "".join(self._parts).rstrip()
+            line = ''.join(self._parts).rstrip()
             if line:
-                stream.write(line + "\n")
+                stream.write(line + '\n')
         self.init()
 
     def get_line(self) -> str:
         """Return current record as a string without writing or re-initializing."""
         if self._length < 0:
-            return ""
-        return "".join(self._parts).rstrip()
+            return ''
+        return ''.join(self._parts).rstrip()

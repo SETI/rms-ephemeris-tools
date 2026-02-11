@@ -3,35 +3,33 @@
 from __future__ import annotations
 
 import math
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    import numpy as np
 
 from ephemeris_tools.constants import SUN_ID
 from ephemeris_tools.spice.bodmat import bodmat
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.observer import observer_state
-from ephemeris_tools.spice.shifts import spkapp_shifted
 
 # FORTRAN: PLANET_MERIDS=12, PLANET_LATS=11 (15°-spaced latitude circles).
 PLANET_MERIDS = 12
 PLANET_LATS = 11
 TWOPI = 2.0 * math.pi
 
-LineType = Literal["lit", "dark", "terminator"]
+LineType = Literal['lit', 'dark', 'terminator']
 
 
 def _vnorm(v: tuple[float, float, float]) -> float:
     return math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
 
 
-def _vdot(
-    a: tuple[float, float, float], b: tuple[float, float, float]
-) -> float:
+def _vdot(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
 
-def _mtv(
-    m: list[list[float]], v: tuple[float, float, float]
-) -> tuple[float, float, float]:
+def _mtv(m: list[list[float]], v: tuple[float, float, float]) -> tuple[float, float, float]:
     """Matrix (3x3) transpose times vector: m.T @ v."""
     return (
         m[0][0] * v[0] + m[1][0] * v[1] + m[2][0] * v[2],
@@ -114,24 +112,23 @@ def compute_planet_grid(
 
     get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
-    )
+    planet_dpv, dt = cspyce.spkapp(planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(planet_id, planet_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, planet_time, "J2000", planet_pv[:6], "LT+S"
-    )
-    rot = bodmat(planet_id, planet_time)
+    planet_pv = cspyce.spkssb(planet_id, planet_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
+    rot_raw = bodmat(planet_id, planet_time)
     state = get_state()
+    rot: list[list[float]] | np.ndarray
     if state.planet_num == 7:
         rot = [
-            list(rot[0]),
-            list(rot[1]),
-            [-rot[2][0], -rot[2][1], -rot[2][2]],
+            list(rot_raw[0]),
+            list(rot_raw[1]),
+            [-rot_raw[2][0], -rot_raw[2][1], -rot_raw[2][2]],
         ]
-    rot_t = [list(col) for col in zip(rot[0], rot[1], rot[2])]
-    radii = cspyce.bodvrd(str(planet_id), "RADII")
+    else:
+        rot = rot_raw
+    rot_t = [list(col) for col in zip(rot[0], rot[1], rot[2], strict=True)]
+    radii = cspyce.bodvrd(str(planet_id), 'RADII')
     a, b, c = float(radii[0]), float(radii[1]), float(radii[2])
 
     obs_to_planet = (
@@ -157,8 +154,8 @@ def compute_planet_grid(
         sun_from_planet[2] / sun_norm,
     )
 
-    planet_ra = math.atan2(obs_to_planet[1], obs_to_planet[0])
-    planet_dec = math.asin(max(-1.0, min(1.0, obs_to_planet[2] / dist_obs)))
+    math.atan2(obs_to_planet[1], obs_to_planet[0])
+    math.asin(max(-1.0, min(1.0, obs_to_planet[2] / dist_obs)))
 
     limb_rad_rad = math.asin(min(1.0, a / dist_obs))
     limb_radius_plot = limb_rad_rad * scale
@@ -181,24 +178,22 @@ def compute_planet_grid(
     def body_to_j2000(vb: tuple[float, float, float]) -> tuple[float, float, float]:
         return _mtv(rot_t, vb)
 
-    def classify(
-        lat_rad: float, lon_rad: float
-    ) -> tuple[bool, LineType]:
+    def classify(lat_rad: float, lon_rad: float) -> tuple[bool, LineType]:
         normal_b = _surface_normal_body(a, b, c, lat_rad, lon_rad)
         normal_j = body_to_j2000(normal_b)
         toward_obs = _vdot(normal_j, view_dir) > 0
         toward_sun = _vdot(normal_j, sun_dir) > 0
         if toward_sun:
-            line_type: LineType = "lit"
+            line_type: LineType = 'lit'
         else:
-            line_type = "dark"
+            line_type = 'dark'
         return (toward_obs, line_type)
 
     segments: list[tuple[list[tuple[float, float]], LineType]] = []
     n_sample = 120
 
     def emit_curve(
-        sample_pts: list[tuple[float, float, float]],
+        sample_pts: list[tuple[float, float]],
         sample_visible: list[bool],
         sample_type: list[LineType],
     ) -> None:
@@ -212,7 +207,10 @@ def compute_planet_grid(
             if not inside:
                 if points_plot:
                     inter = _segment_circle_intersect(
-                        points_plot[-1][0], points_plot[-1][1], px, py,
+                        points_plot[-1][0],
+                        points_plot[-1][1],
+                        px,
+                        py,
                         limb_radius_plot,
                     )
                     if inter:
@@ -236,7 +234,7 @@ def compute_planet_grid(
                 mx, my = to_plot(pt_mid_j)
                 if _inside_circle(mx, my, limb_radius_plot):
                     points_plot.append((mx, my))
-                    segments.append((list(points_plot), "terminator"))
+                    segments.append((list(points_plot), 'terminator'))
                     points_plot = [(mx, my)]
                 else:
                     segments.append((list(points_plot), sample_type[i - 1]))

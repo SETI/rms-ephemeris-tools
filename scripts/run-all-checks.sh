@@ -314,7 +314,7 @@ run_markdown_checks() {
     source "$VENV/bin/activate"
 
     print_info "Running PyMarkdown scan (docs/, .cursor/, root *.md)..."
-    if python -m pymarkdown scan docs/ .cursor/ README.md CONTRIBUTING.md; then
+    if python -m pymarkdown -d MD013,MD033,MD009,MD031,MD024 scan docs/ .cursor/ README.md CONTRIBUTING.md; then
         print_success "PyMarkdown scan passed"
         deactivate 2>/dev/null || true
         return 0

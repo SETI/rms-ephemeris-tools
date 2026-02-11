@@ -23,19 +23,19 @@ def run_python(
     ephemeris table; out_ps for tracker/viewer PostScript; out_txt for
     tracker text table or viewer FOV table when applicable.
     """
-    cmd = [python_exe or sys.executable, "-m", "ephemeris_tools.cli.main"]
+    cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main']
     cmd.extend(spec.cli_args_for_python())
     env = os.environ.copy()
-    if out_table and spec.tool == "ephemeris":
-        cmd.extend(["-o", str(out_table)])
-    if out_ps and spec.tool == "tracker":
-        cmd.extend(["-o", str(out_ps)])
+    if out_table and spec.tool == 'ephemeris':
+        cmd.extend(['-o', str(out_table)])
+    if out_ps and spec.tool == 'tracker':
+        cmd.extend(['-o', str(out_ps)])
         if out_txt:
-            cmd.extend(["--output-txt", str(out_txt)])
-    if out_ps and spec.tool == "viewer":
-        cmd.extend(["-o", str(out_ps)])
+            cmd.extend(['--output-txt', str(out_txt)])
+    if out_ps and spec.tool == 'viewer':
+        cmd.extend(['-o', str(out_ps)])
         if out_txt:
-            cmd.extend(["--output-txt", str(out_txt)])
+            cmd.extend(['--output-txt', str(out_txt)])
     return subprocess.run(
         cmd,
         capture_output=True,
@@ -61,20 +61,20 @@ def run_fortran(
     after setting env (so you can use $EPHEM_FILE in the string).
     """
     env = os.environ.copy()
-    table_path = str(out_table) if out_table else ""
-    ps_path = str(out_ps) if out_ps else ""
-    txt_path = str(out_txt) if out_txt else ""
+    table_path = str(out_table) if out_table else ''
+    ps_path = str(out_ps) if out_ps else ''
+    txt_path = str(out_txt) if out_txt else ''
     fortran_env = spec.env_for_fortran(table_path=table_path or None, ps_path=ps_path or None)
-    if spec.tool == "tracker" and txt_path:
-        fortran_env["TRACKER_TEXTFILE"] = txt_path
-    if spec.tool == "viewer" and txt_path:
-        fortran_env["VIEWER_TEXTFILE"] = txt_path
+    if spec.tool == 'tracker' and txt_path:
+        fortran_env['TRACKER_TEXTFILE'] = txt_path
+    if spec.tool == 'viewer' and txt_path:
+        fortran_env['VIEWER_TEXTFILE'] = txt_path
     env.update(fortran_env)
     if env_extra:
         env.update(env_extra)
     if isinstance(fortran_cmd, str):
         return subprocess.run(
-            ["sh", "-c", fortran_cmd],
+            ['sh', '-c', fortran_cmd],
             capture_output=True,
             text=True,
             env=env,

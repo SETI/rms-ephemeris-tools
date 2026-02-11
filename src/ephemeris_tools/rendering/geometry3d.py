@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 
 @dataclass
@@ -23,7 +23,7 @@ def _vnorm(v: Sequence[float]) -> float:
 
 
 def _vdot(a: Sequence[float], b: Sequence[float]) -> float:
-    return sum(ax * bx for ax, bx in zip(a, b))
+    return sum(ax * bx for ax, bx in zip(a, b, strict=True))
 
 
 def ellipsoid_limb(
@@ -39,17 +39,17 @@ def ellipsoid_limb(
     semi-major and semi-minor vectors, and center (midpt). CANSEE is True
     when the observer is outside the body.
     """
-    a1, a2, a3 = list(axis1), list(axis2), list(axis3)
+    a1, _a2, _a3 = list(axis1), list(axis2), list(axis3)
     cen = list(center)
     vf = list(view_from)
     obs = [vf[i] - cen[i] for i in range(3)]
     d = _vnorm(obs)
     if d < 1e-10:
         return EllipseLimb(
-            normal=(0, 0, 1),
-            major=(1, 0, 0),
-            minor=(0, 1, 0),
-            midpt=tuple(cen),
+            normal=(0.0, 0.0, 1.0),
+            major=(1.0, 0.0, 0.0),
+            minor=(0.0, 1.0, 0.0),
+            midpt=(cen[0], cen[1], cen[2]),
             can_see=False,
         )
     u = [obs[i] / d for i in range(3)]
@@ -57,45 +57,43 @@ def ellipsoid_limb(
     denom = sum(u[i] * u[i] / aa[i] for i in range(3))
     if denom <= 0:
         return EllipseLimb(
-            normal=tuple(u),
-            major=(1, 0, 0),
-            minor=(0, 1, 0),
-            midpt=tuple(cen),
+            normal=(u[0], u[1], u[2]),
+            major=(1.0, 0.0, 0.0),
+            minor=(0.0, 1.0, 0.0),
+            midpt=(cen[0], cen[1], cen[2]),
             can_see=False,
         )
     lam = 1 / math.sqrt(denom)
-    midpt = [cen[i] + lam * u[i] for i in range(3)]
-    normal = [u[i] / aa[i] for i in range(3)]
-    nnorm = _vnorm(normal)
-    normal = [normal[i] / nnorm for i in range(3)]
+    midpt_list = [cen[i] + lam * u[i] for i in range(3)]
+    normal_list = [u[i] / aa[i] for i in range(3)]
+    nnorm = _vnorm(normal_list)
+    normal_list = [normal_list[i] / nnorm for i in range(3)]
     t1 = [a1[i] * a1[i] * u[i] for i in range(3)]
     t1n = _vnorm(t1)
     if t1n < 1e-12:
-        major = (1, 0, 0)
+        major_vals: tuple[float, float, float] = (1.0, 0.0, 0.0)
     else:
-        major = tuple(t1[i] / t1n for i in range(3))
-    minor = [
-        normal[1] * major[2] - normal[2] * major[1],
-        normal[2] * major[0] - normal[0] * major[2],
-        normal[0] * major[1] - normal[1] * major[0],
+        major_vals = (t1[0] / t1n, t1[1] / t1n, t1[2] / t1n)
+    minor_list = [
+        normal_list[1] * major_vals[2] - normal_list[2] * major_vals[1],
+        normal_list[2] * major_vals[0] - normal_list[0] * major_vals[2],
+        normal_list[0] * major_vals[1] - normal_list[1] * major_vals[0],
     ]
-    mn = _vnorm(minor)
+    mn = _vnorm(minor_list)
     if mn < 1e-12:
-        minor = (0, 1, 0)
+        minor_vals: tuple[float, float, float] = (0.0, 1.0, 0.0)
     else:
-        minor = tuple(minor[i] / mn for i in range(3))
+        minor_vals = (minor_list[0] / mn, minor_list[1] / mn, minor_list[2] / mn)
     return EllipseLimb(
-        normal=tuple(normal),
-        major=tuple(major),
-        minor=tuple(minor),
-        midpt=tuple(midpt),
+        normal=(normal_list[0], normal_list[1], normal_list[2]),
+        major=major_vals,
+        minor=minor_vals,
+        midpt=(midpt_list[0], midpt_list[1], midpt_list[2]),
         can_see=True,
     )
 
 
-def fov_clip(
-    x: float, y: float, z: float, cos_fov: float
-) -> tuple[float, float, float] | None:
+def fov_clip(x: float, y: float, z: float, cos_fov: float) -> tuple[float, float, float] | None:
     """Clip point to field-of-view cone (port of FOVCLP). Returns clipped (x,y,z) or None."""
     r = math.sqrt(x * x + y * y + z * z)
     if r < 1e-10:
@@ -140,11 +138,19 @@ def segment_ellipse_intersect(
     if disc < 0:
         return []
     sqrt_d = math.sqrt(disc)
-    out = []
+    out: list[tuple[float, float, float]] = []
     for sign in (-1, 1):
-        t = (-bb + sign * sqrt_d) / (2 * aa) if abs(aa) > 1e-12 else (-cc / bb if abs(bb) > 1e-12 else -1)
+        t = (
+            (-bb + sign * sqrt_d) / (2 * aa)
+            if abs(aa) > 1e-12
+            else (-cc / bb if abs(bb) > 1e-12 else -1)
+        )
         if 0 <= t <= 1:
-            pt = tuple(p1[i] + t * d[i] for i in range(3))
+            pt: tuple[float, float, float] = (
+                p1[0] + t * d[0],
+                p1[1] + t * d[1],
+                p1[2] + t * d[2],
+            )
             if not out or _vnorm([pt[i] - out[-1][i] for i in range(3)]) > 1e-10:
                 out.append(pt)
     return out
@@ -163,7 +169,11 @@ def ray_plane_intersect(
     t = _vdot(normal, diff) / denom
     if t < 0:
         return None
-    return tuple(refpt[i] + t * direction[i] for i in range(3))
+    return (
+        refpt[0] + t * direction[0],
+        refpt[1] + t * direction[1],
+        refpt[2] + t * direction[2],
+    )
 
 
 def disk_overlap(
@@ -173,10 +183,7 @@ def disk_overlap(
     r2: float,
 ) -> bool:
     """True if two disks (in plane) overlap (port of OVRLAP)."""
-    d = math.sqrt(
-        (center2[0] - center1[0]) ** 2
-        + (center2[1] - center1[1]) ** 2
-    )
+    d = math.sqrt((center2[0] - center1[0]) ** 2 + (center2[1] - center1[1]) ** 2)
     return d < r1 + r2
 
 
@@ -219,8 +226,8 @@ def eclipse_model(
         can_ecl = (d1 + d2 + d3 > 1.0) and (sight_norm > bigone + radius)
     if not can_ecl:
         return EclipseCone(
-            apex=tuple(center),
-            axis=(1, 0, 0),
+            apex=(center[0], center[1], center[2]),
+            axis=(1.0, 0.0, 0.0),
             half_angle=0.0,
         )
     denom = radius - bigone
@@ -231,16 +238,16 @@ def eclipse_model(
     vertex = [center[i] + t * sight[i] for i in range(3)]
     axis_norm = _vnorm(sight)
     if axis_norm < 1e-12:
-        caxis = (1, 0, 0)
+        caxis: tuple[float, float, float] = (1.0, 0.0, 0.0)
     else:
-        caxis = tuple(sight[i] / axis_norm for i in range(3))
+        caxis = (sight[0] / axis_norm, sight[1] / axis_norm, sight[2] / axis_norm)
     dist_vertex_center = t * axis_norm
     if dist_vertex_center > 1e-12:
         half_angle = math.asin(min(1.0, bigone / dist_vertex_center))
     else:
         half_angle = 0.0
     return EclipseCone(
-        apex=tuple(vertex),
+        apex=(vertex[0], vertex[1], vertex[2]),
         axis=caxis,
         half_angle=half_angle,
     )

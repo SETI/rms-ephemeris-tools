@@ -35,39 +35,33 @@ def ring_opening(et: float) -> RingGeometry:
     """Observed ring opening angle, Sun geometry, and whether rings are dark."""
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "CN"
-    )
+    _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'CN')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(state.planet_id, planet_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, planet_time, "J2000", planet_pv[:6], "LT+S"
-    )
-    sun_radii = cspyce.bodvrd(str(SUN_ID), "RADII")
+    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
+    sun_radii = cspyce.bodvrd(str(SUN_ID), 'RADII')
     sun_db = sun_radii[0] / cspyce.vnorm(sun_dpv[:3])
-    rotmat = planet_bodmat(state.planet_id, planet_time)
-    pole = [rotmat[2][0], rotmat[2][1], rotmat[2][2]]
+    bodmat_rot = planet_bodmat(state.planet_id, planet_time)
+    pole = [bodmat_rot[2][0], bodmat_rot[2][1], bodmat_rot[2][2]]
     if state.planet_num == 7:
         pole = [-pole[0], -pole[1], -pole[2]]
-    tempvec = [0.0, 0.0, 1.0]
-    ascnode = cspyce.vcrss(tempvec, pole)
-    rotmat = cspyce.twovec(pole, 3, ascnode, 1)
+    axis_z = [0.0, 0.0, 1.0]
+    ascnode = cspyce.vcrss(axis_z, pole)
+    pole_rot = cspyce.twovec(pole, 3, ascnode, 1)
     obs_dp = [
         obs_pv[0] - planet_pv[0],
         obs_pv[1] - planet_pv[1],
         obs_pv[2] - planet_pv[2],
     ]
     norm_dp = cspyce.vhat(obs_dp)
-    tempvec = cspyce.vlcom(
-        1.0, norm_dp, -1.0 / cspyce.clight(), planet_pv[3:6]
-    )
-    tempvec = cspyce.mxv(rotmat, tempvec)
+    obs_dir = cspyce.vlcom(1.0, norm_dp, -1.0 / cspyce.clight(), planet_pv[3:6])
+    tempvec = cspyce.mxv(pole_rot, obs_dir)
     n = cspyce.vnorm(tempvec)
     obs_b = math.asin(tempvec[2] / n)
     obs_long = math.atan2(tempvec[1], tempvec[0])
     if obs_long < 0:
         obs_long += TWOPI
-    tempvec = cspyce.mxv(rotmat, sun_dpv[:3])
+    tempvec = cspyce.mxv(pole_rot, sun_dpv[:3])
     n = cspyce.vnorm(tempvec)
     sun_b = math.asin(tempvec[2] / n)
     sun_long = math.atan2(tempvec[1], tempvec[0])
@@ -88,44 +82,38 @@ def ring_radec(et: float, radius_km: float, lon_rad: float) -> tuple[float, floa
     """J2000 RA and Dec (radians) of a point on the ring at given radius and longitude."""
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
-    )
+    planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
     bodmat_rot = planet_bodmat(state.planet_id, planet_time)
     pole = [bodmat_rot[2][0], bodmat_rot[2][1], bodmat_rot[2][2]]
     if state.planet_num == 7:
         pole = [-pole[0], -pole[1], -pole[2]]
-    tempvec = [0.0, 0.0, 1.0]
-    ascnode = cspyce.vcrss(tempvec, pole)
-    rotmat = cspyce.twovec(pole, 3, planet_dpv[:3], 1)
-    vec = [
+    axis_z = [0.0, 0.0, 1.0]
+    cspyce.vcrss(axis_z, pole)
+    pole_rot = cspyce.twovec(pole, 3, planet_dpv[:3], 1)
+    vec_in = [
         -radius_km * math.cos(lon_rad),
         -radius_km * math.sin(lon_rad),
         0.0,
     ]
-    vec = cspyce.mxv(rotmat, vec)
+    vec_j2000 = cspyce.mxv(pole_rot, vec_in)
     ring_dp = [
-        planet_dpv[0] + vec[0],
-        planet_dpv[1] + vec[1],
-        planet_dpv[2] + vec[2],
+        planet_dpv[0] + vec_j2000[0],
+        planet_dpv[1] + vec_j2000[1],
+        planet_dpv[2] + vec_j2000[2],
     ]
     _, ra, dec = cspyce.recrad(ring_dp)
     return (ra, dec)
 
 
-def ansa_radec(
-    et: float, radius_km: float, is_right: bool
-) -> tuple[float, float]:
+def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, float]:
     """J2000 RA and Dec (radians) of the right or left ring ansa."""
     from ephemeris_tools.spice.geometry import planet_ranges
 
     _, obs_dist = planet_ranges(et)
     geom = ring_opening(et)
     obs_dist_km = obs_dist
-    offset = math.asin(
-        radius_km / (obs_dist_km * math.cos(geom.obs_b))
-    )
+    offset = math.asin(radius_km / (obs_dist_km * math.cos(geom.obs_b)))
     if is_right:
         lon = 0.5 * math.pi - offset
     else:

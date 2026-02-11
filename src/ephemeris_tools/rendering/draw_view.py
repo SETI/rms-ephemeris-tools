@@ -32,8 +32,8 @@ from ephemeris_tools.rendering.escher import (
     write_ps_header,
 )
 from ephemeris_tools.rendering.euclid import (
-    EuclidState,
     STARFONT_PLUS,
+    EuclidState,
     eubody,
     euclr,
     eugeom,
@@ -90,9 +90,30 @@ _MINSTEPS = 3.0
 _TICKSIZE1 = 0.05
 _TICKSIZE2 = 0.02
 _STEP1 = (
-    0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5,
-    1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0,
-    1800.0, 3600.0, 7200.0, 18000.0, 36000.0, 72000.0,
+    0.001,
+    0.002,
+    0.005,
+    0.01,
+    0.02,
+    0.05,
+    0.1,
+    0.2,
+    0.5,
+    1.0,
+    2.0,
+    5.0,
+    10.0,
+    30.0,
+    60.0,
+    120.0,
+    300.0,
+    600.0,
+    1800.0,
+    3600.0,
+    7200.0,
+    18000.0,
+    36000.0,
+    72000.0,
 )
 _SUBSTEPS = (5, 4, 5, 5, 4, 5, 5, 4, 5, 5, 4, 5, 5, 5, 6, 6, 4, 5, 5, 6, 6, 4, 5, 5, 6)
 _NCHOICES = 24
@@ -107,6 +128,7 @@ DPR = 180.0 / math.pi
 # ---------------------------------------------------------------------------
 # Helper functions (ports of FORTRAN internal subroutines)
 # ---------------------------------------------------------------------------
+
 
 def _recrad(v: tuple[float, float, float]) -> tuple[float, float, float]:
     """Rectangular to spherical: (r, ra, dec)."""
@@ -136,8 +158,8 @@ def _rspk_write_string(s: str, state: EscherState) -> None:
     Backslashes are passed through for PostScript octal escapes like \\260
     (degree symbol).
     """
-    safe = s.replace("(", "\\(").replace(")", "\\)")
-    eswrit(f"({safe})", state)
+    safe = s.replace('(', '\\(').replace(')', '\\)')
+    eswrit(f'({safe})', state)
 
 
 def _rspk_write_label(
@@ -147,7 +169,7 @@ def _rspk_write_label(
 ) -> None:
     """Write numeric label at current point (port of RSPK_WriteLabel)."""
     secs1 = secs
-    if offset == "B":
+    if offset == 'B':
         secs1 = secs1 % _MAXSECS
         if secs1 < 0.0:
             secs1 += _MAXSECS
@@ -160,18 +182,18 @@ def _rspk_write_label(
     isec = isec - 60 * imin
     ideg = imin // 60
     imin = imin - 60 * ideg
-    s = f"{ideg:3d} {imin:02d} {isec:02d}.{ims:03d}"
-    s = s.rstrip("0 ").rstrip(".")
-    if s.startswith("   "):
+    s = f'{ideg:3d} {imin:02d} {isec:02d}.{ims:03d}'
+    s = s.rstrip('0 ').rstrip('.')
+    if s.startswith('   '):
         s = s.lstrip()
     if fsign < 0:
-        s = "-" + s
+        s = '-' + s
     esmove(escher_state)
-    safe = s.replace("(", "\\(").replace(")", "\\)")
-    if offset == "L":
-        eswrit(f"({safe}) LabelLeft", escher_state)
+    safe = s.replace('(', '\\(').replace(')', '\\)')
+    if offset == 'L':
+        eswrit(f'({safe}) LabelLeft', escher_state)
     else:
-        eswrit(f"({safe}) LabelBelow", escher_state)
+        eswrit(f'({safe}) LabelBelow', escher_state)
 
 
 def _rspk_annotate(
@@ -199,8 +221,8 @@ def _rspk_annotate(
     if abs(x) < delta and abs(y) < delta:
         eutemp([x], [y], [x], [y], 1, 1, view_state, escher_state)
         esmove(escher_state)
-        name_safe = name.replace("(", "\\(").replace(")", "\\)")
-        eswrit(f"({name_safe}) LabelBody", escher_state)
+        name_safe = name.replace('(', '\\(').replace(')', '\\)')
+        eswrit(f'({name_safe}) LabelBody', escher_state)
 
 
 def _rspk_labels2(
@@ -228,8 +250,8 @@ def _rspk_labels2(
     nsubs = _SUBSTEPS[i]
     ds = _STEP1[i] / nsubs
     ra_sec = ra * spr
-    k1 = int(round((ra_sec - sdelta) / ds + 0.5))
-    k2 = int(round((ra_sec + sdelta) / ds - 0.5))
+    k1 = round((ra_sec - sdelta) / ds + 0.5)
+    k2 = round((ra_sec + sdelta) / ds - 0.5)
     for k in range(k1, k2 + 1):
         s = k * ds
         length = dtick2
@@ -238,15 +260,21 @@ def _rspk_labels2(
             length = dtick1
         j2000_los = _radrec(1.0, s / spr, dec)
         cam = [
-            cmatrix[0][0] * j2000_los[0] + cmatrix[1][0] * j2000_los[1] + cmatrix[2][0] * j2000_los[2],
-            cmatrix[0][1] * j2000_los[0] + cmatrix[1][1] * j2000_los[1] + cmatrix[2][1] * j2000_los[2],
-            cmatrix[0][2] * j2000_los[0] + cmatrix[1][2] * j2000_los[1] + cmatrix[2][2] * j2000_los[2],
+            cmatrix[0][0] * j2000_los[0]
+            + cmatrix[1][0] * j2000_los[1]
+            + cmatrix[2][0] * j2000_los[2],
+            cmatrix[0][1] * j2000_los[0]
+            + cmatrix[1][1] * j2000_los[1]
+            + cmatrix[2][1] * j2000_los[2],
+            cmatrix[0][2] * j2000_los[0]
+            + cmatrix[1][2] * j2000_los[1]
+            + cmatrix[2][2] * j2000_los[2],
         ]
         x = -cam[0] / cam[2]
         if abs(x) <= delta:
             eutemp([x], [delta - length], [x], [delta], 1, ltype, view_state, escher_state)
             if ismajor:
-                _rspk_write_label(s, "B", escher_state)
+                _rspk_write_label(s, 'B', escher_state)
             eutemp([x], [-delta + length], [x], [-delta], 1, ltype, view_state, escher_state)
 
     # Dec ticks
@@ -260,8 +288,8 @@ def _rspk_labels2(
     nsubs = _SUBSTEPS[i]
     ds = _STEP1[i] / nsubs
     dec_sec = dec * spr
-    k1 = int(round((dec_sec - sdelta) / ds + 0.5))
-    k2 = int(round((dec_sec + sdelta) / ds - 0.5))
+    k1 = round((dec_sec - sdelta) / ds + 0.5)
+    k2 = round((dec_sec + sdelta) / ds - 0.5)
     for k in range(k1, k2 + 1):
         s = k * ds
         length = dtick2
@@ -270,15 +298,21 @@ def _rspk_labels2(
             length = dtick1
         j2000_los = _radrec(1.0, ra, s / spr)
         cam = [
-            cmatrix[0][0] * j2000_los[0] + cmatrix[1][0] * j2000_los[1] + cmatrix[2][0] * j2000_los[2],
-            cmatrix[0][1] * j2000_los[0] + cmatrix[1][1] * j2000_los[1] + cmatrix[2][1] * j2000_los[2],
-            cmatrix[0][2] * j2000_los[0] + cmatrix[1][2] * j2000_los[1] + cmatrix[2][2] * j2000_los[2],
+            cmatrix[0][0] * j2000_los[0]
+            + cmatrix[1][0] * j2000_los[1]
+            + cmatrix[2][0] * j2000_los[2],
+            cmatrix[0][1] * j2000_los[0]
+            + cmatrix[1][1] * j2000_los[1]
+            + cmatrix[2][1] * j2000_los[2],
+            cmatrix[0][2] * j2000_los[0]
+            + cmatrix[1][2] * j2000_los[1]
+            + cmatrix[2][2] * j2000_los[2],
         ]
         y = -cam[1] / cam[2]
         if abs(y) <= delta:
             eutemp([-delta + length], [y], [-delta], [y], 1, ltype, view_state, escher_state)
             if ismajor:
-                _rspk_write_label(s, "L", escher_state)
+                _rspk_write_label(s, 'L', escher_state)
             eutemp([delta - length], [y], [delta], [y], 1, ltype, view_state, escher_state)
 
 
@@ -309,10 +343,10 @@ def _rspk_draw_bodies(
     l1 = lit_line
     l2 = dark_line
     l3 = term_line
-    isvis = (l1 != 0 or l2 != 0 or l3 != 0)
+    isvis = l1 != 0 or l2 != 0 or l3 != 0
 
     if isvis:
-        eswrit("%Draw planet...", escher_state)
+        eswrit('%Draw planet...', escher_state)
 
     # Prime meridian pass
     if isvis and prime_pts > 0.0:
@@ -335,16 +369,15 @@ def _rspk_draw_bodies(
         else:
             bl1, bl2, bl3 = lit_line, dark_line, term_line
 
-        bvis = (bl1 != 0 or bl2 != 0 or bl3 != 0)
-        bname = body_names[bi] if bi < len(body_names) else ""
+        bvis = bl1 != 0 or bl2 != 0 or bl3 != 0
+        bname = body_names[bi] if bi < len(body_names) else ''
         if bvis and bname.strip():
-            eswrit(f"%Draw {bname.strip()}...", escher_state)
+            eswrit(f'%Draw {bname.strip()}...', escher_state)
 
         # Draw body with minimum size line width
         bpts = body_pts[bi] if bi < len(body_pts) else 0.0
         eslwid(body_diampts - bpts, escher_state)
-        eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3,
-               euclid_state, view_state, escher_state)
+        eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, view_state, escher_state)
 
     eslwid(0.0, escher_state)
 
@@ -384,20 +417,29 @@ def _rspk_draw_rings(
         if ring_dark[ri]:
             draw_line = dark_line
 
-        eswrit(f"%Draw ring #{iring:2d}...", escher_state)
+        eswrit(f'%Draw ring #{iring:2d}...', escher_state)
 
         if ring_dashed[ri]:
-            eswrit("[30 30] 0 setdash", escher_state)
+            eswrit('[30 30] 0 setdash', escher_state)
 
-        euring(ring_locs[ri], ring_axes1[ri], ring_axes2[ri],
-               1, draw_line, shadow_line, euclid_state, view_state, escher_state)
+        euring(
+            ring_locs[ri],
+            ring_axes1[ri],
+            ring_axes2[ri],
+            1,
+            draw_line,
+            shadow_line,
+            euclid_state,
+            view_state,
+            escher_state,
+        )
 
         if ring_dashed[ri]:
-            eswrit("[] 0 setdash", escher_state)
+            eswrit('[] 0 setdash', escher_state)
 
     # Draw arcs as tiny loops
     if nloops > 0:
-        eswrit("%Draw arcs...", escher_state)
+        eswrit('%Draw arcs...', escher_state)
 
     eslwid(arc_width, escher_state)
     for iloop in range(nloops):
@@ -407,15 +449,22 @@ def _rspk_draw_rings(
             draw_line = lit_line
             if ri >= 0 and ri < len(ring_dark) and ring_dark[ri]:
                 draw_line = dark_line
-            euring(loop_locs[iloop], loop_axes1[iloop], loop_axes2[iloop],
-                   1, draw_line, shadow_line, euclid_state, view_state, escher_state)
+            euring(
+                loop_locs[iloop],
+                loop_axes1[iloop],
+                loop_axes2[iloop],
+                1,
+                draw_line,
+                shadow_line,
+                euclid_state,
+                view_state,
+                escher_state,
+            )
 
     eslwid(0.0, escher_state)
 
 
-def camera_matrix(
-    center_ra_rad: float, center_dec_rad: float
-) -> list[list[float]]:
+def camera_matrix(center_ra_rad: float, center_dec_rad: float) -> list[list[float]]:
     """Camera C-matrix in J2000 (port of RSPK_DrawView lines ~584-594).
 
     Returns 3x3 column-major matrix (list of 3 column vectors) matching
@@ -430,7 +479,8 @@ def camera_matrix(
     col3 = [cos_d * cos_r, cos_d * sin_r, sin_d]
 
     # col2 = perpendicular projection of J2000 z-axis
-    # temp = [0,0,1] - (dot([0,0,1], col3)) * col3 = [-col3[2]*col3[0], -col3[2]*col3[1], 1-col3[2]^2]
+    # temp = [0,0,1] - (dot([0,0,1], col3)) * col3
+    # = [-col3[2]*col3[0], -col3[2]*col3[1], 1-col3[2]^2]
     temp = [
         0.0 - col3[0] * col3[2],
         0.0 - col3[1] * col3[2],
@@ -487,7 +537,7 @@ def _generated_date_str() -> str:
 
     FORTRAN FDATE() returns local time, e.g. 'Tue Feb 10 15:45:40 2026'.
     """
-    return _time.strftime("%a %b %d %H:%M:%S %Y", _time.localtime())
+    return _time.strftime('%a %b %d %H:%M:%S %Y', _time.localtime())
 
 
 def _vnorm(v: list[float]) -> float:
@@ -511,6 +561,7 @@ def _opsgnd(a: float, b: float) -> bool:
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
+
 
 def draw_planetary_view(
     output: TextIO,
@@ -552,7 +603,7 @@ def draw_planetary_view(
     star_names: list[str] | None = None,
     star_labels: bool = False,
     star_diampts: float = _STAR_DIAMPTS,
-    title: str = "",
+    title: str = '',
     ncaptions: int = 0,
     lcaptions: list[str] | None = None,
     rcaptions: list[str] | None = None,
@@ -638,7 +689,7 @@ def draw_planetary_view(
     lcaptions = lcaptions or []
     rcaptions = rcaptions or []
 
-    out_name = getattr(output, "name", "") or "view.ps"
+    out_name = getattr(output, 'name', '') or 'view.ps'
 
     # ===================================================================
     # Initialize the PostScript file
@@ -648,8 +699,8 @@ def draw_planetary_view(
     escher_state.open = True
     escher_state.external_stream = True
     escher_state.outfil = out_name
-    escher_state.creator = f"{planet_name} Viewer, PDS Ring-Moon Systems Node"
-    escher_state.fonts = "Helvetica"
+    escher_state.creator = f'{planet_name} Viewer, PDS Ring-Moon Systems Node'
+    escher_state.fonts = 'Helvetica'
 
     esfile(out_name, escher_state.creator, escher_state.fonts, escher_state)
     escher_state.outuni = output
@@ -658,89 +709,88 @@ def draw_planetary_view(
     write_ps_header(escher_state)
 
     # Preamble macros (rspk_drawview lines 430-470)
-    eswrit("/MakeDegreeFont {", escher_state)
-    eswrit("findfont dup /CharStrings get /degree known {", escher_state)
-    eswrit("dup length dict /newdict exch def {", escher_state)
-    eswrit("1 index /FID ne { newdict 3 1 roll put }", escher_state)
-    eswrit("{ pop pop } ifelse } forall", escher_state)
-    eswrit("newdict /Encoding get dup length array copy", escher_state)
-    eswrit("newdict exch /Encoding exch put", escher_state)
-    eswrit("newdict /CharStrings get /degree known {", escher_state)
-    eswrit("newdict /Encoding get 8#260 /degree put } if", escher_state)
-    eswrit("newdict true } { pop false } ifelse } def", escher_state)
+    eswrit('/MakeDegreeFont {', escher_state)
+    eswrit('findfont dup /CharStrings get /degree known {', escher_state)
+    eswrit('dup length dict /newdict exch def {', escher_state)
+    eswrit('1 index /FID ne { newdict 3 1 roll put }', escher_state)
+    eswrit('{ pop pop } ifelse } forall', escher_state)
+    eswrit('newdict /Encoding get dup length array copy', escher_state)
+    eswrit('newdict exch /Encoding exch put', escher_state)
+    eswrit('newdict /CharStrings get /degree known {', escher_state)
+    eswrit('newdict /Encoding get 8#260 /degree put } if', escher_state)
+    eswrit('newdict true } { pop false } ifelse } def', escher_state)
     # FORTRAN: '/MyFont /Helvetica ' // ' MakeDegreeFont ...' has two spaces
-    eswrit("/MyFont /Helvetica  MakeDegreeFont { definefont pop } if", escher_state)
-    eswrit("/unscale {10 10 scale} def", escher_state)
-    eswrit("/TextHeight {11} def", escher_state)
-    eswrit("/MyFont findfont TextHeight scalefont setfont", escher_state)
-    eswrit("/LabelBelow {gsave currentpoint translate", escher_state)
-    eswrit("unscale", escher_state)
-    eswrit("dup stringwidth pop -0.5 mul TextHeight -1.3 mul", escher_state)
-    eswrit("moveto show grestore} def", escher_state)
-    eswrit("/LabelLeft {gsave currentpoint translate", escher_state)
-    eswrit("unscale 90 rotate", escher_state)
-    eswrit("dup stringwidth pop -0.5 mul TextHeight 0.3 mul", escher_state)
-    eswrit("moveto show grestore} def", escher_state)
+    eswrit('/MyFont /Helvetica  MakeDegreeFont { definefont pop } if', escher_state)
+    eswrit('/unscale {10 10 scale} def', escher_state)
+    eswrit('/TextHeight {11} def', escher_state)
+    eswrit('/MyFont findfont TextHeight scalefont setfont', escher_state)
+    eswrit('/LabelBelow {gsave currentpoint translate', escher_state)
+    eswrit('unscale', escher_state)
+    eswrit('dup stringwidth pop -0.5 mul TextHeight -1.3 mul', escher_state)
+    eswrit('moveto show grestore} def', escher_state)
+    eswrit('/LabelLeft {gsave currentpoint translate', escher_state)
+    eswrit('unscale 90 rotate', escher_state)
+    eswrit('dup stringwidth pop -0.5 mul TextHeight 0.3 mul', escher_state)
+    eswrit('moveto show grestore} def', escher_state)
 
     # Moon label macro
     if moon_labelpts > 0.0:
         scale_val = min(moon_labelpts / 12.0, 2.0)
-        scale_str = f"{scale_val:.3f}"
-        eswrit("/LabelBody {gsave currentpoint translate", escher_state)
-        eswrit("unscale", escher_state)
-        eswrit(f"{scale_str} {scale_str} scale", escher_state)
-        eswrit("TextHeight 0.2 mul dup", escher_state)
-        eswrit("moveto show grestore} def", escher_state)
+        scale_str = f'{scale_val:.3f}'
+        eswrit('/LabelBody {gsave currentpoint translate', escher_state)
+        eswrit('unscale', escher_state)
+        eswrit(f'{scale_str} {scale_str} scale', escher_state)
+        eswrit('TextHeight 0.2 mul dup', escher_state)
+        eswrit('moveto show grestore} def', escher_state)
 
-    eswrit("%%EndProlog", escher_state)
-    eswrit("%", escher_state)
+    eswrit('%%EndProlog', escher_state)
+    eswrit('%', escher_state)
 
     # Title
     if title.strip():
-        eswrit("gsave unscale 324 756 translate 1.4 1.4 scale", escher_state)
+        eswrit('gsave unscale 324 756 translate 1.4 1.4 scale', escher_state)
         _rspk_write_string(title.strip(), escher_state)
-        eswrit("dup stringwidth pop", escher_state)
-        eswrit("-0.5 mul TextHeight neg moveto show grestore", escher_state)
+        eswrit('dup stringwidth pop', escher_state)
+        eswrit('-0.5 mul TextHeight neg moveto show grestore', escher_state)
 
     # Captions
     if ncaptions > 0:
-        eswrit("gsave unscale", escher_state)
+        eswrit('gsave unscale', escher_state)
         # FORTRAN: write(tempstr, '(i4)') nint(align_loc) + 72 → 4-char integer
         align_int = round(align_loc) + 72
-        eswrit(f"{align_int:4d} 162 translate", escher_state)
-        eswrit("0 TextHeight 0.4 mul translate", escher_state)
+        eswrit(f'{align_int:4d} 162 translate', escher_state)
+        eswrit('0 TextHeight 0.4 mul translate', escher_state)
         for i in range(ncaptions):
-            eswrit("0 TextHeight -1.25 mul translate", escher_state)
-            eswrit("0 0 moveto", escher_state)
-            rtext = rcaptions[i].rstrip() if i < len(rcaptions) else ""
+            eswrit('0 TextHeight -1.25 mul translate', escher_state)
+            eswrit('0 0 moveto', escher_state)
+            rtext = rcaptions[i].rstrip() if i < len(rcaptions) else ''
             _rspk_write_string(rtext, escher_state)
-            eswrit("show", escher_state)
-            ltext = lcaptions[i].rstrip() if i < len(lcaptions) else ""
-            _rspk_write_string(ltext + "  ", escher_state)
-            eswrit("dup stringwidth pop neg 0 moveto show", escher_state)
-        eswrit("grestore", escher_state)
+            eswrit('show', escher_state)
+            ltext = lcaptions[i].rstrip() if i < len(lcaptions) else ''
+            _rspk_write_string(ltext + '  ', escher_state)
+            eswrit('dup stringwidth pop neg 0 moveto show', escher_state)
+        eswrit('grestore', escher_state)
 
     # Credit footer
-    eswrit("gsave unscale 72 36 translate 0.5 0.5 scale", escher_state)
-    eswrit("0 0 moveto", escher_state)
+    eswrit('gsave unscale 72 36 translate 0.5 0.5 scale', escher_state)
+    eswrit('0 0 moveto', escher_state)
     date_str = _generated_date_str()
     # FORTRAN directly writes the string without RSPK_WriteString:
     eswrit(
-        f"(Generated by the {planet_name} Viewer Tool, "
-        f"PDS Ring-Moon Systems Node, {date_str})",
+        f'(Generated by the {planet_name} Viewer Tool, PDS Ring-Moon Systems Node, {date_str})',
         escher_state,
     )
-    eswrit("show grestore", escher_state)
+    eswrit('show grestore', escher_state)
 
     # Axis labels
-    eswrit("gsave unscale", escher_state)
-    eswrit("324 180 translate 1.2 1.2 scale", escher_state)
-    eswrit("(Right Ascension (h m s)) dup stringwidth pop", escher_state)
-    eswrit("-0.5 mul 0 moveto show grestore", escher_state)
-    eswrit("gsave unscale", escher_state)
-    eswrit("36 450 translate 1.2 1.2 scale 90 rotate", escher_state)
-    eswrit("(Declination (d m s)) dup stringwidth pop", escher_state)
-    eswrit("-0.5 mul TextHeight neg moveto show grestore", escher_state)
+    eswrit('gsave unscale', escher_state)
+    eswrit('324 180 translate 1.2 1.2 scale', escher_state)
+    eswrit('(Right Ascension (h m s)) dup stringwidth pop', escher_state)
+    eswrit('-0.5 mul 0 moveto show grestore', escher_state)
+    eswrit('gsave unscale', escher_state)
+    eswrit('36 450 translate 1.2 1.2 scale 90 rotate', escher_state)
+    eswrit('(Declination (d m s)) dup stringwidth pop', escher_state)
+    eswrit('-0.5 mul TextHeight neg moveto show grestore', escher_state)
 
     # ===================================================================
     # Initialize camera
@@ -750,9 +800,18 @@ def draw_planetary_view(
     euclid_state = EuclidState()
 
     euview(
-        _DEVICE, _H1, _H2, _V1, _V2,
-        -delta, delta, -delta, delta,
-        euclid_state, view_state, escher_state,
+        _DEVICE,
+        _H1,
+        _H2,
+        _V1,
+        _V2,
+        -delta,
+        delta,
+        -delta,
+        delta,
+        euclid_state,
+        view_state,
+        escher_state,
     )
 
     # Meridian and latitude count
@@ -773,23 +832,19 @@ def draw_planetary_view(
     obs_pv = list(observer_state(obs_time))
 
     # Planet state
-    planet_dpv, planet_dt = cspyce.spkapp(
-        planet_id, obs_time, "J2000", obs_pv[:6], "LT"
-    )
-    planet_dpv = list(planet_dpv)
+    _planet_pv, planet_dt = cspyce.spkapp(planet_id, obs_time, 'J2000', obs_pv[:6], 'LT')
+    planet_dpv = list(_planet_pv)
     planet_time = obs_time - planet_dt
-    planet_pv = list(cspyce.spkssb(planet_id, planet_time, "J2000"))
+    planet_pv = list(cspyce.spkssb(planet_id, planet_time, 'J2000'))
 
     # Planet rotation matrix (J2000 -> body frame)
     planet_mat = bodmat(planet_id, planet_time)
 
     # Sun location and radius
-    sun_dpv, sun_dt = cspyce.spkapp(
-        SUN_ID, planet_time, "J2000", planet_pv[:6], "LT+S"
-    )
-    sun_dpv = list(sun_dpv)
+    sun_pv, _sun_dt = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
+    sun_dpv = list(sun_pv)
     sun_loc = [planet_pv[i] + sun_dpv[i] for i in range(3)]
-    sun_radii_arr = cspyce.bodvar(SUN_ID, "RADII")
+    sun_radii_arr = cspyce.bodvar(SUN_ID, 'RADII')
     sun_rad = float(sun_radii_arr[0])
 
     # Camera C-matrix
@@ -814,7 +869,7 @@ def draw_planetary_view(
 
     # planet_mat is J2000→body.  Its rows ARE the body axes in J2000
     # (matching FORTRAN: XPOSE then column extraction).
-    p_radii_arr = cspyce.bodvar(planet_id, "RADII")
+    p_radii_arr = cspyce.bodvar(planet_id, 'RADII')
     planet_axes_scaled = []
     for i in range(3):
         ax = [planet_mat[i][j] * p_radii_arr[i] for j in range(3)]
@@ -823,7 +878,7 @@ def draw_planetary_view(
     body_pts.append(0.0)
     body_dist.append(0.0)
     body_los.append([0.0, 0.0, 0.0])
-    body_names_list.append(" ")  # Never label planet
+    body_names_list.append(' ')  # Never label planet
 
     # Body 2: Dummy body at middle of field of view
     nbodies += 1
@@ -840,7 +895,7 @@ def draw_planetary_view(
     body_pts.append(0.0)
     body_dist.append(0.0)
     body_los.append([0.0, 0.0, 0.0])
-    body_names_list.append(" ")
+    body_names_list.append(' ')
 
     # Bodies 3+: Moons
     use_nmoons = min(nmoons, MAX_NMOONS)
@@ -851,23 +906,24 @@ def draw_planetary_view(
         mid = moon_ids[imoon]
 
         # Moon position
-        moon_dpv, mdt = spkapp_shifted(mid, obs_time, "J2000", obs_pv[:6], "LT")
-        moon_dpv = list(moon_dpv)
+        moon_pv, mdt = spkapp_shifted(mid, obs_time, 'J2000', obs_pv[:6], 'LT')
+        moon_dpv = list(moon_pv)
         moon_loc = [obs_pv[i] + moon_dpv[i] for i in range(3)]
         body_locs.append(moon_loc)
         body_los.append(list(moon_dpv[:3]))
 
         # Moon axes - use moon's own BODMAT if available, else planet_mat
         try:
-            if cspyce.bodfnd(mid, "POLE_RA"):
-                moon_mat = bodmat(mid, obs_time - mdt)
+            if cspyce.bodfnd(mid, 'POLE_RA'):
+                moon_rot = bodmat(mid, obs_time - mdt)
+                moon_mat = [list(row) for row in moon_rot]
             else:
                 moon_mat = [list(row) for row in planet_mat]
         except Exception:
             moon_mat = [list(row) for row in planet_mat]
 
         # moon_mat is J2000→body. Its rows are the body axes in J2000.
-        m_radii_arr = cspyce.bodvar(mid, "RADII")
+        m_radii_arr = cspyce.bodvar(mid, 'RADII')
         moon_axes = []
         for i in range(3):
             ax = [moon_mat[i][j] * m_radii_arr[i] for j in range(3)]
@@ -880,7 +936,7 @@ def draw_planetary_view(
         body_pts.append(body_pts_val)
 
         # Name
-        mname = moon_names[imoon] if imoon < len(moon_names) else ""
+        mname = moon_names[imoon] if imoon < len(moon_names) else ''
         body_names_list.append(mname)
 
         # Distance from planet
@@ -966,9 +1022,7 @@ def draw_planetary_view(
         r_ring_axes2.append(ring_ax2)
 
         # Ring center = planet_loc - ecc * major_axis + elevation + offset
-        ring_loc = [
-            -ecc * ring_ax1[i] + planet_loc[i] for i in range(3)
-        ]
+        ring_loc = [-ecc * ring_ax1[i] + planet_loc[i] for i in range(3)]
         # Add vertical elevation
         re = ring_elevs[iring] if iring < len(ring_elevs) else 0.0
         ring_loc = [ring_loc[i] + re * pole[i] for i in range(3)]
@@ -982,7 +1036,11 @@ def draw_planetary_view(
 
         # Determine if ring is dark (observer and Sun on opposite sides)
         tempvec_obs = [ring_loc[i] - obs_pv[i] + offset[i] for i in range(3)]
-        dot1 = -(ringpole[0] * tempvec_obs[0] + ringpole[1] * tempvec_obs[1] + ringpole[2] * tempvec_obs[2])
+        dot1 = -(
+            ringpole[0] * tempvec_obs[0]
+            + ringpole[1] * tempvec_obs[1]
+            + ringpole[2] * tempvec_obs[2]
+        )
         sun_hat = _vhat(sun_dpv[:3])
         dot2 = ringpole[0] * sun_hat[0] + ringpole[1] * sun_hat[1] + ringpole[2] * sun_hat[2]
 
@@ -1018,10 +1076,7 @@ def draw_planetary_view(
                 nloops += 1
 
                 # Vectors from ring center to loop ends
-                vec1 = [
-                    math.cos(lon) * ring_ax1[i] + math.sin(lon) * ring_ax2[i]
-                    for i in range(3)
-                ]
+                vec1 = [math.cos(lon) * ring_ax1[i] + math.sin(lon) * ring_ax2[i] for i in range(3)]
                 vec2 = [
                     math.cos(lon + dlon) * ring_ax1[i] + math.sin(lon + dlon) * ring_ax2[i]
                     for i in range(3)
@@ -1046,192 +1101,383 @@ def draw_planetary_view(
     use_diampts = min(MAX_MINSIZE, moon_diampts)
     use_arcpts = min(MAX_ARCPTS, arc_width)
 
-    TRANSPARENT_METHOD = 0
-    SEMI_TRANSPARENT_METHOD = 1
+    transparent_method = 0
+    semi_transparent_method = 1
     # OPAQUE_METHOD = 2
 
-    if ring_method == TRANSPARENT_METHOD or last_opaq == 0:
+    if ring_method == transparent_method or last_opaq == 0:
         # Case 0: Transparent — simplest case
         eugeom(
-            1, [sun_loc], [sun_rad], obs_pv[:3],
+            1,
+            [sun_loc],
+            [sun_rad],
+            obs_pv[:3],
             [cmat[0], cmat[1], cmat[2]],
-            nbodies, body_locs, body_axes,
+            nbodies,
+            body_locs,
+            body_axes,
             euclid_state,
         )
 
         _rspk_draw_bodies(
-            nbodies, body_pts, body_names_list, body_dist,
-            use_diampts, True, 0.0,
-            pmerids, plats, mmerids, mlats,
-            LIT_LINE, DARK_LINE, term_line,
-            LIT_LINE, DARK_LINE, term_line,
+            nbodies,
+            body_pts,
+            body_names_list,
+            body_dist,
+            use_diampts,
+            True,
+            0.0,
+            pmerids,
+            plats,
+            mmerids,
+            mlats,
+            LIT_LINE,
+            DARK_LINE,
+            term_line,
+            LIT_LINE,
+            DARK_LINE,
+            term_line,
             prime_pts,
-            euclid_state, view_state, escher_state,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
         _rspk_draw_rings(
-            1, use_nrings, ring_flags,
-            r_ring_locs, r_ring_axes1, r_ring_axes2,
-            r_ring_dark, ring_dashed,
-            nloops, loop_locs, loop_axes1, loop_axes2, loop_ring,
-            use_arcpts, LIT_LINE, DARK_LINE, SHADOW_LINE, term_line,
-            euclid_state, view_state, escher_state,
+            1,
+            use_nrings,
+            ring_flags,
+            r_ring_locs,
+            r_ring_axes1,
+            r_ring_axes2,
+            r_ring_dark,
+            ring_dashed,
+            nloops,
+            loop_locs,
+            loop_axes1,
+            loop_axes2,
+            loop_ring,
+            use_arcpts,
+            LIT_LINE,
+            DARK_LINE,
+            SHADOW_LINE,
+            term_line,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
-    elif ring_method == SEMI_TRANSPARENT_METHOD:
+    elif ring_method == semi_transparent_method:
         # Case 1: Semi-transparent — two passes
         lo = last_opaq - 1  # 0-based index for outermost opaque ring
 
         # First pass: unlit bodies
         eugeom(
-            1, [sun_loc], [sun_rad], obs_pv[:3],
+            1,
+            [sun_loc],
+            [sun_rad],
+            obs_pv[:3],
             [cmat[0], cmat[1], cmat[2]],
-            nbodies, body_locs, body_axes,
+            nbodies,
+            body_locs,
+            body_axes,
             euclid_state,
         )
         _rspk_draw_bodies(
-            nbodies, body_pts, body_names_list, body_dist,
-            use_diampts, True, ring_rads[lo] if lo < len(ring_rads) else 0.0,
-            pmerids, plats, mmerids, mlats,
-            DARK_LINE, DARK_LINE, DARK_LINE,
-            LIT_LINE, DARK_LINE, term_line,
+            nbodies,
+            body_pts,
+            body_names_list,
+            body_dist,
+            use_diampts,
+            True,
+            ring_rads[lo] if lo < len(ring_rads) else 0.0,
+            pmerids,
+            plats,
+            mmerids,
+            mlats,
+            DARK_LINE,
+            DARK_LINE,
+            DARK_LINE,
+            LIT_LINE,
+            DARK_LINE,
+            term_line,
             prime_pts,
-            euclid_state, view_state, escher_state,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
         # Redefine with outermost opaque ring as flat ellipsoid
-        ext_locs = body_locs + [r_ring_locs[lo]]
-        ext_axes = body_axes + [[r_ring_axes1[lo], r_ring_axes2[lo], r_ring_axes3[lo]]]
+        ext_locs = [*body_locs, r_ring_locs[lo]]
+        ext_axes = [*body_axes, [r_ring_axes1[lo], r_ring_axes2[lo], r_ring_axes3[lo]]]
         eugeom(
-            1, [sun_loc], [sun_rad], obs_pv[:3],
+            1,
+            [sun_loc],
+            [sun_rad],
+            obs_pv[:3],
             [cmat[0], cmat[1], cmat[2]],
-            nbodies + 1, ext_locs, ext_axes,
+            nbodies + 1,
+            ext_locs,
+            ext_axes,
             euclid_state,
         )
 
         # Re-draw lit, but not interior moons
         _rspk_draw_bodies(
-            nbodies, body_pts, body_names_list, body_dist,
-            use_diampts, False, ring_rads[lo] if lo < len(ring_rads) else 0.0,
-            pmerids, plats, mmerids, mlats,
-            LIT_LINE, DARK_LINE, term_line,
-            NO_LINE, NO_LINE, NO_LINE,
+            nbodies,
+            body_pts,
+            body_names_list,
+            body_dist,
+            use_diampts,
+            False,
+            ring_rads[lo] if lo < len(ring_rads) else 0.0,
+            pmerids,
+            plats,
+            mmerids,
+            mlats,
+            LIT_LINE,
+            DARK_LINE,
+            term_line,
+            NO_LINE,
+            NO_LINE,
+            NO_LINE,
             prime_pts,
-            euclid_state, view_state, escher_state,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
         # Draw opaque ring invisibly
-        eubody(nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE,
-               euclid_state, view_state, escher_state)
+        eubody(
+            nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE, euclid_state, view_state, escher_state
+        )
 
         # Exterior rings
         _rspk_draw_rings(
-            last_opaq + 1, use_nrings, ring_flags,
-            r_ring_locs, r_ring_axes1, r_ring_axes2,
-            r_ring_dark, ring_dashed,
-            nloops, loop_locs, loop_axes1, loop_axes2, loop_ring,
-            use_arcpts, LIT_LINE, DARK_LINE, SHADOW_LINE, term_line,
-            euclid_state, view_state, escher_state,
+            last_opaq + 1,
+            use_nrings,
+            ring_flags,
+            r_ring_locs,
+            r_ring_axes1,
+            r_ring_axes2,
+            r_ring_dark,
+            ring_dashed,
+            nloops,
+            loop_locs,
+            loop_axes1,
+            loop_axes2,
+            loop_ring,
+            use_arcpts,
+            LIT_LINE,
+            DARK_LINE,
+            SHADOW_LINE,
+            term_line,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
         # Re-define without rings
         eugeom(
-            1, [sun_loc], [sun_rad], obs_pv[:3],
+            1,
+            [sun_loc],
+            [sun_rad],
+            obs_pv[:3],
             [cmat[0], cmat[1], cmat[2]],
-            nbodies, body_locs, body_axes,
+            nbodies,
+            body_locs,
+            body_axes,
             euclid_state,
         )
 
         # Set up bodies without drawing (for correct ring lighting)
         _rspk_draw_bodies(
-            nbodies, body_pts, body_names_list, body_dist,
-            use_diampts, False, 0.0,
-            pmerids, plats, mmerids, mlats,
-            NO_LINE, NO_LINE, NO_LINE,
-            NO_LINE, NO_LINE, NO_LINE,
+            nbodies,
+            body_pts,
+            body_names_list,
+            body_dist,
+            use_diampts,
+            False,
             0.0,
-            euclid_state, view_state, escher_state,
+            pmerids,
+            plats,
+            mmerids,
+            mlats,
+            NO_LINE,
+            NO_LINE,
+            NO_LINE,
+            NO_LINE,
+            NO_LINE,
+            NO_LINE,
+            0.0,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
         # Interior rings
         _rspk_draw_rings(
-            1, last_opaq, ring_flags,
-            r_ring_locs, r_ring_axes1, r_ring_axes2,
-            r_ring_dark, ring_dashed,
-            nloops, loop_locs, loop_axes1, loop_axes2, loop_ring,
-            use_arcpts, LIT_LINE, DARK_LINE, SHADOW_LINE, term_line,
-            euclid_state, view_state, escher_state,
+            1,
+            last_opaq,
+            ring_flags,
+            r_ring_locs,
+            r_ring_axes1,
+            r_ring_axes2,
+            r_ring_dark,
+            ring_dashed,
+            nloops,
+            loop_locs,
+            loop_axes1,
+            loop_axes2,
+            loop_ring,
+            use_arcpts,
+            LIT_LINE,
+            DARK_LINE,
+            SHADOW_LINE,
+            term_line,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
     else:
         # Case 2: Opaque
         lo = last_opaq - 1
 
-        ext_locs = body_locs + [r_ring_locs[lo]]
-        ext_axes = body_axes + [[r_ring_axes1[lo], r_ring_axes2[lo], r_ring_axes3[lo]]]
+        ext_locs = [*body_locs, r_ring_locs[lo]]
+        ext_axes = [*body_axes, [r_ring_axes1[lo], r_ring_axes2[lo], r_ring_axes3[lo]]]
         eugeom(
-            1, [sun_loc], [sun_rad], obs_pv[:3],
+            1,
+            [sun_loc],
+            [sun_rad],
+            obs_pv[:3],
             [cmat[0], cmat[1], cmat[2]],
-            nbodies + 1, ext_locs, ext_axes,
+            nbodies + 1,
+            ext_locs,
+            ext_axes,
             euclid_state,
         )
 
         _rspk_draw_bodies(
-            nbodies, body_pts, body_names_list, body_dist,
-            use_diampts, True, ring_rads[lo] if lo < len(ring_rads) else 0.0,
-            pmerids, plats, mmerids, mlats,
-            LIT_LINE, DARK_LINE, term_line,
-            NO_LINE, NO_LINE, NO_LINE,
+            nbodies,
+            body_pts,
+            body_names_list,
+            body_dist,
+            use_diampts,
+            True,
+            ring_rads[lo] if lo < len(ring_rads) else 0.0,
+            pmerids,
+            plats,
+            mmerids,
+            mlats,
+            LIT_LINE,
+            DARK_LINE,
+            term_line,
+            NO_LINE,
+            NO_LINE,
+            NO_LINE,
             prime_pts,
-            euclid_state, view_state, escher_state,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
-        eubody(nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE,
-               euclid_state, view_state, escher_state)
+        eubody(
+            nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE, euclid_state, view_state, escher_state
+        )
 
         _rspk_draw_rings(
-            last_opaq + 1, use_nrings, ring_flags,
-            r_ring_locs, r_ring_axes1, r_ring_axes2,
-            r_ring_dark, ring_dashed,
-            nloops, loop_locs, loop_axes1, loop_axes2, loop_ring,
-            use_arcpts, LIT_LINE, DARK_LINE, SHADOW_LINE, term_line,
-            euclid_state, view_state, escher_state,
+            last_opaq + 1,
+            use_nrings,
+            ring_flags,
+            r_ring_locs,
+            r_ring_axes1,
+            r_ring_axes2,
+            r_ring_dark,
+            ring_dashed,
+            nloops,
+            loop_locs,
+            loop_axes1,
+            loop_axes2,
+            loop_ring,
+            use_arcpts,
+            LIT_LINE,
+            DARK_LINE,
+            SHADOW_LINE,
+            term_line,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
         # Re-define without rings
         eugeom(
-            1, [sun_loc], [sun_rad], obs_pv[:3],
+            1,
+            [sun_loc],
+            [sun_rad],
+            obs_pv[:3],
             [cmat[0], cmat[1], cmat[2]],
-            nbodies, body_locs, body_axes,
+            nbodies,
+            body_locs,
+            body_axes,
             euclid_state,
         )
 
         # Re-draw interior moons
         _rspk_draw_bodies(
-            nbodies, body_pts, body_names_list, body_dist,
-            use_diampts, True, ring_rads[lo] if lo < len(ring_rads) else 0.0,
-            pmerids, plats, mmerids, mlats,
-            NO_LINE, NO_LINE, NO_LINE,
-            LIT_LINE, DARK_LINE, term_line,
+            nbodies,
+            body_pts,
+            body_names_list,
+            body_dist,
+            use_diampts,
+            True,
+            ring_rads[lo] if lo < len(ring_rads) else 0.0,
+            pmerids,
+            plats,
+            mmerids,
+            mlats,
+            NO_LINE,
+            NO_LINE,
+            NO_LINE,
+            LIT_LINE,
+            DARK_LINE,
+            term_line,
             prime_pts,
-            euclid_state, view_state, escher_state,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
         # Interior rings
         _rspk_draw_rings(
-            1, last_opaq, ring_flags,
-            r_ring_locs, r_ring_axes1, r_ring_axes2,
-            r_ring_dark, ring_dashed,
-            nloops, loop_locs, loop_axes1, loop_axes2, loop_ring,
-            use_arcpts, LIT_LINE, DARK_LINE, SHADOW_LINE, term_line,
-            euclid_state, view_state, escher_state,
+            1,
+            last_opaq,
+            ring_flags,
+            r_ring_locs,
+            r_ring_axes1,
+            r_ring_axes2,
+            r_ring_dark,
+            ring_dashed,
+            nloops,
+            loop_locs,
+            loop_axes1,
+            loop_axes2,
+            loop_ring,
+            use_arcpts,
+            LIT_LINE,
+            DARK_LINE,
+            SHADOW_LINE,
+            term_line,
+            euclid_state,
+            view_state,
+            escher_state,
         )
 
     # ===================================================================
     # Box borders, tick marks, labels
     # ===================================================================
 
-    eswrit("%Draw box...", escher_state)
+    eswrit('%Draw box...', escher_state)
     eutemp([-delta], [-delta], [-delta], [delta], 1, AXIS_LINE, view_state, escher_state)
     eutemp([-delta], [delta], [delta], [delta], 1, AXIS_LINE, view_state, escher_state)
     eutemp([delta], [delta], [delta], [-delta], 1, AXIS_LINE, view_state, escher_state)
@@ -1244,18 +1490,23 @@ def draw_planetary_view(
     # ===================================================================
 
     if moon_labelpts > 0.0:
-        eswrit("%Label moons...", escher_state)
+        eswrit('%Label moons...', escher_state)
         for ibody in range(2, nbodies):
             bi = ibody  # 0-based index in body_names_list
-            bname = body_names_list[bi] if bi < len(body_names_list) else ""
+            bname = body_names_list[bi] if bi < len(body_names_list) else ''
             if not bname.strip():
                 continue
             blos = body_los[bi] if bi < len(body_los) else [0.0, 0.0, 0.0]
             bpts = body_pts[bi] if bi < len(body_pts) else 0.0
             radius = max(bpts, use_diampts) * 0.5 * fov / FOV_PTS
             _rspk_annotate(
-                bname.strip(), blos, radius, cmat, delta,
-                view_state, escher_state,
+                bname.strip(),
+                blos,
+                radius,
+                cmat,
+                delta,
+                view_state,
+                escher_state,
             )
 
     # ===================================================================
@@ -1263,7 +1514,7 @@ def draw_planetary_view(
     # ===================================================================
 
     if nstars > 0:
-        eswrit("%Draw stars...", escher_state)
+        eswrit('%Draw stars...', escher_state)
         eslwid(_STAR_WIDTH, escher_state)
 
     for i in range(nstars):
@@ -1271,15 +1522,26 @@ def draw_planetary_view(
         sdec = star_decs[i] if i < len(star_decs) else 0.0
         los = list(_radrec(1.0, sra, sdec))
         eustar(
-            los, 1, STARFONT_PLUS, _STAR_FONTSIZE,
-            star_diampts / FOV_PTS, STAR_LINE,
-            euclid_state, view_state, escher_state,
+            (los[0], los[1], los[2]),
+            1,
+            STARFONT_PLUS,
+            _STAR_FONTSIZE,
+            star_diampts / FOV_PTS,
+            STAR_LINE,
+            euclid_state,
+            view_state,
+            escher_state,
         )
-        sname = star_names[i] if i < len(star_names) else ""
+        sname = star_names[i] if i < len(star_names) else ''
         if star_labels and sname.strip():
             _rspk_annotate(
-                sname.strip(), los, 0.0, cmat, delta,
-                view_state, escher_state,
+                sname.strip(),
+                los,
+                0.0,
+                cmat,
+                delta,
+                view_state,
+                escher_state,
             )
     if nstars > 0:
         eslwid(0.0, escher_state)
@@ -1304,7 +1566,4 @@ def _vrotv(v: list[float], axis: list[float], angle: float) -> list[float]:
         ax[2] * v[0] - ax[0] * v[2],
         ax[0] * v[1] - ax[1] * v[0],
     ]
-    return [
-        v[i] * ca + cross[i] * sa + ax[i] * dot * (1.0 - ca)
-        for i in range(3)
-    ]
+    return [v[i] * ca + cross[i] * sa + ax[i] * dot * (1.0 - ca) for i in range(3)]

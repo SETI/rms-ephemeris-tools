@@ -22,17 +22,17 @@ MAXY = 7200
 
 # Grayscale strings: segment color 0 = white, 1 = black, 2..10 = 0.1..0.9 (FORTRAN GRAY(0:10))
 _GRAY: list[str] = [
-    "1.0 G",  # 0 = white
-    "0.0 G",  # 1 = black
-    "0.1 G",
-    "0.2 G",
-    "0.3 G",
-    "0.4 G",
-    "0.5 G",
-    "0.6 G",
-    "0.7 G",
-    "0.8 G",
-    "0.9 G",
+    '1.0 G',  # 0 = white
+    '0.0 G',  # 1 = black
+    '0.1 G',
+    '0.2 G',
+    '0.3 G',
+    '0.4 G',
+    '0.5 G',
+    '0.6 G',
+    '0.7 G',
+    '0.8 G',
+    '0.9 G',
 ]
 
 BUFSZ = 64
@@ -43,9 +43,9 @@ class EscherState:
     """Mutable state for Escher PS output (replaces FORTRAN common block)."""
 
     def __init__(self) -> None:
-        self.outfil = " "
-        self.creator = " "
-        self.fonts = " "
+        self.outfil = ' '
+        self.creator = ' '
+        self.fonts = ' '
         self.outuni: TextIO | None = None
         self.xsave = 0
         self.ysave = 0
@@ -58,7 +58,7 @@ class EscherState:
 
 def _opairi(x: int, y: int, suffix: str) -> str:
     """Format ordered pair of integers as 'X Y suffix' (matches OPAIRI + MOVETO(2:))."""
-    return f"{x} {y} {suffix}"
+    return f'{x} {y} {suffix}'
 
 
 def esfile(
@@ -68,9 +68,9 @@ def esfile(
     state: EscherState,
 ) -> None:
     """Set output filename, creator, and fonts. Initialize state (port of ESFILE)."""
-    state.outfil = filename.strip() if filename else " "
-    state.creator = (creator or " ").strip()
-    state.fonts = (fonts or " ").strip()
+    state.outfil = filename.strip() if filename else ' '
+    state.creator = (creator or ' ').strip()
+    state.fonts = (fonts or ' ').strip()
     state.outuni = None
     state.drawn = False
 
@@ -81,37 +81,40 @@ def esopen(state: EscherState) -> None:
 
 
 def write_ps_header(state: EscherState) -> None:
-    """Write the PS file header to state.outuni. Use when output stream is already set (e.g. by caller)."""
+    """Write the PS file header to state.outuni.
+
+    Use when output stream is already set (e.g. by caller).
+    """
     if state.outuni is None:
         return
-    outfil = (state.outfil or "").strip() or "view.ps"
+    outfil = (state.outfil or '').strip() or 'view.ps'
     f2 = len(outfil)
     f1 = f2
     for i in range(f2 - 1, -1, -1):
-        if outfil[i] in "/:]":
+        if outfil[i] in '/:]':
             f1 = i
             break
     title = outfil[f1 + 1 : f2] if f1 < f2 else outfil
-    creator_nb = (state.creator or "").rstrip()
-    fonts_nb = (state.fonts or "").rstrip()
+    creator_nb = (state.creator or '').rstrip()
+    fonts_nb = (state.fonts or '').rstrip()
     f = state.outuni
-    f.write("%!PS-Adobe-2.0 EPSF-2.0\n")
-    f.write(f"%%Title: {title}\n")
-    f.write(f"%%Creator: {creator_nb}\n")
-    f.write("%%BoundingBox: 0 0 612 792\n")
-    f.write("%%Pages: 1\n")
-    f.write(f"%%DocumentFonts: {fonts_nb}\n")
-    f.write("%%EndComments\n")
-    f.write("% \n")
-    f.write("0.1 0.1 scale\n")
-    f.write("8 setlinewidth\n")
-    f.write("1 setlinecap\n")
-    f.write("1 setlinejoin\n")
-    f.write("/L {lineto} def\n")
-    f.write("/M {moveto} def\n")
-    f.write("/N {newpath} def\n")
-    f.write("/G {setgray} def\n")
-    f.write("/S {stroke} def\n")
+    f.write('%!PS-Adobe-2.0 EPSF-2.0\n')
+    f.write(f'%%Title: {title}\n')
+    f.write(f'%%Creator: {creator_nb}\n')
+    f.write('%%BoundingBox: 0 0 612 792\n')
+    f.write('%%Pages: 1\n')
+    f.write(f'%%DocumentFonts: {fonts_nb}\n')
+    f.write('%%EndComments\n')
+    f.write('% \n')
+    f.write('0.1 0.1 scale\n')
+    f.write('8 setlinewidth\n')
+    f.write('1 setlinecap\n')
+    f.write('1 setlinejoin\n')
+    f.write('/L {lineto} def\n')
+    f.write('/M {moveto} def\n')
+    f.write('/N {newpath} def\n')
+    f.write('/G {setgray} def\n')
+    f.write('/S {stroke} def\n')
 
 
 def _ensure_open(state: EscherState) -> TextIO:
@@ -119,36 +122,37 @@ def _ensure_open(state: EscherState) -> TextIO:
     if state.outuni is not None:
         return state.outuni
     state.open = True
-    outfil = state.outfil.strip() or "escher.ps"
+    outfil = state.outfil.strip() or 'escher.ps'
     # Extract basename for %%Title (last path component)
     f2 = len(outfil)
     f1 = f2
     for i in range(f2 - 1, -1, -1):
-        if outfil[i] in "/:]":
+        if outfil[i] in '/:]':
             f1 = i
             break
     title = outfil[f1 + 1 : f2] if f1 < f2 else outfil
     creator_nb = state.creator.rstrip()
     fonts_nb = state.fonts.rstrip()
-    f = open(outfil, "w", encoding="utf-8")
+    # File is stored in state.outuni and must stay open for subsequent writes (SIM115).
+    f = open(outfil, 'w', encoding='utf-8')  # noqa: SIM115
     state.outuni = f
-    f.write("%!PS-Adobe-2.0 EPSF-2.0\n")
-    f.write(f"%%Title: {title}\n")
-    f.write(f"%%Creator: {creator_nb}\n")
-    f.write("%%BoundingBox: 0 0 612 792\n")
-    f.write("%%Pages: 1\n")
-    f.write(f"%%DocumentFonts: {fonts_nb}\n")
-    f.write("%%EndComments\n")
-    f.write("% \n")
-    f.write("0.1 0.1 scale\n")
-    f.write("8 setlinewidth\n")
-    f.write("1 setlinecap\n")
-    f.write("1 setlinejoin\n")
-    f.write("/L {lineto} def\n")
-    f.write("/M {moveto} def\n")
-    f.write("/N {newpath} def\n")
-    f.write("/G {setgray} def\n")
-    f.write("/S {stroke} def\n")
+    f.write('%!PS-Adobe-2.0 EPSF-2.0\n')
+    f.write(f'%%Title: {title}\n')
+    f.write(f'%%Creator: {creator_nb}\n')
+    f.write('%%BoundingBox: 0 0 612 792\n')
+    f.write('%%Pages: 1\n')
+    f.write(f'%%DocumentFonts: {fonts_nb}\n')
+    f.write('%%EndComments\n')
+    f.write('% \n')
+    f.write('0.1 0.1 scale\n')
+    f.write('8 setlinewidth\n')
+    f.write('1 setlinecap\n')
+    f.write('1 setlinejoin\n')
+    f.write('/L {lineto} def\n')
+    f.write('/M {moveto} def\n')
+    f.write('/N {newpath} def\n')
+    f.write('/G {setgray} def\n')
+    f.write('/S {stroke} def\n')
     return f
 
 
@@ -185,12 +189,7 @@ def esdr07(nsegs: int, segs: list[int], state: EscherState) -> None:
         el = segs[offset + 3]
         color = segs[offset + 4]
 
-        if (
-            bp == lastep
-            and bl == lastel
-            and color == lstcol
-            and count < BUFSZ
-        ):
+        if bp == lastep and bl == lastel and color == lstcol and count < BUFSZ:
             lastep = ep
             lastel = el
             maxdsp = max(maxdsp, max(abs(ep - bp), abs(el - bl)))
@@ -205,24 +204,24 @@ def esdr07(nsegs: int, segs: list[int], state: EscherState) -> None:
                 else:
                     xarray[count - 1] = xarray[count - 1] - 1
             if lstcol >= 0:
-                f.write("N\n")
-                f.write(_opairi(xarray[0], yarray[0], "M") + "\n")
+                f.write('N\n')
+                f.write(_opairi(xarray[0], yarray[0], 'M') + '\n')
                 state.xsave = xarray[0]
                 state.ysave = yarray[0]
-                lastln = _opairi(xarray[0], yarray[0], "L")
+                lastln = _opairi(xarray[0], yarray[0], 'L')
                 for m in range(1, count):
-                    lineto = _opairi(xarray[m], yarray[m], "L")
+                    lineto = _opairi(xarray[m], yarray[m], 'L')
                     if lineto != lastln:
-                        f.write(lineto + "\n")
+                        f.write(lineto + '\n')
                         state.xsave = xarray[m]
                         state.ysave = yarray[m]
                         state.drawn = True
                     lastln = lineto
                 col_out = 1 if lstcol > 10 else lstcol
                 if col_out != state.oldcol and col_out >= 0:
-                    f.write(_GRAY[min(col_out, 10)] + "\n")
+                    f.write(_GRAY[min(col_out, 10)] + '\n')
                     state.oldcol = col_out
-                f.write("S\n")
+                f.write('S\n')
 
             count = 2
             xarray = [bp, ep]
@@ -240,24 +239,24 @@ def esdr07(nsegs: int, segs: list[int], state: EscherState) -> None:
         else:
             xarray[count - 1] = xarray[count - 1] - 1
     if lstcol >= 0:
-        f.write("N\n")
-        f.write(_opairi(xarray[0], yarray[0], "M") + "\n")
+        f.write('N\n')
+        f.write(_opairi(xarray[0], yarray[0], 'M') + '\n')
         state.xsave = xarray[0]
         state.ysave = yarray[0]
-        lastln = _opairi(xarray[0], yarray[0], "L")
+        lastln = _opairi(xarray[0], yarray[0], 'L')
         for m in range(1, count):
-            lineto = _opairi(xarray[m], yarray[m], "L")
+            lineto = _opairi(xarray[m], yarray[m], 'L')
             if lineto != lastln:
-                f.write(lineto + "\n")
+                f.write(lineto + '\n')
                 state.xsave = xarray[m]
                 state.ysave = yarray[m]
                 state.drawn = True
             lastln = lineto
         col_out = 1 if lstcol > 10 else lstcol
         if col_out != state.oldcol and col_out >= 0:
-            f.write(_GRAY[min(col_out, 10)] + "\n")
+            f.write(_GRAY[min(col_out, 10)] + '\n')
             state.oldcol = col_out
-        f.write("S\n")
+        f.write('S\n')
 
 
 def eslwid(points: float, state: EscherState) -> None:
@@ -267,7 +266,7 @@ def eslwid(points: float, state: EscherState) -> None:
     width = max(_nint(points * 10.0), MINWIDTH)
     if width == state.oldwidth:
         return
-    state.outuni.write(f"{width:3d} setlinewidth\n")
+    state.outuni.write(f'{width:3d} setlinewidth\n')
     state.oldwidth = width
 
 
@@ -276,15 +275,15 @@ def eswrit(string: str, state: EscherState) -> None:
     if state.outuni is None:
         return
     state.outuni.write(string)
-    if string and not string.endswith("\n"):
-        state.outuni.write("\n")
+    if string and not string.endswith('\n'):
+        state.outuni.write('\n')
 
 
 def esmove(state: EscherState) -> None:
     """Emit moveto to last stroked point (port of ESMOVE)."""
     if state.outuni is None:
         return
-    state.outuni.write(_opairi(state.xsave, state.ysave, "M") + "\n")
+    state.outuni.write(_opairi(state.xsave, state.ysave, 'M') + '\n')
 
 
 def escl07(hmin: int, hmax: int, vmin: int, vmax: int, state: EscherState) -> None:
@@ -296,26 +295,26 @@ def escl07(hmin: int, hmax: int, vmin: int, vmax: int, state: EscherState) -> No
     if state.outuni is None:
         return
     if hmin == MINX and hmax == MAXX and vmin == MINY and vmax == MAXY:
-        state.outuni.write("showpage\n")
-        if not getattr(state, "external_stream", False):
+        state.outuni.write('showpage\n')
+        if not getattr(state, 'external_stream', False):
             state.outuni.close()
             state.outuni = None
             state.open = False
         return
     f = state.outuni
-    f.write("% \n")
-    f.write("% CLEAR PART OF THE PAGE\n")
-    f.write("% \n")
-    f.write("N\n")
-    f.write(_opairi(hmin, vmin, "M") + "\n")
-    f.write(_opairi(hmin, vmax, "L") + "\n")
-    f.write(_opairi(hmax, vmax, "L") + "\n")
-    f.write(_opairi(hmax, vmin, "L") + "\n")
-    f.write(_opairi(hmin, vmin, "L") + "\n")
-    f.write("closepath\n")
-    f.write("1 G\n")
-    f.write("fill\n")
-    f.write("0 G\n")
+    f.write('% \n')
+    f.write('% CLEAR PART OF THE PAGE\n')
+    f.write('% \n')
+    f.write('N\n')
+    f.write(_opairi(hmin, vmin, 'M') + '\n')
+    f.write(_opairi(hmin, vmax, 'L') + '\n')
+    f.write(_opairi(hmax, vmax, 'L') + '\n')
+    f.write(_opairi(hmax, vmin, 'L') + '\n')
+    f.write(_opairi(hmin, vmin, 'L') + '\n')
+    f.write('closepath\n')
+    f.write('1 G\n')
+    f.write('fill\n')
+    f.write('0 G\n')
     state.oldcol = 1
 
 
@@ -376,20 +375,20 @@ def _esclip(
         elif y1 < ymin:
             check = (x2 < xmax) and (y2 > ymin)
         else:
-            check = (x2 < xmax)
+            check = x2 < xmax
     elif x1 < xmin:
         if y1 > ymax:
             check = (x2 > xmin) and (y2 < ymax)
         elif y1 < ymin:
             check = (x2 > xmin) and (y2 > ymin)
         else:
-            check = (x2 > xmin)
+            check = x2 > xmin
     else:
         # x1 is between xmin and xmax (inclusive)
         if y1 > ymax:
-            check = (y2 < ymax)
+            check = y2 < ymax
         elif y1 < ymin:
-            check = (y2 > ymin)
+            check = y2 > ymin
         else:
             # Region 9: first endpoint inside (boundary counts as inside)
             check = (x2 > xmax) or (x2 < xmin) or (y2 > ymax) or (y2 < ymin)
@@ -441,9 +440,7 @@ def _esclip(
     # General case: check intersections with all four edges
     # Top edge
     ymaxy1 = ymax - y1
-    if nwpnts < possbl and (
-        (0 < ymaxy1 < dy) or (0 > ymaxy1 > dy)
-    ):
+    if nwpnts < possbl and ((0 < ymaxy1 < dy) or (0 > ymaxy1 > dy)):
         s = ymaxy1 / dy
         x = s * dx + x1
         if (x < xmax) and (x > xmin):
@@ -453,9 +450,7 @@ def _esclip(
 
     # Bottom edge
     yminy1 = ymin - y1
-    if nwpnts < possbl and (
-        (0 < yminy1 < dy) or (0 > yminy1 > dy)
-    ):
+    if nwpnts < possbl and ((0 < yminy1 < dy) or (0 > yminy1 > dy)):
         s = yminy1 / dy
         x = s * dx + x1
         if (x < xmax) and (x > xmin):
@@ -465,9 +460,7 @@ def _esclip(
 
     # Right edge
     xmaxx1 = xmax - x1
-    if nwpnts < possbl and (
-        (0 < xmaxx1 < dx) or (0 > xmaxx1 > dx)
-    ):
+    if nwpnts < possbl and ((0 < xmaxx1 < dx) or (0 > xmaxx1 > dx)):
         s = xmaxx1 / dx
         y = s * dy + y1
         if (y < ymax) and (y > ymin):
@@ -477,9 +470,7 @@ def _esclip(
 
     # Left edge
     xminx1 = xmin - x1
-    if nwpnts < possbl and (
-        (0 < xminx1 < dx) or (0 > xminx1 > dx)
-    ):
+    if nwpnts < possbl and ((0 < xminx1 < dx) or (0 > xminx1 > dx)):
         s = xminx1 / dx
         y = s * dy + y1
         if (y < ymax) and (y > ymin):
@@ -549,8 +540,8 @@ def _nint(x: float) -> int:
 def _esmap2(x: float, y: float, view_state: EscherViewState) -> tuple[int, int]:
     """Map projection (x,y) to pixel/line (port of ESMAP2)."""
     p = _nint(view_state._pcen + view_state._ux * (x - view_state._xcen))
-    l = _nint(view_state._lcen + view_state._uy * (y - view_state._ycen))
-    return (p, l)
+    line = _nint(view_state._lcen + view_state._uy * (y - view_state._ycen))
+    return (p, line)
 
 
 def esdraw(
@@ -568,9 +559,14 @@ def esdraw(
     ex = -end[0] / end[2]
     ey = -end[1] / end[2]
     bx, by, ex, ey, inside = _esclip(
-        view_state._xmin, view_state._xmax,
-        view_state._ymin, view_state._ymax,
-        bx, by, ex, ey,
+        view_state._xmin,
+        view_state._xmax,
+        view_state._ymin,
+        view_state._ymax,
+        bx,
+        by,
+        ex,
+        ey,
     )
     if not inside:
         return

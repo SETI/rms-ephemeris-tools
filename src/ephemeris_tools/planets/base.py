@@ -42,7 +42,7 @@ class ArcSpec:
     ring_index: int
     minlon_deg: float
     maxlon_deg: float
-    name: str = ""
+    name: str = ''
     motion_deg_day: float = 0.0
 
 

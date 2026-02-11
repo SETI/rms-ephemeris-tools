@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TextIO
-
 
 def clip_line(
     xmin: float,
@@ -35,15 +33,15 @@ def clip_line(
             return (x1, y1, x2, y2, False)
         hits: list[tuple[float, float]] = []
         for edge, (cx, cy, param) in [
-            ("top", (0, ymax, (ymax - y1) / dy if dy != 0 else None)),
-            ("bot", (0, ymin, (ymin - y1) / dy if dy != 0 else None)),
-            ("right", (xmax, 0, (xmax - x1) / dx if dx != 0 else None)),
-            ("left", (xmin, 0, (xmin - x1) / dx if dx != 0 else None)),
+            ('top', (0, ymax, (ymax - y1) / dy if dy != 0 else None)),
+            ('bot', (0, ymin, (ymin - y1) / dy if dy != 0 else None)),
+            ('right', (xmax, 0, (xmax - x1) / dx if dx != 0 else None)),
+            ('left', (xmin, 0, (xmin - x1) / dx if dx != 0 else None)),
         ]:
             if param is None:
                 continue
             if 0 <= param <= 1:
-                if edge in ("top", "bot"):
+                if edge in ('top', 'bot'):
                     px = x1 + param * dx
                     if xmin < px < xmax:
                         hits.append((px, cy))

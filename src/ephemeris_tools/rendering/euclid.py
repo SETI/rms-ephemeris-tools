@@ -13,9 +13,9 @@ import math
 from ephemeris_tools.rendering.escher import (
     EscherState,
     EscherViewState,
+    esclr,
     esdraw,
     esdump,
-    esclr,
     esview,
 )
 
@@ -91,6 +91,11 @@ def _vequ(src: Vec3) -> Vec3:
     return [src[0], src[1], src[2]]
 
 
+def _v3t(v: Vec3) -> tuple[float, float, float]:
+    """Return a 3-vector as a fixed-length tuple for typed APIs."""
+    return (v[0], v[1], v[2])
+
+
 def _vsep(a: Vec3, b: Vec3) -> float:
     """Angular separation between two vectors (radians)."""
     ha = _vhat(a)
@@ -154,13 +159,13 @@ def _frame(x: Vec3) -> tuple[Vec3, Vec3, Vec3]:
     else:
         ref = [0.0, 0.0, 1.0]
     # y = cross(x, ref) normalized
-    y = [xh[1] * ref[2] - xh[2] * ref[1],
-         xh[2] * ref[0] - xh[0] * ref[2],
-         xh[0] * ref[1] - xh[1] * ref[0]]
+    y = [
+        xh[1] * ref[2] - xh[2] * ref[1],
+        xh[2] * ref[0] - xh[0] * ref[2],
+        xh[0] * ref[1] - xh[1] * ref[0],
+    ]
     y = _vhat(y)
-    z = [xh[1] * y[2] - xh[2] * y[1],
-         xh[2] * y[0] - xh[0] * y[2],
-         xh[0] * y[1] - xh[1] * y[0]]
+    z = [xh[1] * y[2] - xh[2] * y[1], xh[2] * y[0] - xh[0] * y[2], xh[0] * y[1] - xh[1] * y[0]]
     return (xh, y, z)
 
 
@@ -183,9 +188,13 @@ def _brcktd(x: float, lo: float, hi: float) -> float:
 # Euclid helper functions (ports of standalone FORTRAN subroutines)
 # ---------------------------------------------------------------------------
 
+
 def _ellips(
-    axis1: Vec3, axis2: Vec3, axis3: Vec3,
-    center: Vec3, vufrom: Vec3,
+    axis1: Vec3,
+    axis2: Vec3,
+    axis3: Vec3,
+    center: Vec3,
+    vufrom: Vec3,
 ) -> tuple[Vec3, Vec3, Vec3, Vec3, bool]:
     """Compute limb ellipse of triaxial body (port of ELLIPS).
 
@@ -197,20 +206,18 @@ def _ellips(
     r3sqr = _vdot(axis3, axis3)
 
     if r1sqr == 0.0 or r2sqr == 0.0 or r3sqr == 0.0:
-        return ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0], False)
+        return ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], False)
 
     sight = _vsub(vufrom, center)
 
     cansee = (
-        (_vdot(axis1, sight) ** 2) / (r1sqr ** 2)
-        + (_vdot(axis2, sight) ** 2) / (r2sqr ** 2)
-        + (_vdot(axis3, sight) ** 2) / (r3sqr ** 2)
+        (_vdot(axis1, sight) ** 2) / (r1sqr**2)
+        + (_vdot(axis2, sight) ** 2) / (r2sqr**2)
+        + (_vdot(axis3, sight) ** 2) / (r3sqr**2)
     ) > 1.0
 
     if not cansee:
-        return ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0], False)
+        return ([0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], False)
 
     # Build E matrix: diag(1/r1sqr, 1/r2sqr, 1/r3sqr)
     e_diag: list[Vec3] = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
@@ -230,9 +237,7 @@ def _ellips(
     e_sym: list[Vec3] = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
     for i in range(3):
         for j in range(3):
-            e_sym[i][j] = (
-                e[0][i] * e[0][j] + e[1][i] * e[1][j] + e[2][i] * e[2][j]
-            )
+            e_sym[i][j] = e[0][i] * e[0][j] + e[1][i] * e[1][j] + e[2][i] * e[2][j]
     e = e_sym
 
     normal = _mxv(e, sight)
@@ -242,8 +247,7 @@ def _ellips(
 
     tempv1 = _vtmv(sight, e, sight)
     if tempv1 == 0.0:
-        return (normal, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0], True)
+        return (normal, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], True)
 
     lam = 1.0 / tempv1
     midpnt = _vadd(center, _vscl(lam, sight))
@@ -284,8 +288,12 @@ def _ellips(
 
 
 def _eclpmd(
-    axis1: Vec3, axis2: Vec3, axis3: Vec3,
-    center: Vec3, source: Vec3, radius: float,
+    axis1: Vec3,
+    axis2: Vec3,
+    axis3: Vec3,
+    center: Vec3,
+    source: Vec3,
+    radius: float,
 ) -> tuple[Vec3, Vec3, Vec3, Vec3, Vec3, Vec3, bool]:
     """Compute terminator/eclipse model (port of ECLPMD).
 
@@ -302,9 +310,9 @@ def _eclpmd(
     canecl = False
     if r1sqr > 0.0 and r2sqr > 0.0 and r3sqr > 0.0:
         canecl = (
-            (_vdot(axis1, sight) ** 2) / (r1sqr ** 2)
-            + (_vdot(axis2, sight) ** 2) / (r2sqr ** 2)
-            + (_vdot(axis3, sight) ** 2) / (r3sqr ** 2)
+            (_vdot(axis1, sight) ** 2) / (r1sqr**2)
+            + (_vdot(axis2, sight) ** 2) / (r2sqr**2)
+            + (_vdot(axis3, sight) ** 2) / (r3sqr**2)
         ) > 1.0 and _vnorm(sight) > bigone + radius
 
     z3 = [0.0, 0.0, 0.0]
@@ -320,9 +328,7 @@ def _eclpmd(
     vertex = _vlcom(1.0, center, t, sight)
     caxis = _vhat(sight)
 
-    normal, major, minor, midpnt, canecl = _ellips(
-        axis1, axis2, axis3, center, vertex
-    )
+    normal, major, minor, midpnt, canecl = _ellips(axis1, axis2, axis3, center, vertex)
 
     if _vdot(caxis, normal) < 0.0:
         normal = [-normal[0], -normal[1], -normal[2]]
@@ -360,7 +366,10 @@ def _ovrlap(centr1: Vec3, r1: float, centr2: Vec3, r2: float) -> int:
 
 
 def _elipln(
-    normal: Vec3, constn: float, major: Vec3, minor: Vec3,
+    normal: Vec3,
+    constn: float,
+    major: Vec3,
+    minor: Vec3,
 ) -> tuple[int, list[float], list[float]]:
     """Ellipse-plane intersection (port of ELIPLN).
 
@@ -403,9 +412,13 @@ def _elipln(
 
 
 def _plpnts(
-    major: Vec3, minor: Vec3, center: Vec3,
-    normls: list[Vec3], consts: list[float],
-    n: int, solve: list[bool],
+    major: Vec3,
+    minor: Vec3,
+    center: Vec3,
+    normls: list[Vec3],
+    consts: list[float],
+    n: int,
+    solve: list[bool],
 ) -> tuple[list[float], list[float], int]:
     """Find ellipse-plane intersections (port of PLPNTS).
 
@@ -444,7 +457,9 @@ def _arderd(x1: float, y1: float, x2: float, y2: float) -> bool:
 
 
 def _asort(
-    xcoord: list[float], ycoord: list[float], n: int,
+    xcoord: list[float],
+    ycoord: list[float],
+    n: int,
 ) -> None:
     """Shell sort by angle (port of ASORT). Sorts in place."""
     gap = n // 2
@@ -543,7 +558,11 @@ def _fovclp(p: Vec3, q: Vec3, cosfov: float) -> tuple[Vec3, Vec3]:
 
 
 def _smside(
-    p: Vec3, q: Vec3, normal: Vec3, center: Vec3, refpnt: Vec3,
+    p: Vec3,
+    q: Vec3,
+    normal: Vec3,
+    center: Vec3,
+    refpnt: Vec3,
 ) -> bool:
     """Test if segment and refpnt are on same side of plane (port of SMSIDE)."""
     c = _vdot(center, normal)
@@ -566,8 +585,12 @@ def _smside(
 
 
 def _plelsg(
-    p: Vec3, q: Vec3,
-    normal: Vec3, major: Vec3, minor: Vec3, center: Vec3,
+    p: Vec3,
+    q: Vec3,
+    normal: Vec3,
+    major: Vec3,
+    minor: Vec3,
+    center: Vec3,
     refpnt: Vec3,
 ) -> tuple[list[Vec3], list[Vec3], list[bool], list[bool], int]:
     """Project segment onto plane, intersect with ellipse (port of PLELSG).
@@ -657,10 +680,8 @@ def _plelsg(
         insidp = (majorp * majorp / aquad) + (minorp * minorp / bquad)
         insidq = (majorq * majorq / aquad) + (minorq * minorq / bquad)
 
-        alpha = ((majorp - majorq) ** 2 / aquad
-                 + (minorp - minorq) ** 2 / bquad)
-        beta_v = (majorp * (majorq - majorp) / aquad
-                  + minorp * (minorq - minorp) / bquad)
+        alpha = (majorp - majorq) ** 2 / aquad + (minorp - minorq) ** 2 / bquad
+        beta_v = majorp * (majorq - majorp) / aquad + minorp * (minorq - minorp) / bquad
         gamma_v = insidp - 1.0
         discrm = beta_v * beta_v - alpha * gamma_v
 
@@ -743,10 +764,8 @@ def _plelsg(
         if insidq <= 1.0 and insidp <= 1.0:
             inelip[1] = True
         else:
-            alpha = ((majorp - majorq) ** 2 / aquad
-                     + (minorp - minorq) ** 2 / bquad)
-            beta_v = (majorp * (majorq - majorp) / aquad
-                      + minorp * (minorq - minorp) / bquad)
+            alpha = (majorp - majorq) ** 2 / aquad + (minorp - minorq) ** 2 / bquad
+            beta_v = majorp * (majorq - majorp) / aquad + minorp * (minorq - minorp) / bquad
             gamma_v = insidp - 1.0
             discrm = beta_v * beta_v - alpha * gamma_v
 
@@ -761,9 +780,14 @@ def _plelsg(
                 t_arr[subpnt] = t_arr[subpnt] + (1.0 - t_arr[subpnt]) * 0.01
                 inelip[1] = True
                 inelip[2] = False
-            elif (discrm > 0.0 and gamma_v >= 0.0 and beta_v < 0.0
-                  and -beta_v < alpha and alpha != 0.0
-                  and alpha + beta_v + beta_v + gamma_v >= 0.0):
+            elif (
+                discrm > 0.0
+                and gamma_v >= 0.0
+                and beta_v < 0.0
+                and -beta_v < alpha
+                and alpha != 0.0
+                and alpha + beta_v + beta_v + gamma_v >= 0.0
+            ):
                 if gamma_v == 0.0:
                     subpnt += 1
                     inelip[1] = True
@@ -874,6 +898,7 @@ def _plelsg(
 # Euclid state
 # ---------------------------------------------------------------------------
 
+
 class EuclidState:
     """Geometry and view state for Euclid (replaces FORTRAN saved variables)."""
 
@@ -948,10 +973,17 @@ def euinit(state: EuclidState) -> None:
 # Main entry points
 # ---------------------------------------------------------------------------
 
+
 def euview(
     device: int,
-    h1: float, h2: float, v1: float, v2: float,
-    x1: float, x2: float, y1: float, y2: float,
+    h1: float,
+    h2: float,
+    v1: float,
+    v2: float,
+    x1: float,
+    x2: float,
+    y1: float,
+    y2: float,
     euclid_state: EuclidState,
     view_state: EscherViewState,
     escher_state: EscherState,
@@ -1054,8 +1086,11 @@ def eugeom(
     st.cansee = []
     for i in range(nbods):
         normal, major, minor, midpnt, cs = _ellips(
-            st.prnpls[i][0], st.prnpls[i][1], st.prnpls[i][2],
-            st.centrs[i], vupnt,
+            st.prnpls[i][0],
+            st.prnpls[i][1],
+            st.prnpls[i][2],
+            st.centrs[i],
+            vupnt,
         )
         st.lnorml.append(normal)
         st.lmajor.append(major)
@@ -1075,8 +1110,12 @@ def eugeom(
     for j in range(nlites):
         for i in range(nbods):
             tn, tm, tmi, tc, vx, ca, ce = _eclpmd(
-                st.prnpls[i][0], st.prnpls[i][1], st.prnpls[i][2],
-                st.centrs[i], st.lights[j], srcrad[j],
+                st.prnpls[i][0],
+                st.prnpls[i][1],
+                st.prnpls[i][2],
+                st.centrs[i],
+                st.lights[j],
+                srcrad[j],
             )
             st.tnorml[i][j] = tn
             st.tmajor[i][j] = tm
@@ -1127,8 +1166,10 @@ def eubody(
             near = _vnorm(st.centrs[i]) - st.biga[i]
             if near < fbodyd:
                 intsec = _ovrlap(
-                    st.lcentr[bi], st.biga[bi],
-                    st.lcentr[i], st.biga[i],
+                    st.lcentr[bi],
+                    st.biga[bi],
+                    st.lcentr[i],
+                    st.biga[i],
                 )
                 if intsec > 1:
                     ocands.append(i)
@@ -1138,10 +1179,12 @@ def eubody(
                     nocand += 1
                     if _vnorm(st.centrs[i]) < nbodyd:
                         intsec2 = _ovrlap(
-                            st.lcentr[bi], st.biga[bi],
-                            st.centrs[i], st.smalla[i],
+                            st.lcentr[bi],
+                            st.biga[bi],
+                            st.centrs[i],
+                            st.smalla[i],
                         )
-                        occltd = (intsec2 == 1)
+                        occltd = intsec2 == 1
         i += 1
 
     if occltd:
@@ -1149,10 +1192,12 @@ def eubody(
 
     # NOVIEW check
     intsec = _ovrlap(
-        st.lcentr[bi], st.biga[bi],
-        st.kaxis, math.tan(LIMFOV),
+        st.lcentr[bi],
+        st.biga[bi],
+        st.kaxis,
+        math.tan(LIMFOV),
     )
-    noview = (intsec != 1)
+    noview = intsec != 1
 
     # Unit vectors along body axes
     tempv1 = _vhat(st.prnpls[bi][0])
@@ -1309,10 +1354,12 @@ def eubody(
                             if _vnorm(canbod3) + st.smalla[i] < nbodyd_j:
                                 canbod4 = _vsub(st.centrs[i], st.vertex[i][j])
                                 intsec2 = _ovrlap(
-                                    eclbod_s, st.biga[bi],
-                                    canbod4, st.smalla[i],
+                                    eclbod_s,
+                                    st.biga[bi],
+                                    canbod4,
+                                    st.smalla[i],
                                 )
-                                eclpsd[j] = (intsec2 == 1)
+                                eclpsd[j] = intsec2 == 1
             i += 1
 
         if necand[j] > 0:
@@ -1331,8 +1378,13 @@ def eubody(
 
         # Find intersections with other planes
         coeffx, coeffy, meetns = _plpnts(
-            pmajor[ellpse], pminor[ellpse], pcentr[ellpse],
-            pnorml, pconst, planes, solve,
+            pmajor[ellpse],
+            pminor[ellpse],
+            pcentr[ellpse],
+            pnorml,
+            pconst,
+            planes,
+            solve,
         )
 
         # Update solve array
@@ -1368,8 +1420,7 @@ def eubody(
 
         # Merge standard and auxiliary endpoints
         while nxtstd <= STDSEG - 1 and nxtaux < meetns:
-            if _arderd(st.stdcos[nxtstd], st.stdsin[nxtstd],
-                       coeffx[nxtaux], coeffy[nxtaux]):
+            if _arderd(st.stdcos[nxtstd], st.stdsin[nxtstd], coeffx[nxtaux], coeffy[nxtaux]):
                 cosang_v = st.stdcos[nxtstd]
                 sinang_v = st.stdsin[nxtstd]
                 nxtstd += skip
@@ -1437,7 +1488,6 @@ def eubody(
 
         # Check occultation by other bodies
         vupnt_occ: Vec3 = [0.0, 0.0, 0.0]
-        segptr = 0
         kept_beg: list[Vec3] = []
         kept_end: list[Vec3] = []
 
@@ -1451,9 +1501,12 @@ def eubody(
             while oi < nocand and savseg:
                 j_occ = ocands[oi]
                 bsub, esub, ins, inb, ns = _plelsg(
-                    bc, ec,
-                    st.lnorml[j_occ], st.lmajor[j_occ],
-                    st.lminor[j_occ], st.lcentr[j_occ],
+                    bc,
+                    ec,
+                    st.lnorml[j_occ],
+                    st.lmajor[j_occ],
+                    st.lminor[j_occ],
+                    st.lcentr[j_occ],
                     vupnt_occ,
                 )
 
@@ -1485,8 +1538,6 @@ def eubody(
         numseg = len(begseg_list)
 
         # Determine shadow/illumination
-        seg_out_beg: list[Vec3] = []
-        seg_out_end: list[Vec3] = []
         bright_segs: list[Vec3] = []
         bright_ends: list[Vec3] = []
 
@@ -1498,11 +1549,10 @@ def eubody(
             nillum = 0
 
             ls = 0
-            unknwn = (ls < st.nlight)
+            unknwn = ls < st.nlight
             while unknwn:
                 if tsrce[ellpse] != ls + 1:
-                    if _smside(bc, ec, st.tnorml[bi][ls], st.tcentr[bi][ls],
-                               st.lights[ls]):
+                    if _smside(bc, ec, st.tnorml[bi][ls], st.tcentr[bi][ls], st.lights[ls]):
                         nillum += 1
                     else:
                         ndark_v += 1
@@ -1519,7 +1569,7 @@ def eubody(
                 if ndark_v == drkreq:
                     if noview:
                         bc, ec = _fovclp(bc, ec, st.cosfov)
-                    esdraw(tuple(bc), tuple(ec), dark, view_state, escher_state)
+                    esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
                 else:
                     bright_segs.append(bc)
                     bright_ends.append(ec)
@@ -1527,7 +1577,7 @@ def eubody(
                 if ndark_v == drkreq and nillum == srcreq - 1:
                     if noview:
                         bc, ec = _fovclp(bc, ec, st.cosfov)
-                    esdraw(tuple(bc), tuple(ec), term, view_state, escher_state)
+                    esdraw(_v3t(bc), _v3t(ec), term, view_state, escher_state)
 
         # Eclipse checks on remaining bright segments
         numseg_b = len(bright_segs)
@@ -1538,7 +1588,7 @@ def eubody(
                 ec = bright_ends[si]
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(tuple(bc), tuple(ec), dark, view_state, escher_state)
+                esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
             numseg_b = 0
 
         if npsecl == 0 and numseg_b > 0:
@@ -1547,7 +1597,7 @@ def eubody(
                 ec = bright_ends[si]
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(tuple(bc), tuple(ec), bright, view_state, escher_state)
+                esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
             numseg_b = 0
 
         # Per-segment eclipse check
@@ -1559,30 +1609,33 @@ def eubody(
             lsrce = 0
             nillum = 0
             ndark_v = 0
-            notecl = (ndark_v < drkreq)
-            notlit = (nillum < srcreq)
+            notecl = ndark_v < drkreq
+            notlit = nillum < srcreq
 
             while lsrce < st.nlight and notecl and notlit:
                 curdrk = ndark_v
                 unknwn2 = True
 
-                if st.canecl[bi][lsrce]:
-                    if not _smside(bc, ec, st.tnorml[bi][lsrce],
-                                   st.tcentr[bi][lsrce], st.lights[lsrce]):
-                        ndark_v += 1
-                        unknwn2 = False
+                if st.canecl[bi][lsrce] and not _smside(
+                    bc, ec, st.tnorml[bi][lsrce], st.tcentr[bi][lsrce], st.lights[lsrce]
+                ):
+                    ndark_v += 1
+                    unknwn2 = False
 
                 j2 = 0
-                notecl = (ndark_v < drkreq)
-                notlit = (nillum < srcreq)
+                notecl = ndark_v < drkreq
+                notlit = nillum < srcreq
                 unknwn2 = unknwn2 and notecl and notlit and (j2 < necand[lsrce])
 
                 while unknwn2:
                     k = ecands[lsrce][j2]
                     bsub, esub, ins, inb, ns = _plelsg(
-                        bc, ec,
-                        st.tnorml[k][lsrce], st.tmajor[k][lsrce],
-                        st.tminor[k][lsrce], st.tcentr[k][lsrce],
+                        bc,
+                        ec,
+                        st.tnorml[k][lsrce],
+                        st.tmajor[k][lsrce],
+                        st.tminor[k][lsrce],
+                        st.tcentr[k][lsrce],
                         st.vertex[k][lsrce],
                     )
                     if ns > 1:
@@ -1593,29 +1646,33 @@ def eubody(
                             bright_ends.append(_vequ(esub[sub]))
                             numseg_b += 1
 
-                    if ns >= 1 and ins[0]:
-                        if not _smside(bc, ec, st.tnorml[k][lsrce],
-                                       st.tcentr[k][lsrce], st.lights[lsrce]):
-                            ndark_v += 1
-                            unknwn2 = False
+                    if (
+                        ns >= 1
+                        and ins[0]
+                        and not _smside(
+                            bc, ec, st.tnorml[k][lsrce], st.tcentr[k][lsrce], st.lights[lsrce]
+                        )
+                    ):
+                        ndark_v += 1
+                        unknwn2 = False
 
                     j2 += 1
                     unknwn2 = unknwn2 and (j2 < necand[lsrce])
-                    notecl = (ndark_v < drkreq)
+                    notecl = ndark_v < drkreq
 
                 if curdrk == ndark_v:
                     nillum += 1
-                notlit = (nillum < srcreq)
+                notlit = nillum < srcreq
                 lsrce += 1
 
             if notecl:
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(tuple(bc), tuple(ec), bright, view_state, escher_state)
+                esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
             else:
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(tuple(bc), tuple(ec), dark, view_state, escher_state)
+                esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
 
             si += 1
 
@@ -1680,10 +1737,12 @@ def euring(
                     nocand += 1
                     if _vnorm(st.centrs[i]) + st.smalla[i] < nringd:
                         intsec2 = _ovrlap(
-                            occrng, largst,
-                            st.centrs[i], st.smalla[i],
+                            occrng,
+                            largst,
+                            st.centrs[i],
+                            st.smalla[i],
                         )
-                        occltd = (intsec2 == 1)
+                        occltd = intsec2 == 1
         i += 1
 
     if occltd:
@@ -1694,7 +1753,7 @@ def euring(
         noview = True
     else:
         intsec = _ovrlap(rcentr, largst, st.kaxis, math.tan(LIMFOV))
-        noview = (intsec != 1)
+        noview = intsec != 1
 
     # Eclipse candidates
     drkreq = 1 + st.nlight - srcreq
@@ -1736,7 +1795,7 @@ def euring(
                         if _vnorm(canbod3) + st.smalla[i] < nringd_j:
                             canbod4 = _vsub(st.centrs[i], st.vertex[i][j])
                             intsec2 = _ovrlap(eclrng_s, largst, canbod4, st.smalla[i])
-                            eclpsd_r[j] = (intsec2 == 1)
+                            eclpsd_r[j] = intsec2 == 1
             i += 1
 
         if necand_r[j] > 0:
@@ -1784,9 +1843,12 @@ def euring(
         while oi < nocand and savseg:
             j_occ = ocands_r[oi]
             bsub, esub, ins, inb, ns = _plelsg(
-                bc, ec,
-                st.lnorml[j_occ], st.lmajor[j_occ],
-                st.lminor[j_occ], st.lcentr[j_occ],
+                bc,
+                ec,
+                st.lnorml[j_occ],
+                st.lmajor[j_occ],
+                st.lminor[j_occ],
+                st.lcentr[j_occ],
                 vupnt_occ,
             )
 
@@ -1824,7 +1886,7 @@ def euring(
             ec = endseg_list[si]
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(tuple(bc), tuple(ec), dark, view_state, escher_state)
+            esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
         numseg = 0
 
     if npsecl == 0 and numseg > 0:
@@ -1833,7 +1895,7 @@ def euring(
             ec = endseg_list[si]
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(tuple(bc), tuple(ec), bright, view_state, escher_state)
+            esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
         numseg = 0
 
     # Per-segment eclipse check
@@ -1853,16 +1915,19 @@ def euring(
             unknwn2 = True
 
             j2 = 0
-            notecl = (ndark_v < drkreq)
-            notlit = (nillum < srcreq)
+            notecl = ndark_v < drkreq
+            notlit = nillum < srcreq
             unknwn2 = unknwn2 and notecl and notlit and (j2 < necand_r[lsrce])
 
             while unknwn2:
                 k = ecands_r[lsrce][j2]
                 bsub, esub, ins, inb, ns = _plelsg(
-                    bc, ec,
-                    st.tnorml[k][lsrce], st.tmajor[k][lsrce],
-                    st.tminor[k][lsrce], st.tcentr[k][lsrce],
+                    bc,
+                    ec,
+                    st.tnorml[k][lsrce],
+                    st.tmajor[k][lsrce],
+                    st.tminor[k][lsrce],
+                    st.tcentr[k][lsrce],
                     st.vertex[k][lsrce],
                 )
                 if ns > 1:
@@ -1873,29 +1938,33 @@ def euring(
                         endseg_list.append(_vequ(esub[sub]))
                         numseg += 1
 
-                if ns >= 1 and ins[0]:
-                    if not _smside(bc, ec, st.tnorml[k][lsrce],
-                                   st.tcentr[k][lsrce], st.lights[lsrce]):
-                        ndark_v += 1
-                        unknwn2 = False
+                if (
+                    ns >= 1
+                    and ins[0]
+                    and not _smside(
+                        bc, ec, st.tnorml[k][lsrce], st.tcentr[k][lsrce], st.lights[lsrce]
+                    )
+                ):
+                    ndark_v += 1
+                    unknwn2 = False
 
                 j2 += 1
                 unknwn2 = unknwn2 and (j2 < necand_r[lsrce])
-                notecl = (ndark_v < drkreq)
+                notecl = ndark_v < drkreq
 
             if curdrk == ndark_v:
                 nillum += 1
-            notlit = (nillum < srcreq)
+            notlit = nillum < srcreq
             lsrce += 1
 
         if notecl:
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(tuple(bc), tuple(ec), bright, view_state, escher_state)
+            esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
         else:
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(tuple(bc), tuple(ec), dark, view_state, escher_state)
+            esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
 
         si += 1
 

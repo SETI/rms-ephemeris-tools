@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import cspyce
 
 from ephemeris_tools.spice.common import MAXSHIFTS, get_state
-from ephemeris_tools.spice.observer import observer_state
 
 if TYPE_CHECKING:
     import numpy as np
@@ -21,9 +20,7 @@ def set_shift(body_id: int, dt: float) -> None:
             state.shift_dt[i] = dt
             return
     if state.nshifts >= MAXSHIFTS:
-        raise RuntimeError(
-            "Number of moon orbit time shifts exceeded in set_shift()"
-        )
+        raise RuntimeError('Number of moon orbit time shifts exceeded in set_shift()')
     state.shift_id[state.nshifts] = body_id
     state.shift_dt[state.nshifts] = dt
     state.nshifts += 1
@@ -33,26 +30,22 @@ def spkapp_shifted(
     body_id: int,
     et: float,
     ref: str,
-    obs_pv: "np.ndarray",
+    obs_pv: np.ndarray | list[float],
     aberr: str,
-) -> tuple["np.ndarray", float]:
+) -> tuple[np.ndarray, float]:
     """Like cspyce.spkapp but with time-shift support. Returns (body_dpv, lt)."""
     import numpy as np
 
     state = get_state()
-    obs = obs_pv if hasattr(obs_pv, "__len__") else np.array(obs_pv)
+    obs = obs_pv if hasattr(obs_pv, '__len__') else np.array(obs_pv)
     for i in range(state.nshifts):
         if state.shift_id[i] != body_id:
             continue
         dt_shift = state.shift_dt[i]
         if dt_shift == 0.0:
             break
-        planet_dpv, planet_lt = cspyce.spkapp(
-            state.planet_id, et + dt_shift, ref, obs, aberr
-        )
-        body_dpv, body_lt = cspyce.spkapp(
-            body_id, et + dt_shift, ref, obs, aberr
-        )
+        planet_dpv, planet_lt = cspyce.spkapp(state.planet_id, et + dt_shift, ref, obs, aberr)
+        body_dpv, body_lt = cspyce.spkapp(body_id, et + dt_shift, ref, obs, aberr)
         temp_pos = [
             body_dpv[0] - planet_dpv[0],
             body_dpv[1] - planet_dpv[1],
@@ -63,9 +56,7 @@ def spkapp_shifted(
             body_dpv[4] - planet_dpv[4],
             body_dpv[5] - planet_dpv[5],
         ]
-        planet_dpv_at_et, planet_lt_at_et = cspyce.spkapp(
-            state.planet_id, et, ref, obs, aberr
-        )
+        planet_dpv_at_et, planet_lt_at_et = cspyce.spkapp(state.planet_id, et, ref, obs, aberr)
         out_pos = [
             temp_pos[0] + planet_dpv_at_et[0],
             temp_pos[1] + planet_dpv_at_et[1],

@@ -12,6 +12,7 @@ Welcome to the Documentation for RMS-XXX!
    :caption: Contents:
 
    module
+   contributing
 
 Indices and tables
 ==================

@@ -22,13 +22,10 @@ def orbit_opening(et: float, moon_id: int) -> tuple[float, float]:
     """Observed opening angle of moon orbit and observer longitude (radians)."""
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "CN"
-    )
+    _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'CN')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(state.planet_id, planet_time, "J2000")
-    moon_dpv = cspyce.spkez(moon_id, et, "J2000", "NONE", state.planet_id)
-    moon_dpv = moon_dpv[0]
+    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    moon_dpv, _ = cspyce.spkez(moon_id, et, 'J2000', 'NONE', state.planet_id)
     rotmat = cspyce.twovec(moon_dpv[:3], 1, moon_dpv[3:6], 2)
     obs_dp = [
         obs_pv[0] - planet_pv[0],
@@ -36,9 +33,7 @@ def orbit_opening(et: float, moon_id: int) -> tuple[float, float]:
         obs_pv[2] - planet_pv[2],
     ]
     norm_dp = cspyce.vhat(obs_dp)
-    tempvec = cspyce.vlcom(
-        1.0, norm_dp, -1.0 / cspyce.clight(), planet_pv[3:6]
-    )
+    tempvec = cspyce.vlcom(1.0, norm_dp, -1.0 / cspyce.clight(), planet_pv[3:6])
     tempvec = cspyce.mxv(rotmat, tempvec)
     n = cspyce.vnorm(tempvec)
     obs_b = math.asin(tempvec[2] / n)
@@ -48,17 +43,13 @@ def orbit_opening(et: float, moon_id: int) -> tuple[float, float]:
     return (obs_b, obs_long)
 
 
-def moon_distances(
-    et: float, moon_ids: list[int]
-) -> tuple["np.ndarray", float]:
+def moon_distances(et: float, moon_ids: list[int]) -> tuple[np.ndarray, float]:
     """Projected angular offsets of moons from planet axis (radians), and limb angle."""
     import numpy as np
 
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
-    )
+    planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
     bodmat_rot = planet_bodmat(state.planet_id, planet_time)
     pole = [bodmat_rot[2][0], bodmat_rot[2][1], bodmat_rot[2][2]]
@@ -67,10 +58,10 @@ def moon_distances(
     rotmat = cspyce.twovec(planet_dpv[:3], 1, pole, 3)
     offsets = np.zeros(len(moon_ids), dtype=np.float64)
     for i, mid in enumerate(moon_ids):
-        moon_dpv, _ = spkapp_shifted(mid, et, "J2000", obs_pv, "LT")
+        moon_dpv, _ = spkapp_shifted(mid, et, 'J2000', obs_pv, 'LT')
         vector = cspyce.mxv(rotmat, moon_dpv[:3])
         offsets[i] = math.atan2(vector[1], vector[0])
-    radii = cspyce.bodvrd(str(state.planet_id), "RADII")
+    radii = cspyce.bodvrd(str(state.planet_id), 'RADII')
     r_eq = radii[0]
     limb = math.asin(min(1.0, r_eq / cspyce.vnorm(planet_dpv[:3])))
     return (offsets, limb)

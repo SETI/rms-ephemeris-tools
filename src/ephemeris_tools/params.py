@@ -53,13 +53,13 @@ class EphemerisParams:
     start_time: str
     stop_time: str
     interval: float = 1.0
-    time_unit: str = "hour"
+    time_unit: str = 'hour'
     ephem_version: int = 0
-    viewpoint: str = "Earth"
+    viewpoint: str = 'Earth'
     observatory: str = "Earth's Center"
     latitude_deg: float | None = None
     longitude_deg: float | None = None
-    lon_dir: str = "east"
+    lon_dir: str = 'east'
     altitude_m: float | None = None
     sc_trajectory: int = 0
     columns: list[int] = field(default_factory=list)
@@ -68,7 +68,7 @@ class EphemerisParams:
     output: TextIO | None = None
 
 
-def _get_env(key: str, default: str = "") -> str:
+def _get_env(key: str, default: str = '') -> str:
     """Get environment variable, stripped."""
     return os.environ.get(key, default).strip()
 
@@ -78,103 +78,102 @@ def _get_keys_env(key: str) -> list[str]:
     out: list[str] = []
     i = 1
     while True:
-        v = os.environ.get(f"{key}#{i}", "").strip()
+        v = os.environ.get(f'{key}#{i}', '').strip()
         if not v:
-            v = os.environ.get(key if i == 1 else "", "").strip()
+            v = os.environ.get(key if i == 1 else '', '').strip()
         if not v:
             break
-        if "#" in v:
-            v = v.split("#")[0].strip()
+        if '#' in v:
+            v = v.split('#')[0].strip()
         out.append(v)
         i += 1
     if not out and key:
-        single = os.environ.get(key, "").strip()
+        single = os.environ.get(key, '').strip()
         if single:
-            for part in single.replace(",", " ").split():
+            for part in single.replace(',', ' ').split():
                 out.append(part)
     return out
 
 
 def ephemeris_params_from_env() -> EphemerisParams | None:
     """Build EphemerisParams from CGI-style environment variables. Returns None if invalid."""
-    nplanet_s = _get_env("NPLANET")
+    nplanet_s = _get_env('NPLANET')
     if not nplanet_s:
         return None
     try:
         nplanet = int(nplanet_s.strip())
     except ValueError as e:
-        logger.error("Invalid NPLANET %r (must be integer 4-9): %s", nplanet_s, e)
+        logger.error('Invalid NPLANET %r (must be integer 4-9): %s', nplanet_s, e)
         return None
     if nplanet < 4 or nplanet > 9:
-        logger.error("NPLANET %d out of range (must be 4-9)", nplanet)
+        logger.error('NPLANET %d out of range (must be 4-9)', nplanet)
         return None
 
-    start = _get_env("start") or _get_env("START_TIME")
-    stop = _get_env("stop") or _get_env("STOP_TIME")
+    start = _get_env('start') or _get_env('START_TIME')
+    stop = _get_env('stop') or _get_env('STOP_TIME')
     if not start or not stop:
         return None
 
-    interval_s = _get_env("interval", "1")
+    interval_s = _get_env('interval', '1')
     try:
         interval = float(interval_s)
     except ValueError as e:
-        logger.error("Invalid interval %r (must be number): %s; using 1.0", interval_s, e)
+        logger.error('Invalid interval %r (must be number): %s; using 1.0', interval_s, e)
         interval = 1.0
-    time_unit = _get_env("time_unit", "hour")
-    if time_unit.lower()[:3] not in ("sec", "min", "hou", "day"):
-        time_unit = "hour"
+    time_unit = _get_env('time_unit', 'hour')
+    if time_unit.lower()[:3] not in ('sec', 'min', 'hou', 'day'):
+        time_unit = 'hour'
 
-    ephem_s = _get_env("ephem", "0")
+    ephem_s = _get_env('ephem', '0')
     try:
         ephem_version = int(ephem_s.split()[0])
     except (ValueError, IndexError) as e:
-        logger.error("Invalid ephem %r (must be integer): %s; using 0 (latest)", ephem_s, e)
+        logger.error('Invalid ephem %r (must be integer): %s; using 0 (latest)', ephem_s, e)
         ephem_version = 0
 
-    viewpoint = _get_env("viewpoint", "observatory")
-    observatory = _get_env("observatory", "Earth's Center")
-    lat_s = _get_env("latitude")
-    lon_s = _get_env("longitude")
-    alt_s = _get_env("altitude")
-    lon_dir = _get_env("lon_dir", "east")
+    viewpoint = _get_env('viewpoint', 'observatory')
+    observatory = _get_env('observatory', "Earth's Center")
+    lat_s = _get_env('latitude')
+    lon_s = _get_env('longitude')
+    alt_s = _get_env('altitude')
+    lon_dir = _get_env('lon_dir', 'east')
     lat = float(lat_s) if lat_s else None
     lon = float(lon_s) if lon_s else None
     alt = float(alt_s) if alt_s else None
-    if lat is not None and lon_dir.lower() == "west":
+    if lat is not None and lon_dir.lower() == 'west':
         lon = -lon if lon is not None else None
 
-    sc_traj_s = _get_env("sc_trajectory", "0")
+    sc_traj_s = _get_env('sc_trajectory', '0')
     try:
-        sc_trajectory = int(sc_traj_s[:4] or "0")
+        sc_trajectory = int(sc_traj_s[:4] or '0')
     except ValueError as e:
-        logger.error("Invalid sc_trajectory %r: %s; using 0", sc_traj_s, e)
+        logger.error('Invalid sc_trajectory %r: %s; using 0', sc_traj_s, e)
         sc_trajectory = 0
 
-    column_strs = _get_keys_env("columns")
+    column_strs = _get_keys_env('columns')
     columns: list[int] = []
     for s in column_strs:
         try:
             columns.append(int(s.strip()))
         except ValueError as e:
-            logger.error("Invalid column value %r (must be integer): %s", s, e)
+            logger.error('Invalid column value %r (must be integer): %s', s, e)
 
-    mooncol_strs = _get_keys_env("mooncols")
+    mooncol_strs = _get_keys_env('mooncols')
     mooncols: list[int] = []
     for s in mooncol_strs:
         try:
             mooncols.append(int(s.strip()))
         except ValueError as e:
-            logger.error("Invalid mooncol value %r (must be integer): %s", s, e)
+            logger.error('Invalid mooncol value %r (must be integer): %s', s, e)
 
-    moon_strs = _get_keys_env("moons")
-    planet_id = 100 * nplanet + 99
+    moon_strs = _get_keys_env('moons')
     moon_ids: list[int] = []
     for s in moon_strs:
         s = s.strip()
         if not s:
             continue
         try:
-            idx = int(s.split()[0].split("(")[0])
+            idx = int(s.split()[0].split('(')[0])
             moon_ids.append(100 * nplanet + idx)
         except (ValueError, IndexError) as e:
             logger.error("Invalid moon value %r (expected index or 'N (Name)'): %s", s, e)
@@ -183,7 +182,7 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
             try:
                 moon_ids.append(int(s) if int(s) > 100 else 100 * nplanet + int(s))
             except ValueError as e:
-                logger.error("Invalid moon ID value %r: %s", s, e)
+                logger.error('Invalid moon ID value %r: %s', s, e)
 
     return EphemerisParams(
         planet_num=nplanet,

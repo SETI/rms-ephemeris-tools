@@ -31,20 +31,20 @@ def read_stars(filepath: str | Path, max_stars: int = 100) -> list[Star]:
             if not line:
                 break
             line = line.rstrip()
-            if not line or line.startswith("!"):
+            if not line or line.startswith('!'):
                 continue
             name = line.strip()
             ra_line = f.readline()
             if not ra_line:
                 break
             ra_line = ra_line.strip()
-            if ra_line.startswith("!"):
+            if ra_line.startswith('!'):
                 continue
             dec_line = f.readline()
             if not dec_line:
                 break
             dec_line = dec_line.strip()
-            if dec_line.startswith("!"):
+            if dec_line.startswith('!'):
                 continue
             ra_val = parse_angle(ra_line)
             dec_val = parse_angle(dec_line)

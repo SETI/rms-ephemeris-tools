@@ -35,19 +35,17 @@ def set_observer_location(lat_deg: float, lon_deg: float, alt_m: float) -> None:
     state.obs_is_set = abs(lat_deg) <= 90.0
 
 
-def observer_state(et: float) -> "np.ndarray":
+def observer_state(et: float) -> np.ndarray:
     """Return observer state (6) in J2000: position (3) and velocity (3) in km, km/s."""
     import numpy as np
 
     state = get_state()
-    obs_pv = list(cspyce.spkssb(state.obs_id, et, "J2000"))
+    obs_pv = list(cspyce.spkssb(state.obs_id, et, 'J2000'))
     if not state.obs_is_set:
         return np.array(obs_pv, dtype=np.float64)
-    obs_dp = cspyce.georec(
-        state.obs_lon, state.obs_lat, state.obs_alt, EARTH_RAD_KM, EARTH_FLAT
-    )
-    frame = f"IAU_{cspyce.bodc2n(EARTH_ID).upper()}"
-    earth_mat = cspyce.pxform(frame, "J2000", et)
+    obs_dp = cspyce.georec(state.obs_lon, state.obs_lat, state.obs_alt, EARTH_RAD_KM, EARTH_FLAT)
+    frame = f'IAU_{cspyce.bodc2n(EARTH_ID).upper()}'
+    earth_mat = cspyce.pxform(frame, 'J2000', et)
     rotated = cspyce.mtxv(earth_mat, obs_dp)
     obs_pv[0] += rotated[0]
     obs_pv[1] += rotated[1]

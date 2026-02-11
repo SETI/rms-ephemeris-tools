@@ -9,14 +9,14 @@ from ephemeris_tools.planets.saturn import SATURN_CONFIG
 from ephemeris_tools.planets.uranus import URANUS_CONFIG
 
 __all__ = [
-    "ArcSpec",
-    "JUPITER_CONFIG",
-    "MARS_CONFIG",
-    "MoonSpec",
-    "NEPTUNE_CONFIG",
-    "PlanetConfig",
-    "PLUTO_CONFIG",
-    "RingSpec",
-    "SATURN_CONFIG",
-    "URANUS_CONFIG",
+    'JUPITER_CONFIG',
+    'MARS_CONFIG',
+    'NEPTUNE_CONFIG',
+    'PLUTO_CONFIG',
+    'SATURN_CONFIG',
+    'URANUS_CONFIG',
+    'ArcSpec',
+    'MoonSpec',
+    'PlanetConfig',
+    'RingSpec',
 ]

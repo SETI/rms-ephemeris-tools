@@ -14,28 +14,28 @@ FOV_LEN = 12
 
 # Spacecraft: full name, abbreviation, NAIF code (from tools.inc)
 SPACECRAFT_NAMES = (
-    "Voyager 1",
-    "Voyager 2",
-    "Galileo",
-    "Cassini",
-    "New Horizons",
-    "Juno",
-    "Europa Clipper",
-    "JUICE",
-    "JWST",
-    "HST",
+    'Voyager 1',
+    'Voyager 2',
+    'Galileo',
+    'Cassini',
+    'New Horizons',
+    'Juno',
+    'Europa Clipper',
+    'JUICE',
+    'JWST',
+    'HST',
 )
 SPACECRAFT_IDS = (
-    "VG1",
-    "VG2",
-    "GLL",
-    "CAS",
-    "NH",
-    "JNO",
-    "EC",
-    "JCE",
-    "JWST",
-    "HST",
+    'VG1',
+    'VG2',
+    'GLL',
+    'CAS',
+    'NH',
+    'JNO',
+    'EC',
+    'JCE',
+    'JWST',
+    'HST',
 )
 SPACECRAFT_CODES = (-31, -32, -77, -82, -98, -61, -159, -28, -170, -48)
 
@@ -43,12 +43,12 @@ NSPACECRAFTS = 10
 
 # Planet number (4=Mars .. 9=Pluto) -> NAIF planet ID
 PLANET_NUM_TO_ID: dict[int, int] = {
-    4: 499,   # Mars
-    5: 599,   # Jupiter
-    6: 699,   # Saturn
-    7: 799,   # Uranus
-    8: 899,   # Neptune
-    9: 999,   # Pluto
+    4: 499,  # Mars
+    5: 599,  # Jupiter
+    6: 699,  # Saturn
+    7: 799,  # Uranus
+    8: 899,  # Neptune
+    9: 999,  # Pluto
 }
 
 # NAIF planet ID -> planet number
@@ -57,12 +57,12 @@ PLANET_ID_TO_NUM: dict[int, int] = {v: k for k, v in PLANET_NUM_TO_ID.items()}
 # Planet number → ephemeris kernel description (right-hand side of "Ephemeris:" in plot).
 # FORTRAN/web use "NNN DESCRIPTION"; we show DESCRIPTION. Matches web/tools/EPHEMERIS_INFO.shtml.
 EPHEM_DESCRIPTIONS_BY_PLANET: dict[int, str] = {
-    4: "MAR097 + DE440",
-    5: "JUP365 + DE440",
-    6: "SAT415 + SAT441 + DE440",
-    7: "URA111 + URA115 + DE440",
-    8: "NEP095 + NEP097 + NEP101 + DE440",
-    9: "PLU058 + DE440",
+    4: 'MAR097 + DE440',
+    5: 'JUP365 + DE440',
+    6: 'SAT415 + SAT441 + DE440',
+    7: 'URA111 + URA115 + DE440',
+    8: 'NEP095 + NEP097 + NEP101 + DE440',
+    9: 'PLU058 + DE440',
 }
 
 

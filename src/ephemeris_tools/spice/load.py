@@ -23,40 +23,41 @@ def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
     """
     state = get_state()
     if state.planet_num != 0 and state.planet_num != planet:
-        return (False, "SPICE already loaded for a different planet")
+        return (False, 'SPICE already loaded for a different planet')
     base = Path(get_spice_path())
     if not base.exists():
-        return (False, f"SPICE_PATH directory does not exist: {base}")
+        return (False, f'SPICE_PATH directory does not exist: {base}')
     if not base.is_dir():
-        return (False, f"SPICE_PATH is not a directory: {base}")
+        return (False, f'SPICE_PATH is not a directory: {base}')
     if not state.pool_loaded:
-        for ker in ("leapseconds.ker", "p_constants.ker"):
-            p = base / ker
-            if p.exists():
+        for ker in ('leapseconds.ker', 'p_constants.ker'):
+            ker_path = base / ker
+            if ker_path.exists():
                 try:
-                    cspyce.furnsh(str(p))
+                    cspyce.furnsh(str(ker_path))
                 except Exception as e:
-                    logger.warning("Failed to load %s: %s", p, e)
+                    logger.warning('Failed to load %s: %s', ker_path, e)
         state.pool_loaded = True
-    config_path = base / "SPICE_planets.txt"
+    config_path = base / 'SPICE_planets.txt'
     if not config_path.exists():
-        logger.warning("Config not found: %s", config_path)
+        logger.warning('Config not found: %s', config_path)
         return (
             False,
-            f"SPICE_planets.txt not found under {base}. "
-            "Ensure SPICE_PATH points to a SPICE kernel tree that includes SPICE_planets.txt.",
+            f'SPICE_planets.txt not found under {base}. '
+            'Ensure SPICE_PATH points to a SPICE kernel tree that includes SPICE_planets.txt.',
         )
     load_version = version
     loaded = False
     with config_path.open() as f:
         for line_no, line in enumerate(f, start=1):
             line = line.strip()
-            if not line or line.startswith("!"):
+            if not line or line.startswith('!'):
                 continue
             parts = line.split(',')
             if len(parts) < 3:
                 logger.error(
-                    "SPICE_planets.txt line %d: expected at least 3 fields (planet version filename), got %d: %r",
+                    'SPICE_planets.txt line %d: expected at least 3 fields '
+                    '(planet version filename), got %d: %r',
                     line_no,
                     len(parts),
                     line,
@@ -68,7 +69,8 @@ def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
                 filename = parts[2].strip('"')
             except ValueError as e:
                 logger.error(
-                    "SPICE_planets.txt line %d: bad value (planet/version must be integer): %r - %s",
+                    'SPICE_planets.txt line %d: bad value '
+                    '(planet/version must be integer): %r - %s',
                     line_no,
                     line,
                     e,
@@ -83,12 +85,12 @@ def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
                         cspyce.furnsh(str(kpath))
                         loaded = True
                     except Exception as e:
-                        logger.warning("Failed to load %s: %s", kpath, e)
+                        logger.warning('Failed to load %s: %s', kpath, e)
     if not loaded:
         return (
             False,
-            f"No kernel files for planet {planet} (version {load_version}) found under {base}. "
-            "Check SPICE_planets.txt for planet/version and that the listed kernel files exist.",
+            f'No kernel files for planet {planet} (version {load_version}) found under {base}. '
+            'Check SPICE_planets.txt for planet/version and that the listed kernel files exist.',
         )
     state.planet_num = planet
     state.planet_id = planet * 100 + 99
@@ -115,17 +117,17 @@ def load_spacecraft(
         return False
     base = Path(get_spice_path())
     if not state.pool_loaded:
-        for ker in ("leapseconds.ker", "p_constants.ker"):
-            p = base / ker
-            if p.exists():
+        for ker in ('leapseconds.ker', 'p_constants.ker'):
+            ker_path = base / ker
+            if ker_path.exists():
                 try:
-                    cspyce.furnsh(str(p))
+                    cspyce.furnsh(str(ker_path))
                 except Exception as e:
-                    logger.warning("Failed to load %s: %s", p, e)
+                    logger.warning('Failed to load %s: %s', ker_path, e)
         state.pool_loaded = True
-    config_path = base / "SPICE_spacecraft.txt"
+    config_path = base / 'SPICE_spacecraft.txt'
     if not config_path.exists():
-        logger.warning("Config not found: %s", config_path)
+        logger.warning('Config not found: %s', config_path)
         return False
     sc_upper = sc_id.strip().upper()
     load_version = version
@@ -133,12 +135,13 @@ def load_spacecraft(
     with config_path.open() as f:
         for line_no, line in enumerate(f, start=1):
             line = line.strip()
-            if not line or line.startswith("!"):
+            if not line or line.startswith('!'):
                 continue
             parts = line.split()
             if len(parts) < 5:
                 logger.error(
-                    "SPICE_spacecraft.txt line %d: expected at least 5 fields (name planet version naif_id filename), got %d: %r",
+                    'SPICE_spacecraft.txt line %d: expected at least 5 fields '
+                    '(name planet version naif_id filename), got %d: %r',
                     line_no,
                     len(parts),
                     line,
@@ -152,7 +155,8 @@ def load_spacecraft(
                 filename = parts[4]
             except (ValueError, IndexError) as e:
                 logger.error(
-                    "SPICE_spacecraft.txt line %d: bad value (planet/version/naif_id must be integer): %r - %s",
+                    'SPICE_spacecraft.txt line %d: bad value '
+                    '(planet/version/naif_id must be integer): %r - %s',
                     line_no,
                     line,
                     e,
@@ -170,7 +174,7 @@ def load_spacecraft(
                             state.obs_id = naif_id
                             state.obs_is_set = True
                     except Exception as e:
-                        logger.warning("Failed to load %s: %s", kpath, e)
+                        logger.warning('Failed to load %s: %s', kpath, e)
     if not loaded:
         return False
     state.planet_num = planet

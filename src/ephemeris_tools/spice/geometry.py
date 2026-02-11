@@ -14,7 +14,7 @@ from ephemeris_tools.spice.observer import observer_state
 from ephemeris_tools.spice.shifts import spkapp_shifted
 
 if TYPE_CHECKING:
-    import numpy as np
+    pass
 
 TWOPI = 2.0 * math.pi
 
@@ -22,8 +22,8 @@ TWOPI = 2.0 * math.pi
 def body_radec(et: float, body_id: int) -> tuple[float, float]:
     """Observed J2000 RA and Dec of body (radians)."""
     obs_pv = observer_state(et)
-    body_dpv, _ = spkapp_shifted(body_id, et, "J2000", obs_pv, "LT")
-    range_, ra, dec = cspyce.recrad(body_dpv[:3])
+    body_dpv, _ = spkapp_shifted(body_id, et, 'J2000', obs_pv, 'LT')
+    _, ra, dec = cspyce.recrad(body_dpv[:3])
     return (ra, dec)
 
 
@@ -33,12 +33,10 @@ def body_phase(et: float, body_id: int) -> float:
     Port of RSPK_BodyPhase: uses standard SPKAPP with 'LT', not shifted.
     """
     obs_pv = observer_state(et)
-    body_dpv, dt = cspyce.spkapp(body_id, et, "J2000", obs_pv[:6], "LT")
+    body_dpv, dt = cspyce.spkapp(body_id, et, 'J2000', obs_pv[:6], 'LT')
     body_time = et - dt
-    body_pv = cspyce.spkssb(body_id, body_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, body_time, "J2000", body_pv[:6], "LT"
-    )
+    body_pv = cspyce.spkssb(body_id, body_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, body_time, 'J2000', body_pv[:6], 'LT')
     obs_dp = cspyce.vminus(body_dpv[:3])
     return cspyce.vsep(sun_dpv[:3], obs_dp)
 
@@ -46,12 +44,10 @@ def body_phase(et: float, body_id: int) -> float:
 def body_ranges(et: float, body_id: int) -> tuple[float, float]:
     """Sun-body and observer-body distances (km)."""
     obs_pv = observer_state(et)
-    body_dpv, dt = spkapp_shifted(body_id, et, "J2000", obs_pv, "LT")
+    body_dpv, dt = spkapp_shifted(body_id, et, 'J2000', obs_pv, 'LT')
     body_time = et - dt
-    body_pv = cspyce.spkssb(body_id, body_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, body_time, "J2000", body_pv[:6], "LT+S"
-    )
+    body_pv = cspyce.spkssb(body_id, body_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, body_time, 'J2000', body_pv[:6], 'LT+S')
     return (cspyce.vnorm(sun_dpv[:3]), cspyce.vnorm(body_dpv[:3]))
 
 
@@ -63,14 +59,10 @@ def planet_phase(et: float) -> float:
     """
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
-    )
+    planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(state.planet_id, planet_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, planet_time, "J2000", planet_pv[:6], "LT"
-    )
+    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT')
     obs_dp = cspyce.vminus(planet_dpv[:3])
     return cspyce.vsep(sun_dpv[:3], obs_dp)
 
@@ -79,14 +71,10 @@ def planet_ranges(et: float) -> tuple[float, float]:
     """Sun-planet and observer-planet distances (km)."""
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
-    )
+    planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(state.planet_id, planet_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, planet_time, "J2000", planet_pv[:6], "LT+S"
-    )
+    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
     return (cspyce.vnorm(sun_dpv[:3]), cspyce.vnorm(planet_dpv[:3]))
 
 
@@ -94,10 +82,8 @@ def limb_radius(et: float) -> tuple[float, float]:
     """Planet radius (km) and projected angular radius (radians)."""
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, _ = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
-    )
-    radii = cspyce.bodvrd(str(state.planet_id), "RADII")
+    planet_dpv, _ = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
+    radii = cspyce.bodvrd(str(state.planet_id), 'RADII')
     rkm = radii[0]
     rradians = rkm / cspyce.vnorm(planet_dpv[:3])
     return (rkm, rradians)
@@ -106,8 +92,8 @@ def limb_radius(et: float) -> tuple[float, float]:
 def conjunction_angle(et: float, body1_id: int, body2_id: int) -> float:
     """Angular separation between two bodies as seen from observer (radians)."""
     obs_pv = observer_state(et)
-    b1_dpv, _ = spkapp_shifted(body1_id, et, "J2000", obs_pv, "LT+S")
-    b2_dpv, _ = spkapp_shifted(body2_id, et, "J2000", obs_pv, "LT+S")
+    b1_dpv, _ = spkapp_shifted(body1_id, et, 'J2000', obs_pv, 'LT+S')
+    b2_dpv, _ = spkapp_shifted(body2_id, et, 'J2000', obs_pv, 'LT+S')
     return cspyce.vsep(b1_dpv[:3], b2_dpv[:3])
 
 
@@ -115,41 +101,32 @@ def anti_sun(et: float, body_id: int) -> tuple[float, float]:
     """Anti-Sun direction as RA, Dec (radians) for the body's system."""
     state = get_state()
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(
-        state.planet_id, et, "J2000", obs_pv[:6].tolist(), "LT"
-    )
+    _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(state.planet_id, planet_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, planet_time, "J2000", planet_pv[:6], "LT+S"
-    )
+    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
     anti = [-sun_dpv[0], -sun_dpv[1], -sun_dpv[2]]
     _, ra, dec = cspyce.recrad(anti)
     return (ra, dec)
 
 
-def body_latlon(
-    et: float, body_id: int
-) -> tuple[float, float, float, float]:
-    """Sub-observer and sub-solar lat/long (radians). Returns (subobs_lat, subsol_lat, subobs_long, subsol_long).
+def body_latlon(et: float, body_id: int) -> tuple[float, float, float, float]:
+    """Sub-observer and sub-solar lat/long (radians).
 
+    Returns (subobs_lat, subsol_lat, subobs_long, subsol_long).
     Matches rspk_bodylonlat.f: body with CN, Sun with CN+S, observer with XCN+S;
     body_time adjusted by + r_eq/clight for observer direction.
     """
     state = get_state()
     obs_pv = observer_state(et)
-    radii = cspyce.bodvrd(str(body_id), "RADII")
+    radii = cspyce.bodvrd(str(body_id), 'RADII')
     r_eq = radii[0]
-    body_dpv, dt = spkapp_shifted(body_id, et, "J2000", obs_pv, "CN")
+    _body_dpv, dt = spkapp_shifted(body_id, et, 'J2000', obs_pv, 'CN')
     body_time = et - dt + r_eq / cspyce.clight()
-    body_pv = cspyce.spkssb(body_id, body_time, "J2000")
-    sun_dpv, _ = cspyce.spkapp(
-        SUN_ID, body_time, "J2000", body_pv, "CN+S"
-    )
+    body_pv = cspyce.spkssb(body_id, body_time, 'J2000')
+    sun_dpv, _ = cspyce.spkapp(SUN_ID, body_time, 'J2000', body_pv, 'CN+S')
     obs_id = state.obs_id if state.obs_id != 0 else EARTH_ID
-    obs_dpv, _ = cspyce.spkapp(
-        obs_id, body_time, "J2000", body_pv, "XCN+S"
-    )
+    obs_dpv, _ = cspyce.spkapp(obs_id, body_time, 'J2000', body_pv, 'XCN+S')
     rotmat = bodmat(body_id, body_time)
     obs_dp_in_body = cspyce.mxv(rotmat, obs_dpv[:3])
     n = cspyce.vnorm(obs_dp_in_body)
@@ -173,10 +150,11 @@ def body_latlon(
     return (subobs_lat, subsol_lat, subobs_long, subsol_long)
 
 
-def body_lonlat(
-    et: float, body_id: int
-) -> tuple[float, float, float, float]:
-    """Sub-observer and sub-solar lon/lat (radians). Returns (subobs_lon, subobs_lat, subsol_lon, subsol_lat)."""
+def body_lonlat(et: float, body_id: int) -> tuple[float, float, float, float]:
+    """Sub-observer and sub-solar lon/lat (radians).
+
+    Returns (subobs_lon, subobs_lat, subsol_lon, subsol_lat).
+    """
     subobs_lat, subsol_lat, subobs_long, subsol_long = body_latlon(et, body_id)
     return (subobs_long, subobs_lat, subsol_long, subsol_lat)
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Tuple
 
 import julian
 
@@ -31,7 +30,7 @@ def _ensure_leapsecs() -> None:
         _leapsecs_loaded = True
     except (OSError, KeyError, ValueError) as e:
         logger.info(
-            "Leap seconds from %s not used (%s); using rms-julian bundled LSK.",
+            'Leap seconds from %s not used (%s); using rms-julian bundled LSK.',
             path,
             e,
         )
@@ -39,7 +38,7 @@ def _ensure_leapsecs() -> None:
             julian.load_lsk()
         except Exception as fallback_err:
             logger.error(
-                "Fallback to rms-julian bundled LSK failed: %s",
+                'Fallback to rms-julian bundled LSK failed: %s',
                 fallback_err,
                 exc_info=True,
             )
@@ -47,7 +46,7 @@ def _ensure_leapsecs() -> None:
         _leapsecs_loaded = True
 
 
-def parse_datetime(string: str) -> Tuple[int, float] | None:
+def parse_datetime(string: str) -> tuple[int, float] | None:
     """Parse date/time string to (day, sec) in UTC. Returns None on parse failure.
 
     day = days since J2000 (Jan 1 2000), sec = seconds within that day.
@@ -86,24 +85,24 @@ def mjd_from_tai(tai: float) -> float:
     return float(julian.mjd_from_tai(tai))
 
 
-def day_sec_from_tai(tai: float) -> Tuple[int, float]:
+def day_sec_from_tai(tai: float) -> tuple[int, float]:
     """Convert TAI seconds to UTC (day, sec). Replaces FJUL_DUTCofTAI(tai, secs)."""
     _ensure_leapsecs()
     day, sec = julian.day_sec_from_tai(tai)
     return (int(day), float(sec))
 
 
-def ymd_from_day(day: int) -> Tuple[int, int, int]:
+def ymd_from_day(day: int) -> tuple[int, int, int]:
     """Convert day (since J2000) to (year, month, day). Replaces FJUL_YMDofDUTC(dutc)."""
     return julian.ymd_from_day(day)
 
 
-def yd_from_day(day: int) -> Tuple[int, int]:
+def yd_from_day(day: int) -> tuple[int, int]:
     """Convert day to (year, day_of_year). Replaces FJUL_YDofDUTC(dutc)."""
     return julian.yd_from_day(day)
 
 
-def hms_from_sec(sec: float) -> Tuple[int, int, float]:
+def hms_from_sec(sec: float) -> tuple[int, int, float]:
     """Convert seconds within day to (hour, minute, second). Replaces FJUL_HMSofSec."""
     return julian.hms_from_sec(sec)
 
@@ -151,13 +150,13 @@ def interval_seconds(
         Interval in seconds, at least min_seconds, optionally rounded to minutes.
     """
     u = time_unit.lower()[:4]
-    if u == "sec":
+    if u == 'sec':
         dsec = abs(interval)
-    elif u == "min":
+    elif u == 'min':
         dsec = abs(interval) * 60.0
-    elif u == "hour":
+    elif u == 'hour':
         dsec = abs(interval) * 3600.0
-    elif u == "day":
+    elif u == 'day':
         dsec = abs(interval) * 86400.0
     else:
         dsec = abs(interval) * 3600.0
