@@ -922,7 +922,7 @@ class EuclidState:
         self.radii: list[float] = []
         self.lights: list[Vec3] = []
         self.obsrvr: Vec3 = [0.0, 0.0, 0.0]
-        self.camera: list[Vec3] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+        self.camera: list[Vec3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
         self.centrs: list[Vec3] = []
         self.prnpls: list[list[Vec3]] = []  # prnpls[body][axis] = Vec3
         self.a: list[Vec3] = []  # axis lengths a[body] = [a1, a2, a3]

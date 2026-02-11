@@ -376,7 +376,8 @@ def _rspk_draw_bodies(
 
         # Draw body with minimum size line width
         bpts = body_pts[bi] if bi < len(body_pts) else 0.0
-        eslwid(body_diampts - bpts, escher_state)
+        width = max(0.0, body_diampts - bpts)
+        eslwid(width, escher_state)
         eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, view_state, escher_state)
 
     eslwid(0.0, escher_state)
@@ -900,13 +901,17 @@ def draw_planetary_view(
     # Bodies 3+: Moons
     use_nmoons = min(nmoons, MAX_NMOONS)
     for imoon in range(use_nmoons):
-        if not moon_flags[imoon]:
+        if imoon >= len(moon_flags) or not moon_flags[imoon]:
             continue
-        nbodies += 1
+        if imoon >= len(moon_ids):
+            continue
         mid = moon_ids[imoon]
 
         # Moon position
-        moon_pv, mdt = spkapp_shifted(mid, obs_time, 'J2000', obs_pv[:6], 'LT')
+        try:
+            moon_pv, mdt = spkapp_shifted(mid, obs_time, 'J2000', obs_pv[:6], 'LT')
+        except Exception:
+            continue
         moon_dpv = list(moon_pv)
         moon_loc = [obs_pv[i] + moon_dpv[i] for i in range(3)]
         body_locs.append(moon_loc)
@@ -923,7 +928,10 @@ def draw_planetary_view(
             moon_mat = [list(row) for row in planet_mat]
 
         # moon_mat is J2000→body. Its rows are the body axes in J2000.
-        m_radii_arr = cspyce.bodvar(mid, 'RADII')
+        try:
+            m_radii_arr = list(cspyce.bodvar(mid, 'RADII'))
+        except Exception:
+            m_radii_arr = [1.0, 1.0, 1.0]
         moon_axes = []
         for i in range(3):
             ax = [moon_mat[i][j] * m_radii_arr[i] for j in range(3)]
@@ -948,6 +956,40 @@ def draw_planetary_view(
     # ===================================================================
 
     use_nrings = min(nrings, MAX_NRINGS)
+
+    # Ensure ring and arc lists have at least use_nrings / narcs entries to avoid IndexError
+    _def_f = False
+    _def_0 = 0.0
+    _def_03 = [0.0, 0.0, 0.0]
+    while len(ring_flags) < use_nrings:
+        ring_flags.append(_def_f)
+    while len(ring_rads) < use_nrings:
+        ring_rads.append(_def_0)
+    while len(ring_eccs) < use_nrings:
+        ring_eccs.append(_def_0)
+    while len(ring_nodes) < use_nrings:
+        ring_nodes.append(_def_0)
+    while len(ring_incs) < use_nrings:
+        ring_incs.append(_def_0)
+    while len(ring_peris) < use_nrings:
+        ring_peris.append(_def_0)
+    while len(ring_elevs) < use_nrings:
+        ring_elevs.append(_def_0)
+    while len(ring_offsets) < use_nrings:
+        ring_offsets.append(_def_03)
+    while len(ring_opaqs) < use_nrings:
+        ring_opaqs.append(_def_f)
+    while len(ring_dashed) < use_nrings:
+        ring_dashed.append(_def_f)
+    use_narcs = min(narcs, len(arc_rings), len(arc_flags), len(arc_minlons), len(arc_maxlons))
+    while len(arc_rings) < narcs:
+        arc_rings.append(0)
+    while len(arc_flags) < narcs:
+        arc_flags.append(_def_f)
+    while len(arc_minlons) < narcs:
+        arc_minlons.append(_def_0)
+    while len(arc_maxlons) < narcs:
+        arc_maxlons.append(_def_0)
 
     # Planet pole vector (reversed for Uranus)
     pole = _vhat(planet_axes_scaled[2])
@@ -988,7 +1030,7 @@ def draw_planetary_view(
             r_ring_dark.append(False)
             continue
 
-        rad = ring_rads[iring]
+        rad = ring_rads[iring] if iring < len(ring_rads) else 0.0
         ecc = ring_eccs[iring] if iring < len(ring_eccs) else 0.0
 
         # Track outermost opaque ring
@@ -1053,15 +1095,15 @@ def draw_planetary_view(
             r_ring_dark.append(_opsgnd(dot1, dot2) and abs(dot2) > sun_angular)
 
         # Arc loops for this ring
-        for iarc in range(narcs):
-            if arc_rings[iarc] != iring + 1:  # 1-based comparison
+        for iarc in range(use_narcs):
+            if iarc >= len(arc_rings) or arc_rings[iarc] != iring + 1:  # 1-based comparison
                 continue
-            if not arc_flags[iarc]:
+            if iarc >= len(arc_flags) or not arc_flags[iarc]:
                 continue
 
             # Mean anomaly range
-            lon1 = arc_minlons[iarc] - rp
-            lon2 = arc_maxlons[iarc] - rp
+            lon1 = (arc_minlons[iarc] if iarc < len(arc_minlons) else 0.0) - rp
+            lon2 = (arc_maxlons[iarc] if iarc < len(arc_maxlons) else 0.0) - rp
             if lon2 < lon1:
                 lon2 += TWOPI
 

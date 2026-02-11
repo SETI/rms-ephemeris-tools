@@ -6,12 +6,10 @@ import os
 import re
 
 
-def get_key(name: str, default: str = '') -> str:
+def get_key(name: str, default: str | None = '') -> str:
     """Read one parameter from environment (WWW_GetKey). Sanitized."""
     raw = os.environ.get(name, default)
-    if not isinstance(raw, str):
-        return default
-    return _sanitize(raw.strip())
+    return _sanitize(str(raw).strip())
 
 
 def get_keys(name: str) -> list[str]:
@@ -24,8 +22,8 @@ def get_keys(name: str) -> list[str]:
     i = 1
     while True:
         v = os.environ.get(f'{name}#{i}', '').strip()
-        if not v:
-            v = os.environ.get(name if i == 1 else '', '').strip()
+        if not v and i == 1:
+            v = os.environ.get(name, '').strip()
         if not v:
             break
         if '#' in v:
@@ -45,13 +43,17 @@ def get_keys(name: str) -> list[str]:
         if single:
             for part in re.split(r'[\s,#]+', single):
                 if part:
-                    out.append(_sanitize(part))
+                    sanitized = _sanitize(part)
+                    if sanitized not in seen:
+                        seen.add(sanitized)
+                        out.append(sanitized)
     return out
 
 
-def get_env(name: str, default: str = '') -> str:
+def get_env(name: str, default: str | None = '') -> str:
     """Read environment variable (WWW_GetEnv). No sanitization."""
-    return os.environ.get(name, default).strip()
+    raw = os.environ.get(name, default)
+    return str(raw).strip()
 
 
 def _sanitize(s: str) -> str:

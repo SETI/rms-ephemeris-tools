@@ -512,6 +512,10 @@ def esview(
     view_state._xmax = xmax
     view_state._ymin = ymin
     view_state._ymax = ymax
+    if xmax == xmin:
+        raise ValueError(f'FOV has zero width: xmin={xmin!r}, xmax={xmax!r}')
+    if ymax == ymin:
+        raise ValueError(f'FOV has zero height: ymin={ymin!r}, ymax={ymax!r}')
     left, right, bottom, top = espl07()
     pix0, pix1 = float(left), float(right)
     lam0, lam1 = float(bottom), float(top)
@@ -544,6 +548,10 @@ def _esmap2(x: float, y: float, view_state: EscherViewState) -> tuple[int, int]:
     return (p, line)
 
 
+# Epsilon for points near the camera plane (z=0) to avoid zero division in projection
+_ESDRAW_EPS = 1e-12
+
+
 def esdraw(
     begin: tuple[float, float, float],
     end: tuple[float, float, float],
@@ -554,10 +562,14 @@ def esdraw(
     """Project 3D segment to 2D, clip, map, buffer; flush if full (port of ESDRAW)."""
     if not view_state._initialized or view_state.device == 0:
         return
-    bx = -begin[0] / begin[2]
-    by = -begin[1] / begin[2]
-    ex = -end[0] / end[2]
-    ey = -end[1] / end[2]
+    sign1 = 1.0 if begin[2] >= 0 else -1.0
+    sign2 = 1.0 if end[2] >= 0 else -1.0
+    z1 = begin[2] if abs(begin[2]) >= _ESDRAW_EPS else sign1 * _ESDRAW_EPS
+    z2 = end[2] if abs(end[2]) >= _ESDRAW_EPS else sign2 * _ESDRAW_EPS
+    bx = -begin[0] / z1
+    by = -begin[1] / z1
+    ex = -end[0] / z2
+    ey = -end[1] / z2
     bx, by, ex, ey, inside = _esclip(
         view_state._xmin,
         view_state._xmax,

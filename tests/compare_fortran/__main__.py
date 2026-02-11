@@ -238,7 +238,7 @@ def main() -> int:
             res = compare_tables(
                 py_table_use,
                 fort_table_use,
-                float_tolerance=args.float_tol if args.float_tol else None,
+                float_tolerance=args.float_tol,
             )
             print(res.message)
             for d in res.details:
@@ -249,7 +249,7 @@ def main() -> int:
             res = compare_tables(
                 py_txt_use,
                 fort_txt_use,
-                float_tolerance=args.float_tol if args.float_tol else None,
+                float_tolerance=args.float_tol,
             )
             print('Tracker text table:', res.message)
             for d in res.details:

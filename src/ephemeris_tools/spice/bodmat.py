@@ -22,7 +22,10 @@ def _is_moon(body_id: int) -> bool:
 
 def _body_fixed_frame(body_id: int) -> str:
     """Return IAU body-fixed frame name for body ID (e.g. IAU_SATURN)."""
-    name = cspyce.bodc2n(body_id)
+    try:
+        name = cspyce.bodc2n(body_id)
+    except Exception as e:
+        raise ValueError(f'invalid body_id {body_id}: {e}') from e
     return f'IAU_{name.upper()}'
 
 
@@ -41,8 +44,8 @@ def bodmat(body_id: int, et: float) -> np.ndarray:
             try:
                 rot = cspyce.tipbod('J2000', body_id, et + state.shift_dt[i])
                 return np.array(rot, dtype=np.float64)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug('time-shifted tipbod failed: %s', e, exc_info=True)
             break
     mat: np.ndarray
     try:
@@ -66,6 +69,12 @@ def bodmat(body_id: int, et: float) -> np.ndarray:
             )
         mat = np.zeros((3, 3), dtype=np.float64)
     if not _is_moon(body_id):
+        if not np.any(mat != 0):
+            logger.warning(
+                'Failed to compute rotation matrix for body_id=%s; returning identity',
+                body_id,
+            )
+            return np.eye(3, dtype=np.float64)
         return mat
     if np.any(mat != 0):
         return mat

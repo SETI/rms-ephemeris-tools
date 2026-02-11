@@ -34,18 +34,24 @@ def read_stars(filepath: str | Path, max_stars: int = 100) -> list[Star]:
             if not line or line.startswith('!'):
                 continue
             name = line.strip()
-            ra_line = f.readline()
+            while True:
+                ra_line = f.readline()
+                if not ra_line:
+                    break
+                ra_line = ra_line.strip()
+                if not ra_line.startswith('!'):
+                    break
             if not ra_line:
                 break
-            ra_line = ra_line.strip()
-            if ra_line.startswith('!'):
-                continue
-            dec_line = f.readline()
+            while True:
+                dec_line = f.readline()
+                if not dec_line:
+                    break
+                dec_line = dec_line.strip()
+                if not dec_line.startswith('!'):
+                    break
             if not dec_line:
                 break
-            dec_line = dec_line.strip()
-            if dec_line.startswith('!'):
-                continue
             ra_val = parse_angle(ra_line)
             dec_val = parse_angle(dec_line)
             if ra_val is None or dec_val is None:

@@ -99,11 +99,10 @@ def conjunction_angle(et: float, body1_id: int, body2_id: int) -> float:
 
 def anti_sun(et: float, body_id: int) -> tuple[float, float]:
     """Anti-Sun direction as RA, Dec (radians) for the body's system."""
-    state = get_state()
     obs_pv = observer_state(et)
-    _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
+    _planet_dpv, dt = cspyce.spkapp(body_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    planet_pv = cspyce.spkssb(body_id, planet_time, 'J2000')
     sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
     anti = [-sun_dpv[0], -sun_dpv[1], -sun_dpv[2]]
     _, ra, dec = cspyce.recrad(anti)
@@ -130,14 +129,22 @@ def body_latlon(et: float, body_id: int) -> tuple[float, float, float, float]:
     rotmat = bodmat(body_id, body_time)
     obs_dp_in_body = cspyce.mxv(rotmat, obs_dpv[:3])
     n = cspyce.vnorm(obs_dp_in_body)
-    subobs_lat = math.asin(obs_dp_in_body[2] / n)
+    if n < 1e-12:
+        raise ValueError(
+            'Observer direction in body frame has zero length; cannot compute sub-observer lat/lon'
+        )
+    subobs_lat = math.asin(max(-1.0, min(1.0, obs_dp_in_body[2] / n)))
     subobs_long = math.atan2(obs_dp_in_body[1], obs_dp_in_body[0])
     if subobs_long < 0:
         subobs_long += TWOPI
     subobs_long = TWOPI - subobs_long
     sun_dp_in_body = cspyce.mxv(rotmat, sun_dpv[:3])
     n = cspyce.vnorm(sun_dp_in_body)
-    subsol_lat = math.asin(sun_dp_in_body[2] / n)
+    if n < 1e-12:
+        raise ValueError(
+            'Sun direction in body frame has zero length; cannot compute sub-solar lat/lon'
+        )
+    subsol_lat = math.asin(max(-1.0, min(1.0, sun_dp_in_body[2] / n)))
     subsol_long = math.atan2(sun_dp_in_body[1], sun_dp_in_body[0])
     if subsol_long < 0:
         subsol_long += TWOPI

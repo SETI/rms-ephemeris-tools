@@ -385,7 +385,7 @@ def _fov_deg_from_unit(fov: float, fov_unit: str | None) -> float:
     if not fov_unit or 'fov' not in fov_unit.lower():
         return fov
     s = fov_unit.lower()
-    for key, mult in _FOV_UNIT_MULT_DEG.items():
+    for key, mult in sorted(_FOV_UNIT_MULT_DEG.items(), key=lambda kv: -len(kv[0])):
         if key in s:
             return fov * mult
     return fov
@@ -445,7 +445,8 @@ def run_viewer(
 
     # Table: planet first, then moons (same order as FORTRAN moon_flags).
     table_body_ids = [cfg.planet_id, *track_moon_ids]
-    _write_fov_table(sys.stdout, et, cfg, planet_ra, planet_dec, table_body_ids, id_to_name)
+    if not output_txt:
+        _write_fov_table(sys.stdout, et, cfg, planet_ra, planet_dec, table_body_ids, id_to_name)
     if output_txt:
         _write_fov_table(output_txt, et, cfg, planet_ra, planet_dec, table_body_ids, id_to_name)
 

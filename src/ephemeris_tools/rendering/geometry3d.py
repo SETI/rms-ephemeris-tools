@@ -53,7 +53,7 @@ def ellipsoid_limb(
             can_see=False,
         )
     u = [obs[i] / d for i in range(3)]
-    aa = [a1[i] * a1[i] for i in range(3)]
+    aa = [_vnorm(a1) ** 2, _vnorm(_a2) ** 2, _vnorm(_a3) ** 2]
     denom = sum(u[i] * u[i] / aa[i] for i in range(3))
     if denom <= 0:
         return EllipseLimb(
@@ -160,19 +160,27 @@ def ray_plane_intersect(
     refpt: Sequence[float],
     normal: Sequence[float],
     direction: Sequence[float],
+    origin: Sequence[float] | None = None,
 ) -> tuple[float, float, float] | None:
-    """Ray-plane intersection (port of PLNRAY). Returns point or None."""
+    """Ray-plane intersection (port of PLNRAY).
+
+    refpt is a point on the plane; origin is the ray start (default (0,0,0)).
+    Returns the intersection point or None if the ray does not hit the plane
+    (parallel or behind).
+    """
+    if origin is None:
+        origin = (0.0, 0.0, 0.0)
     denom = _vdot(normal, direction)
     if abs(denom) < 1e-12:
         return None
-    diff = [refpt[i] - 0 for i in range(3)]
+    diff = [refpt[i] - origin[i] for i in range(3)]
     t = _vdot(normal, diff) / denom
     if t < 0:
         return None
     return (
-        refpt[0] + t * direction[0],
-        refpt[1] + t * direction[1],
-        refpt[2] + t * direction[2],
+        origin[0] + t * direction[0],
+        origin[1] + t * direction[1],
+        origin[2] + t * direction[2],
     )
 
 

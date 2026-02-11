@@ -43,11 +43,11 @@ def clip_line(
             if 0 <= param <= 1:
                 if edge in ('top', 'bot'):
                     px = x1 + param * dx
-                    if xmin < px < xmax:
+                    if xmin <= px <= xmax:
                         hits.append((px, cy))
                 else:
                     py = y1 + param * dy
-                    if ymin < py < ymax:
+                    if ymin <= py <= ymax:
                         hits.append((cx, py))
         if len(hits) >= 2:
             return (hits[0][0], hits[0][1], hits[1][0], hits[1][1], True)

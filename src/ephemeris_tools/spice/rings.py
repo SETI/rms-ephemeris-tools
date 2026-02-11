@@ -89,8 +89,8 @@ def ring_radec(et: float, radius_km: float, lon_rad: float) -> tuple[float, floa
     if state.planet_num == 7:
         pole = [-pole[0], -pole[1], -pole[2]]
     axis_z = [0.0, 0.0, 1.0]
-    cspyce.vcrss(axis_z, pole)
-    pole_rot = cspyce.twovec(pole, 3, planet_dpv[:3], 1)
+    ascnode = cspyce.vcrss(axis_z, pole)
+    pole_rot = cspyce.twovec(ascnode, 1, pole, 3)
     vec_in = [
         -radius_km * math.cos(lon_rad),
         -radius_km * math.sin(lon_rad),
@@ -106,14 +106,23 @@ def ring_radec(et: float, radius_km: float, lon_rad: float) -> tuple[float, floa
     return (ra, dec)
 
 
+_EPS_ANSA = 1e-12
+
+
 def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, float]:
     """J2000 RA and Dec (radians) of the right or left ring ansa."""
     from ephemeris_tools.spice.geometry import planet_ranges
 
     _, obs_dist = planet_ranges(et)
     geom = ring_opening(et)
-    obs_dist_km = obs_dist
-    offset = math.asin(radius_km / (obs_dist_km * math.cos(geom.obs_b)))
+    denom = obs_dist * math.cos(geom.obs_b)
+    if abs(denom) < _EPS_ANSA:
+        raise ValueError(
+            f'Ring ansa calculation undefined for edge-on geometry: obs_dist*cos(obs_b)={denom!r}'
+        )
+    ratio = radius_km / denom
+    ratio = max(-1.0, min(1.0, ratio))
+    offset = math.asin(ratio)
     if is_right:
         lon = 0.5 * math.pi - offset
     else:

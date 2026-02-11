@@ -55,7 +55,6 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         for i, c in enumerate(params.columns):
             prefix = 'General columns: ' if i == 0 else '                 '
             _w(stream, f'{prefix}{c}')
-        _w(stream, ' ')
     else:
         _w(stream, 'General columns:')
     _w(stream, ' ')
@@ -65,7 +64,6 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         for i, c in enumerate(params.mooncols):
             prefix = '   Moon columns: ' if i == 0 else '                 '
             _w(stream, f'{prefix}{c}')
-        _w(stream, ' ')
     else:
         _w(stream, '   Moon columns:')
     _w(stream, ' ')
@@ -75,7 +73,6 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         for i, mid in enumerate(params.moon_ids):
             prefix = ' Moon selection: ' if i == 0 else '                 '
             _w(stream, f'{prefix}{mid}')
-        _w(stream, ' ')
     else:
         _w(stream, ' Moon selection:')
     _w(stream, ' ')

@@ -95,19 +95,19 @@ def _lines_match_numeric(line_a: str, line_b: str, sig: int) -> bool:
     return replace_floats(line_a) == replace_floats(line_b)
 
 
-def _normalize_postscript(text: str) -> list[str]:
+def _normalize_postscript(text: str, normalize_creator_date: bool = True) -> list[str]:
     """Normalize PostScript for comparison: drop comments that vary, normalize whitespace."""
     out: list[str] = []
     for line in text.splitlines():
         s = line.strip()
         if not s or s.startswith('%%'):
-            if (
+            if normalize_creator_date and (
                 s.startswith('%%Creator')
                 or s.startswith('%%CreationDate')
                 or s.startswith('%%Title')
             ):
                 continue
-            if s == '%%EOF' or s.startswith('%%BoundingBox'):
+            if s:
                 out.append(s)
             continue
         out.append(' '.join(s.split()))
@@ -130,8 +130,8 @@ def compare_postscript(
         return CompareResult(False, f'File not found: {pa}', [], 0)
     if not pb.exists():
         return CompareResult(False, f'File not found: {pb}', [], 0)
-    lines_a = _normalize_postscript(pa.read_text())
-    lines_b = _normalize_postscript(pb.read_text())
+    lines_a = _normalize_postscript(pa.read_text(), normalize_creator_date)
+    lines_b = _normalize_postscript(pb.read_text(), normalize_creator_date)
     details: list[str] = []
     num_diffs = 0
     if len(lines_a) != len(lines_b):

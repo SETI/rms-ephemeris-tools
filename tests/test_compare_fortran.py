@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import urllib.parse
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,9 @@ def test_run_spec_env_and_cli() -> None:
     env = spec.env_for_fortran(table_path='/tmp/out.tab')
     assert env['REQUEST_METHOD'] == 'GET'
     assert 'QUERY_STRING' in env
-    assert 'start=2022-01-01%2000%3A00' in env['QUERY_STRING'] or 'start=' in env['QUERY_STRING']
+    parsed = urllib.parse.parse_qs(env['QUERY_STRING'])
+    assert 'start' in parsed
+    assert parsed['start'][0] == '2022-01-01 00:00'
     assert 'stop=' in env['QUERY_STRING']
     assert 'interval=1' in env['QUERY_STRING']
     assert env['NPLANET'] == '6'

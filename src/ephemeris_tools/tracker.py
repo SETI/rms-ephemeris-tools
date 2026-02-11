@@ -13,7 +13,8 @@ _RAD_TO_ARCSEC = 180.0 / math.pi * 3600.0
 
 def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int) -> list[bool]:
     """Convert CGI ring option codes to ring_flags (FORTRAN tracker3_xxx.f logic)."""
-    flags = [False] * max(nrings, 1)
+    required = 5 if planet_num == 6 else (3 if planet_num == 5 else 1)
+    flags = [False] * max(nrings, required, 1)
     for opt in ring_options:
         if planet_num == 5:  # Jupiter: 51=Main, 52=Gossamer
             if opt == 51:

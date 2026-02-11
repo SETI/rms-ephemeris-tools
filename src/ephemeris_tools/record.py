@@ -28,7 +28,6 @@ class Record:
         to_add = string[:remaining] if len(string) > remaining else string
         if self._parts:
             self._parts.append(' ')
-            self._length += 1
         self._parts.append(to_add)
         self._length += len(to_add)
 

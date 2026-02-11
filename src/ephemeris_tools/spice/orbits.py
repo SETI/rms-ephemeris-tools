@@ -36,7 +36,11 @@ def orbit_opening(et: float, moon_id: int) -> tuple[float, float]:
     tempvec = cspyce.vlcom(1.0, norm_dp, -1.0 / cspyce.clight(), planet_pv[3:6])
     tempvec = cspyce.mxv(rotmat, tempvec)
     n = cspyce.vnorm(tempvec)
-    obs_b = math.asin(tempvec[2] / n)
+    if n < 1e-12:
+        obs_b = 0.0
+    else:
+        ratio = max(-1.0, min(1.0, tempvec[2] / n))
+        obs_b = math.asin(ratio)
     obs_long = math.atan2(-tempvec[1], tempvec[0])
     if obs_long < 0:
         obs_long += TWOPI
@@ -63,5 +67,7 @@ def moon_distances(et: float, moon_ids: list[int]) -> tuple[np.ndarray, float]:
         offsets[i] = math.atan2(vector[1], vector[0])
     radii = cspyce.bodvrd(str(state.planet_id), 'RADII')
     r_eq = radii[0]
-    limb = math.asin(min(1.0, r_eq / cspyce.vnorm(planet_dpv[:3])))
+    eps_limb = 1e-12
+    vnorm = cspyce.vnorm(planet_dpv[:3])
+    limb = math.asin(min(1.0, r_eq / max(vnorm, eps_limb)))
     return (offsets, limb)

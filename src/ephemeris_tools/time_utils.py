@@ -149,17 +149,17 @@ def interval_seconds(
     Returns:
         Interval in seconds, at least min_seconds, optionally rounded to minutes.
     """
-    u = time_unit.lower()[:4]
-    if u == 'sec':
+    u = time_unit.strip().lower()[:4]
+    if u in ('sec', 'seco'):
         dsec = abs(interval)
-    elif u == 'min':
+    elif u in ('min', 'minu'):
         dsec = abs(interval) * 60.0
     elif u == 'hour':
         dsec = abs(interval) * 3600.0
     elif u == 'day':
         dsec = abs(interval) * 86400.0
     else:
-        dsec = abs(interval) * 3600.0
+        raise ValueError(f'Invalid time_unit {time_unit!r}; expected one of sec, min, hour, day')
     dsec = max(dsec, min_seconds)
     if round_to_minutes:
         dsec = 60.0 * int(dsec / 60.0 + 0.5)

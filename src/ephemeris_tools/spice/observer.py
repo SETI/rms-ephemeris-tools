@@ -35,6 +35,10 @@ def set_observer_location(lat_deg: float, lon_deg: float, alt_m: float) -> None:
     state.obs_is_set = abs(lat_deg) <= 90.0
 
 
+# Earth rotation rate (rad/s) in body-fixed frame for surface velocity
+_EARTH_ROT_RATE_RAD_S = 2.0 * math.pi / 86400.0
+
+
 def observer_state(et: float) -> np.ndarray:
     """Return observer state (6) in J2000: position (3) and velocity (3) in km, km/s."""
     import numpy as np
@@ -50,4 +54,14 @@ def observer_state(et: float) -> np.ndarray:
     obs_pv[0] += rotated[0]
     obs_pv[1] += rotated[1]
     obs_pv[2] += rotated[2]
+    # Add surface rotational velocity: omega x obs_dp in body frame, then transform to J2000
+    vel_body = [
+        -_EARTH_ROT_RATE_RAD_S * obs_dp[1],
+        _EARTH_ROT_RATE_RAD_S * obs_dp[0],
+        0.0,
+    ]
+    vel_j2000 = cspyce.mtxv(earth_mat, vel_body)
+    obs_pv[3] += vel_j2000[0]
+    obs_pv[4] += vel_j2000[1]
+    obs_pv[5] += vel_j2000[2]
     return np.array(obs_pv, dtype=np.float64)

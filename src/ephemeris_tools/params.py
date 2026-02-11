@@ -137,11 +137,23 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
     lon_s = _get_env('longitude')
     alt_s = _get_env('altitude')
     lon_dir = _get_env('lon_dir', 'east')
-    lat = float(lat_s) if lat_s else None
-    lon = float(lon_s) if lon_s else None
-    alt = float(alt_s) if alt_s else None
-    if lat is not None and lon_dir.lower() == 'west':
-        lon = -lon if lon is not None else None
+    try:
+        lat = float(lat_s) if lat_s else None
+    except ValueError:
+        logger.error('Invalid latitude %r: must be numeric', lat_s)
+        lat = None
+    try:
+        lon = float(lon_s) if lon_s else None
+    except ValueError:
+        logger.error('Invalid longitude %r: must be numeric', lon_s)
+        lon = None
+    try:
+        alt = float(alt_s) if alt_s else None
+    except ValueError:
+        logger.error('Invalid altitude %r: must be numeric', alt_s)
+        alt = None
+    if lon is not None and lon_dir.lower() == 'west':
+        lon = -lon
 
     sc_traj_s = _get_env('sc_trajectory', '0')
     try:

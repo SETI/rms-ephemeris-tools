@@ -82,9 +82,13 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
 
     out: TextIO = sys.stdout
     if getattr(args, 'output', None):
-        with open(args.output, 'w') as f:
-            generate_ephemeris(params, f)
-        return 0
+        try:
+            with open(args.output, 'w') as f:
+                generate_ephemeris(params, f)
+            return 0
+        except (ValueError, RuntimeError) as e:
+            print(f'Error: {e}', file=sys.stderr)
+            return 1
     try:
         generate_ephemeris(params, out)
         return 0

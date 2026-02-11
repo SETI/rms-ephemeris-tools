@@ -203,6 +203,7 @@ def _label_yaxis(
         tai = tai_from_day_sec(dutc, secs)
         if tai > tai2:
             break
+        qmark2 = False
         if y != yprev:
             qmark1 = True
             k1 = 1

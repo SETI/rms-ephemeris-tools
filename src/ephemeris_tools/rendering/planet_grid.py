@@ -56,7 +56,7 @@ def _surface_point_body(
 def _surface_normal_body(
     a: float, b: float, c: float, lat_rad: float, lon_rad: float
 ) -> tuple[float, float, float]:
-    """Outward unit normal at surface point (unnormalized: x/a^2, y/b^2, z/c^2)."""
+    """Outward unit normal at surface point (normalized: (x/a^2, y/b^2, z/c^2) / norm)."""
     p = _surface_point_body(a, b, c, lat_rad, lon_rad)
     n = (p[0] / (a * a), p[1] / (b * b), p[2] / (c * c))
     nn = _vnorm(n)
@@ -66,8 +66,8 @@ def _surface_normal_body(
 def _segment_circle_intersect(
     x0: float, y0: float, x1: float, y1: float, r: float
 ) -> tuple[float, float] | None:
-    """If segment (x0,y0)-(x1,y1) crosses circle x^2+y^2=r^2, return intersection
-    point (on the segment) that is inside the circle; else None."""
+    """If segment (x0,y0)-(x1,y1) intersects circle x^2+y^2=r^2, return the
+    intersection point on the segment (on the circle boundary); else None."""
     dx = x1 - x0
     dy = y1 - y0
     dr2 = dx * dx + dy * dy
@@ -153,9 +153,6 @@ def compute_planet_grid(
         sun_from_planet[1] / sun_norm,
         sun_from_planet[2] / sun_norm,
     )
-
-    math.atan2(obs_to_planet[1], obs_to_planet[0])
-    math.asin(max(-1.0, min(1.0, obs_to_planet[2] / dist_obs)))
 
     limb_rad_rad = math.asin(min(1.0, a / dist_obs))
     limb_radius_plot = limb_rad_rad * scale
