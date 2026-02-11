@@ -26,7 +26,7 @@ def set_observer_id(body_id: int) -> None:
 
 
 def set_observer_location(lat_deg: float, lon_deg: float, alt_m: float) -> None:
-    """Set observer to geodetic location on Earth. |lat| > 90 disables (Earth center)."""
+    """Set observer to geodetic location on Earth. Abs(lat) > 90 disables (Earth center)."""
     state = get_state()
     state.obs_id = EARTH_ID
     state.obs_lat = math.radians(lat_deg)

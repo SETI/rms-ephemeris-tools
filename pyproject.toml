@@ -75,7 +75,7 @@ dev = [
 ]
 
 [project.scripts]
-ephemeris_tools = "ephemeris_tools.main:main"
+ephemeris-tools = "ephemeris_tools.cli.main:main"
 
 # Tool configuration
 

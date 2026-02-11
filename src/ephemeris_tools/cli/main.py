@@ -9,7 +9,7 @@ import os
 import sys
 from typing import NoReturn, TextIO, cast
 
-from ephemeris_tools.params import ephemeris_params_from_env
+from ephemeris_tools.params import ephemeris_params_from_env, parse_planet, parse_ring_spec
 
 
 def _configure_logging(verbose: bool = False) -> None:
@@ -37,7 +37,8 @@ def _configure_logging(verbose: bool = False) -> None:
 def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     """Run ephemeris generator. Params from CLI args or env (CGI)."""
     from ephemeris_tools.ephemeris import generate_ephemeris
-    from ephemeris_tools.params import EphemerisParams
+    from ephemeris_tools.params import EphemerisParams, parse_column_spec, parse_mooncol_spec
+    from ephemeris_tools.planets import parse_moon_spec
 
     if getattr(args, 'cgi', False):
         params = ephemeris_params_from_env()
@@ -46,7 +47,8 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
             return 1
     else:
         moons_raw = args.moons or []
-        moon_ids = [100 * args.planet + idx for idx in moons_raw] if moons_raw else []
+        moon_parsed = parse_moon_spec(args.planet, [str(x) for x in moons_raw])
+        moon_ids = [v if v >= 100 else 100 * args.planet + v for v in moon_parsed]
         viewpoint = (args.viewpoint or 'observatory').strip() or 'observatory'
         observatory = (args.observatory or "Earth's Center").strip() or "Earth's Center"
         if viewpoint == 'latlon' and (args.latitude is not None or args.longitude is not None):
@@ -69,8 +71,8 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
             lon_dir=getattr(args, 'lon_dir', 'east'),
             altitude_m=args.altitude if viewpoint == 'latlon' else None,
             sc_trajectory=getattr(args, 'sc_trajectory', 0),
-            columns=args.columns or [1, 2, 3, 15, 8],
-            mooncols=args.mooncols or [5, 6, 8, 9],
+            columns=parse_column_spec([str(x) for x in (args.columns or [])]) or [1, 2, 3, 15, 8],
+            mooncols=parse_mooncol_spec([str(x) for x in (args.mooncols or [])]) or [5, 6, 8, 9],
             moon_ids=moon_ids,
         )
         if viewpoint != 'latlon' and args.viewpoint and args.viewpoint != "Earth's Center":
@@ -111,10 +113,9 @@ def main() -> int:
     )
     ephem_parser.add_argument(
         '--planet',
-        type=int,
-        choices=[4, 5, 6, 7, 8, 9],
+        type=parse_planet,
         default=6,
-        help='Planet number (4=Mars..9=Pluto); env: NPLANET',
+        help='Planet number or name (4=mars..9=pluto); env: NPLANET',
     )
     ephem_parser.add_argument(
         '--start', type=str, default='', help='Start time; env: start, START_TIME'
@@ -172,13 +173,25 @@ def main() -> int:
         help='Spacecraft trajectory version; env: sc_trajectory',
     )
     ephem_parser.add_argument(
-        '--columns', type=int, nargs='*', default=None, help='Column IDs; env: columns'
+        '--columns',
+        type=str,
+        nargs='*',
+        default=None,
+        help='Column IDs or names (e.g. 1 2 ymdhms radec); env: columns',
     )
     ephem_parser.add_argument(
-        '--mooncols', type=int, nargs='*', default=None, help='Moon column IDs; env: mooncols'
+        '--mooncols',
+        type=str,
+        nargs='*',
+        default=None,
+        help='Moon column IDs or names (e.g. 5 6 radec offset); env: mooncols',
     )
     ephem_parser.add_argument(
-        '--moons', type=int, nargs='*', default=None, help='Moon indices (e.g. 1 2 3); env: moons'
+        '--moons',
+        type=str,
+        nargs='*',
+        default=None,
+        help='Moon indices or names (e.g. 1 2 io europa); env: moons',
     )
     ephem_parser.add_argument(
         '-o', '--output', type=str, default=None, help='Output file; env: EPHEM_FILE'
@@ -188,7 +201,7 @@ def main() -> int:
 
     track_parser = subparsers.add_parser('tracker', help='Moon tracker plot')
     track_parser.add_argument(
-        '--planet', type=int, choices=[4, 5, 6, 7, 8, 9], default=6, help='Planet; env: NPLANET'
+        '--planet', type=parse_planet, default=6, help='Planet number or name; env: NPLANET'
     )
     track_parser.add_argument('--start', type=str, default='', help='Start time; env: start')
     track_parser.add_argument('--stop', type=str, default='', help='Stop time; env: stop')
@@ -233,14 +246,18 @@ def main() -> int:
         '--sc-trajectory', type=int, default=0, help='Spacecraft trajectory; env: sc_trajectory'
     )
     track_parser.add_argument(
-        '--moons', type=int, nargs='*', default=None, help='Moon indices (e.g. 1 2 3); env: moons'
+        '--moons',
+        type=str,
+        nargs='*',
+        default=None,
+        help='Moon indices or names (e.g. 1 2 io europa); env: moons',
     )
     track_parser.add_argument(
         '--rings',
-        type=int,
+        type=str,
         nargs='*',
         default=None,
-        help='Ring options (e.g. 61 62 for Saturn); env: rings',
+        help='Ring option codes or names (e.g. 61 62, main ge); env: rings',
     )
     track_parser.add_argument(
         '--xrange',
@@ -267,7 +284,7 @@ def main() -> int:
 
     view_parser = subparsers.add_parser('viewer', help='Planet viewer diagram')
     view_parser.add_argument(
-        '--planet', type=int, choices=[4, 5, 6, 7, 8, 9], default=6, help='Planet; env: NPLANET'
+        '--planet', type=parse_planet, default=6, help='Planet number or name; env: NPLANET'
     )
     view_parser.add_argument('--time', type=str, default='', help='Observation time; env: time')
     view_parser.add_argument(
@@ -334,13 +351,17 @@ def main() -> int:
         '--sc-trajectory', type=int, default=0, help='Spacecraft trajectory; env: sc_trajectory'
     )
     view_parser.add_argument(
-        '--moons', type=int, nargs='*', default=None, help='Moon indices; env: moons'
+        '--moons',
+        type=str,
+        nargs='*',
+        default=None,
+        help='Moon indices or names (e.g. 1 2 io europa); env: moons',
     )
     view_parser.add_argument(
         '--moremoons', type=str, default=None, help='Additional moon selection; env: moremoons'
     )
     view_parser.add_argument(
-        '--rings', type=int, nargs='*', default=None, help='Ring options; env: rings'
+        '--rings', type=str, nargs='*', default=None, help='Ring option codes or names; env: rings'
     )
     view_parser.add_argument(
         '--standard', type=str, default=None, help='Standard stars; env: standard'
@@ -407,12 +428,17 @@ def main() -> int:
 def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     """Run moon tracker."""
     from ephemeris_tools.input_params import write_input_parameters_tracker
+    from ephemeris_tools.planets import parse_moon_spec
     from ephemeris_tools.tracker import run_tracker
 
     write_input_parameters_tracker(sys.stdout, args)
 
     moons_raw = args.moons or []
-    moon_ids = [100 * args.planet + idx for idx in moons_raw] if moons_raw else []
+    moon_parsed = parse_moon_spec(args.planet, [str(x) for x in moons_raw])
+    moon_ids = [v if v >= 100 else 100 * args.planet + v for v in moon_parsed]
+    rings_resolved = (
+        parse_ring_spec(args.planet, args.rings) if getattr(args, 'rings', None) else None
+    )
     with contextlib.ExitStack() as stack:
         out_ps = (
             stack.enter_context(open(args.output, 'w')) if getattr(args, 'output', None) else None
@@ -435,7 +461,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
                 xrange=getattr(args, 'xrange', None),
                 xscaled=(getattr(args, 'xunit', 'arcsec') == 'radii'),
                 title=(getattr(args, 'title', None) or '').strip(),
-                ring_options=args.rings if getattr(args, 'rings', None) else None,
+                ring_options=rings_resolved,
                 output_ps=out_ps,
                 output_txt=out_txt,
             )
@@ -448,6 +474,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
 def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     """Run planet viewer."""
     from ephemeris_tools.input_params import write_input_parameters_viewer
+    from ephemeris_tools.planets import parse_moon_spec
     from ephemeris_tools.viewer import run_viewer
 
     write_input_parameters_viewer(sys.stdout, args)
@@ -467,7 +494,8 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             fov = fov / 3600.0
         moon_ids = None
         if getattr(args, 'moons', None):
-            moon_ids = [100 * args.planet + idx for idx in args.moons]
+            moon_parsed = parse_moon_spec(args.planet, [str(x) for x in args.moons])
+            moon_ids = [v if v >= 100 else 100 * args.planet + v for v in moon_parsed]
         blank = (getattr(args, 'blank', None) or '').strip().lower()
         blank_disks = blank in ('yes', 'y', 'true', '1')
         try:

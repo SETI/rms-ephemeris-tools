@@ -1,7 +1,7 @@
 .. rms-ephemeris-tools documentation master file
 
-Welcome to the Documentation for rms-ephemeris-tools!
-=====================================================
+rms-ephemeris-tools Documentation
+=================================
 
 .. include:: ../README.md
    :parser: myst_parser.sphinx_
@@ -9,9 +9,26 @@ Welcome to the Documentation for rms-ephemeris-tools!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: User's Guide
 
-   module
+   user_guide/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Developer's Guide
+
+   dev_guide/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Project
+
    contributing
 
 Indices and tables

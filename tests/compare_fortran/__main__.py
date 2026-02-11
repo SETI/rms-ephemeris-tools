@@ -5,12 +5,12 @@ tracker3_xxx.bin, or viewer3_<planet>.bin by tool and --planet). Use --fortran-c
 to override.
 
 Usage:
-  python -m tests.compare_fortran ephemeris --planet 6 --start 2022-01-01 \\
+  python -m tests.compare_fortran ephemeris --planet saturn --start 2022-01-01 \\
     --stop 2022-01-02 -o /tmp/out
   python -m tests.compare_fortran tracker --planet 6 --start 2022-01-01 \\
     --stop 2022-01-03 -o /tmp/out
-  python -m tests.compare_fortran viewer --planet 6 --time 2022-01-01 12:00 \\
-    --fov 0.1 -o /tmp/out
+  python -m tests.compare_fortran viewer --planet saturn --time 2022-01-01 12:00 \\
+    --fov 0.1 -o /tmp/out --moons mimas enceladus
   python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.bin -o /tmp/out
 
 With a FORTRAN binary (auto-detected or --fortran-cmd): runs both, compares outputs.
@@ -24,6 +24,13 @@ import os
 import sys
 from pathlib import Path
 
+from ephemeris_tools.params import (
+    parse_column_spec,
+    parse_mooncol_spec,
+    parse_planet,
+    parse_ring_spec,
+)
+from ephemeris_tools.planets import parse_moon_spec
 from tests.compare_fortran.diff_utils import (
     compare_postscript,
     compare_postscript_images,
@@ -32,7 +39,7 @@ from tests.compare_fortran.diff_utils import (
 from tests.compare_fortran.runner import run_fortran, run_python
 from tests.compare_fortran.spec import DEFAULT_TRACKER_MOONS_SATURN, RunSpec
 
-# Planet number (4-9) → viewer FORTRAN binary suffix (viewer3_<suffix>.bin).
+# Planet number (4-9) -> viewer FORTRAN binary suffix (viewer3_<suffix>.bin).
 _VIEWER_BINARY_SUFFIX: dict[int, str] = {
     4: 'mar',
     5: 'jup',
@@ -41,13 +48,6 @@ _VIEWER_BINARY_SUFFIX: dict[int, str] = {
     8: 'nep',
     9: 'plu',
 }
-
-
-def _parse_planet(s: str) -> int:
-    v = int(s)
-    if not (4 <= v <= 9):
-        raise ValueError('planet must be 4-9')
-    return v
 
 
 def _default_fortran_binary(tool: str, planet: int, repo_root: Path) -> Path | None:
@@ -78,7 +78,9 @@ def main() -> int:
         choices=['ephemeris', 'tracker', 'viewer'],
         help='Tool to run',
     )
-    parser.add_argument('--planet', type=_parse_planet, default=6, help='Planet number 4-9')
+    parser.add_argument(
+        '--planet', type=parse_planet, default=6, help='Planet number or name (4-9 / mars..pluto)'
+    )
     parser.add_argument('--start', type=str, default='2022-01-01 00:00', help='Start time')
     parser.add_argument('--stop', type=str, default='2022-01-02 00:00', help='Stop time')
     parser.add_argument('--interval', type=float, default=1.0, help='Time step')
@@ -95,15 +97,15 @@ def main() -> int:
     parser.add_argument('--lon-dir', type=str, default='east', choices=['east', 'west'])
     parser.add_argument('--altitude', type=float, default=None)
     parser.add_argument('--sc-trajectory', type=int, default=0)
-    parser.add_argument('--columns', type=int, nargs='*', default=None)
-    parser.add_argument('--mooncols', type=int, nargs='*', default=None)
-    parser.add_argument('--moons', type=int, nargs='*', default=None)
+    parser.add_argument('--columns', type=str, nargs='*', default=None)
+    parser.add_argument('--mooncols', type=str, nargs='*', default=None)
+    parser.add_argument('--moons', type=str, nargs='*', default=None)
     parser.add_argument('--time', type=str, default='', help='Viewer observation time')
     parser.add_argument('--fov', type=float, default=1.0, help='Viewer field of view')
     parser.add_argument('--fov-unit', type=str, default='deg', choices=['deg', 'arcmin', 'arcsec'])
     parser.add_argument('--center', type=str, default='body')
     parser.add_argument('--center-body', type=str, default='')
-    parser.add_argument('--rings', type=int, nargs='*', default=None)
+    parser.add_argument('--rings', type=str, nargs='*', default=None)
     parser.add_argument('--title', type=str, default='')
     parser.add_argument('--xrange', type=float, default=None)
     parser.add_argument('--xunit', type=str, default='arcsec', choices=['arcsec', 'radii'])
@@ -142,7 +144,14 @@ def main() -> int:
     # FORTRAN ephemeris requires at least one column in QUERY_STRING or ncolumns=0
     # and it writes only blank lines. Use same default as Python CLI (MJD, YMDHMS, RADEC, phase).
     default_ephem_columns = [1, 2, 3, 15, 8]
-    columns = args.columns if args.columns is not None else default_ephem_columns
+    columns_resolved = (
+        parse_column_spec(args.columns) if args.columns is not None else default_ephem_columns
+    )
+    mooncols_resolved = parse_mooncol_spec(args.mooncols) if args.mooncols is not None else None
+    moons_raw = args.moons or []
+    moons_resolved = (
+        parse_moon_spec(args.planet, [str(x) for x in moons_raw]) if moons_raw else None
+    )
 
     params = {
         'planet': args.planet,
@@ -158,16 +167,16 @@ def main() -> int:
         'lon_dir': args.lon_dir,
         'altitude': args.altitude,
         'sc_trajectory': args.sc_trajectory,
-        'columns': columns if args.tool == 'ephemeris' else None,
-        'mooncols': args.mooncols if args.tool == 'ephemeris' else None,
-        'moons': args.moons
+        'columns': columns_resolved if args.tool == 'ephemeris' else None,
+        'mooncols': mooncols_resolved if args.tool == 'ephemeris' else None,
+        'moons': moons_resolved
         or (DEFAULT_TRACKER_MOONS_SATURN if args.tool == 'tracker' and args.planet == 6 else None),
         'time': args.time or '2022-01-01 12:00',
         'fov': args.fov,
         'fov_unit': args.fov_unit,
         'center': args.center,
         'center_body': args.center_body,
-        'rings': args.rings,
+        'rings': parse_ring_spec(args.planet, args.rings) if args.rings else None,
         'title': args.title,
         'xrange': args.xrange or (180.0 if args.tool == 'tracker' else None),
         'xunit': args.xunit,

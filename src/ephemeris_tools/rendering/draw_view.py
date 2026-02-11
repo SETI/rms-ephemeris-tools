@@ -951,6 +951,8 @@ def draw_planetary_view(
         tv = [moon_loc[i] - planet_loc[i] for i in range(3)]
         body_dist.append(_vnorm(tv))
 
+        nbodies += 1
+
     # ===================================================================
     # Determine ring shapes (FORTRAN lines 698-820)
     # ===================================================================
