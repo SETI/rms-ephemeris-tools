@@ -88,6 +88,11 @@ def main() -> int:
     out_dir = Path(args.output_dir or ".")
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # FORTRAN ephemeris requires at least one column in QUERY_STRING or ncolumns=0
+    # and it writes only blank lines. Use same default as Python CLI (MJD, YMDHMS, RADEC, phase).
+    default_ephem_columns = [1, 2, 3, 15, 8]
+    columns = args.columns if args.columns is not None else default_ephem_columns
+
     params = {
         "planet": args.planet,
         "start": args.start,
@@ -102,7 +107,7 @@ def main() -> int:
         "lon_dir": args.lon_dir,
         "altitude": args.altitude,
         "sc_trajectory": args.sc_trajectory,
-        "columns": args.columns,
+        "columns": columns,
         "mooncols": args.mooncols,
         "moons": args.moons,
         "time": args.time or "2022-01-01 12:00",
@@ -160,8 +165,20 @@ def main() -> int:
             out_ps=fort_ps_use,
             out_txt=fort_txt_use,
         )
-        if result_fort.returncode != 0:
-            print("FORTRAN failed:", result_fort.stderr or result_fort.stdout, file=sys.stderr)
+        # FORTRAN error handlers call "call exit" which returns 0.
+        # Detect errors from stdout ("Invalid value found for variable").
+        fort_stdout = result_fort.stdout or ""
+        fort_failed = (
+            result_fort.returncode != 0
+            or "Invalid value found for variable" in fort_stdout
+            or "Error---" in fort_stdout
+        )
+        if fort_failed:
+            print(
+                "FORTRAN failed:",
+                result_fort.stderr or fort_stdout,
+                file=sys.stderr,
+            )
             return 1
         print("FORTRAN OK.", flush=True)
 

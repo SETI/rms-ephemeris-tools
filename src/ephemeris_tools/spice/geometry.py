@@ -28,19 +28,18 @@ def body_radec(et: float, body_id: int) -> tuple[float, float]:
 
 
 def body_phase(et: float, body_id: int) -> float:
-    """Solar phase angle of body as seen from observer (radians)."""
+    """Solar phase angle of body as seen from observer (radians).
+
+    Port of RSPK_BodyPhase: uses standard SPKAPP with 'LT', not shifted.
+    """
     obs_pv = observer_state(et)
-    body_dpv, _ = spkapp_shifted(body_id, et, "J2000", obs_pv, "LT")
-    body_time = et  # approximation; exact would use lt
+    body_dpv, dt = cspyce.spkapp(body_id, et, "J2000", obs_pv[:6], "LT")
+    body_time = et - dt
     body_pv = cspyce.spkssb(body_id, body_time, "J2000")
     sun_dpv, _ = cspyce.spkapp(
         SUN_ID, body_time, "J2000", body_pv[:6], "LT"
     )
-    obs_dp = [
-        obs_pv[0] - body_dpv[0],
-        obs_pv[1] - body_dpv[1],
-        obs_pv[2] - body_dpv[2],
-    ]
+    obs_dp = cspyce.vminus(body_dpv[:3])
     return cspyce.vsep(sun_dpv[:3], obs_dp)
 
 

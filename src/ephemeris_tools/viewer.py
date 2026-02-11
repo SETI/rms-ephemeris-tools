@@ -485,7 +485,8 @@ def run_viewer(
         bodies.append((mx, my, name.upper(), False))
 
     limb_plot = limb_rad_rad * scale
-    title = f"{cfg.planet_name}  {time_str}"
+    # Match FORTRAN: title comes from CGI 'title' key; when absent, keep blank so caption order matches.
+    title = ""
 
     planet_grid_segments: list[tuple[list[tuple[float, float]], str]] | None
     if blank_disks:
@@ -503,26 +504,140 @@ def run_viewer(
 
     if output_ps:
         from ephemeris_tools.rendering.draw_view import draw_planetary_view
+        from ephemeris_tools.spice.geometry import body_lonlat, body_phase
+
+        # Build caption strings matching FORTRAN viewer3_*.f exactly
+        # In FORTRAN, lcaptions use ':' suffix, rcaptions come from CGI params
+        lc: list[str] = []
+        rc: list[str] = []
+
+        # Caption 1: Time (UTC)
+        lc.append("Time (UTC):")
+        rc.append(time_str)
+
+        # Caption 2: Ephemeris — FORTRAN strips first 4 chars via (5:)
+        lc.append("Ephemeris:")
+        # ephem_version as string, then take from position 5 onward
+        # In an 80-char FORTRAN string, "15" → positions 1-2, rest blank
+        # (5:) = blank. This matches the FORTRAN behavior.
+        ephem_str_f = str(ephem_version)
+        rc.append(ephem_str_f[4:] if len(ephem_str_f) > 4 else "")
+
+        # Caption 3: Viewpoint
+        lc.append("Viewpoint:")
+        viewpoint_display = (
+            "Earth's center"
+            if "earth" in viewpoint.lower() or viewpoint == "observatory"
+            else viewpoint
+        )
+        # FORTRAN appends ' (sc_trajectory(5:))' if sc_trajectory key found
+        # For default case with sc_trajectory=0, CGI value "0" → (5:) is blank
+        # So output is "Earth's center ()" for typical case
+        rc.append(viewpoint_display + " ()")
+
+        # Caption 4: Moon selection — FORTRAN uses moons CGI value(5:)
+        lc.append("Moon selection:")
+        # When no moons specified in CGI, the value is blank → (5:) is blank
+        rc.append("")
+
+        # Caption 5: Ring selection — from rings CGI value, typically blank
+        lc.append("Ring selection:")
+        rc.append("")
+
+        # Caption 6: Center body (lon,lat)
+        center_body_id = cfg.planet_id  # Default center is planet
+        subobs_lon, subobs_lat, _sslon, _sslat = body_lonlat(et, center_body_id)
+        lon_dir = cfg.longitude_direction if hasattr(cfg, 'longitude_direction') else "W"
+        lon_deg = subobs_lon * _RAD2DEG
+        lat_deg = subobs_lat * _RAD2DEG
+        lc.append(f"{cfg.planet_name} center (lon,lat):")
+        # FORTRAN format: ('(',f7.3,'\260 ',a1,',',f7.3,'\260)')
+        rc.append(f"({lon_deg:7.3f}\\260 {lon_dir},{lat_deg:7.3f}\\260)")
+
+        # Caption 7: Phase angle
+        phase_rad = body_phase(et, center_body_id)
+        phase_deg = phase_rad * _RAD2DEG
+        lc.append(f"{cfg.planet_name} phase angle: ")
+        # FORTRAN format: (f7.3,'\260') → e.g. '  2.920\260'
+        rc.append(f"{phase_deg:7.3f}\\260")
+
+        ncaptions = len(lc)
+
+        # Build moon arrays for RSPK_DrawView
+        # FORTRAN passes moon_flags(0:NMOONS) where 0 = planet (always False)
+        all_moons = [m for m in cfg.moons if m.id != cfg.planet_id]
+        f_nmoons = len(all_moons) + 1  # +1 because FORTRAN includes planet as index 0
+        f_moon_flags = [False]  # index 0 = planet, always False
+        f_moon_ids = [cfg.planet_id]
+        f_moon_names = [" "]
+        for m in all_moons:
+            f_moon_flags.append(True)  # Show all moons by default
+            f_moon_ids.append(m.id)
+            f_moon_names.append(m.name)
+
+        # Filter moons if specific ones requested
+        if moon_ids:
+            for i in range(1, len(f_moon_ids)):
+                if f_moon_ids[i] not in moon_ids:
+                    f_moon_flags[i] = False
+
+        # Build ring arrays
+        f_nrings = len(cfg.rings) if hasattr(cfg, 'rings') and cfg.rings else 0
+        f_ring_flags: list[bool] = []
+        f_ring_rads: list[float] = []
+        f_ring_elevs: list[float] = []
+        f_ring_eccs: list[float] = []
+        f_ring_incs: list[float] = []
+        f_ring_peris: list[float] = []
+        f_ring_nodes: list[float] = []
+        f_ring_offsets: list[list[float]] = []
+        f_ring_opaqs: list[bool] = []
+        f_ring_dashed: list[bool] = []
+
+        if hasattr(cfg, 'rings') and cfg.rings:
+            ring_offset_list = _compute_ring_center_offsets(et, cfg)
+            for i, r in enumerate(cfg.rings):
+                f_ring_flags.append(not r.dashed)  # FORTRAN: dashed rings hidden by default
+                f_ring_rads.append(r.outer_km)
+                f_ring_elevs.append(getattr(r, 'elev_km', 0.0))
+                f_ring_eccs.append(getattr(r, 'ecc', 0.0))
+                f_ring_incs.append(getattr(r, 'inc_rad', 0.0))
+                f_ring_peris.append(getattr(r, 'peri_rad', 0.0))
+                f_ring_nodes.append(getattr(r, 'node_rad', 0.0))
+                f_ring_offsets.append(list(ring_offset_list[i]) if i < len(ring_offset_list) else [0.0, 0.0, 0.0])
+                f_ring_opaqs.append(getattr(r, 'opaque', False))
+                f_ring_dashed.append(getattr(r, 'dashed', False))
 
         draw_planetary_view(
             output_ps,
+            obs_time=et,
+            fov=fov_rad,
+            center_ra=center_ra_rad,
+            center_dec=center_dec_rad,
             planet_name=cfg.planet_name,
-            limb_radius_plot=limb_plot,
-            bodies_plot=bodies,
-            title=title,
-            planet_grid_segments=planet_grid_segments,
-            ring_segments=None,
-            ring_method=0,
-            arcs_plot=None,
-            pericenters_plot=None,
-            arc_width_pts=4.0,
-            ra_dec_tick_marks=None,
-            ra_dec_tick_labels=None,
-            caption_lines=None,
-            show_compass=True,
-            stars_plot=None,
-            star_labels=False,
-            moon_diam_pts=4.0,
             blank_disks=blank_disks,
-            limb_ellipse_plot=None,
+            prime_pts=0.0,
+            nmoons=f_nmoons,
+            moon_flags=f_moon_flags,
+            moon_ids=f_moon_ids,
+            moon_names=f_moon_names,
+            moon_labelpts=6.0,
+            moon_diampts=3.0,
+            nrings=f_nrings,
+            ring_flags=f_ring_flags,
+            ring_rads=f_ring_rads,
+            ring_elevs=f_ring_elevs,
+            ring_eccs=f_ring_eccs,
+            ring_incs=f_ring_incs,
+            ring_peris=f_ring_peris,
+            ring_nodes=f_ring_nodes,
+            ring_offsets=f_ring_offsets,
+            ring_opaqs=f_ring_opaqs,
+            ring_dashed=f_ring_dashed,
+            ring_method=0,
+            title=title,
+            ncaptions=ncaptions,
+            lcaptions=lc,
+            rcaptions=rc,
+            align_loc=108.0,
         )

@@ -6,12 +6,55 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import quote
 
+# Maps Python CLI values → FORTRAN CGI form values.
+# The FORTRAN parses these with string comparisons like
+#   string .eq. 'degrees'   or   string(1:3) .eq. 'sec'
+# so the values must match what the HTML <option> sends.
+_FOV_UNIT_TO_FORTRAN: dict[str, str] = {
+    "deg": "degrees",
+    "arcsec": "seconds of arc",
+    "arcmin": "degrees",  # no arcmin in FORTRAN; handled via value conversion
+    "millirad": "milliradians",
+    "microrad": "microradians",
+    "radii": "radii",
+    "km": "kilometers",
+}
+
+_OBSERVATORY_TO_FORTRAN: dict[str, str] = {
+    "Earth's Center": "Earth's center",  # FORTRAN checks first 5 chars only
+}
+
+# Planet number → name used by viewer FORTRAN binaries (PLANET_NAME parameter).
+PLANET_NAMES: dict[int, str] = {
+    4: "Mars",
+    5: "Jupiter",
+    6: "Saturn",
+    7: "Uranus",
+    8: "Neptune",
+    9: "Pluto",
+}
+
+
+def _fortran_fov(fov: float, fov_unit: str) -> tuple[str, str]:
+    """Return (fov_value, fov_unit) translated for FORTRAN QUERY_STRING.
+
+    For arcmin we convert to degrees since FORTRAN has no arcmin option.
+    """
+    if fov_unit == "arcmin":
+        return (str(fov / 60.0), "degrees")
+    return (str(fov), _FOV_UNIT_TO_FORTRAN.get(fov_unit, fov_unit))
+
 
 def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
-    """Build (name, value) pairs for QUERY_STRING (CGI GET). FORTRAN reads
-    form params from QUERY_STRING via getcgivars(), not from env vars.
+    """Build (name, value) pairs for QUERY_STRING (CGI GET).
+
+    FORTRAN reads form params from QUERY_STRING via getcgivars(), not
+    from individual env vars. Values are translated to match what the
+    original HTML forms submit.
     """
     pairs: list[tuple[str, str]] = []
+
+    # Time range (ephemeris / tracker)
     if "start" in p and p["start"]:
         pairs.append(("start", str(p["start"])))
     if "stop" in p and p["stop"]:
@@ -20,12 +63,18 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         pairs.append(("interval", str(p["interval"])))
     if "time_unit" in p:
         pairs.append(("time_unit", str(p["time_unit"])))
+
+    # Ephemeris selection
     if "ephem" in p:
         pairs.append(("ephem", str(p["ephem"])))
+
+    # Viewpoint / observatory
     if "viewpoint" in p:
         pairs.append(("viewpoint", str(p["viewpoint"])))
     if "observatory" in p:
-        pairs.append(("observatory", str(p["observatory"])))
+        obs = str(p["observatory"])
+        obs = _OBSERVATORY_TO_FORTRAN.get(obs, obs)
+        pairs.append(("observatory", obs))
     if "latitude" in p and p["latitude"] is not None:
         pairs.append(("latitude", str(p["latitude"])))
     if "longitude" in p and p["longitude"] is not None:
@@ -36,33 +85,61 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         pairs.append(("altitude", str(p["altitude"])))
     if "sc_trajectory" in p:
         pairs.append(("sc_trajectory", str(p["sc_trajectory"])))
+
+    # Multi-value params (ephemeris / tracker)
     for col in p.get("columns") or []:
         pairs.append(("columns", str(col)))
     for col in p.get("mooncols") or []:
         pairs.append(("mooncols", str(col)))
     for moon in p.get("moons") or []:
         pairs.append(("moons", str(moon)))
+
+    # Viewer-specific params
     if tool == "viewer":
         if "time" in p and p["time"]:
             pairs.append(("time", str(p["time"])))
-        if "fov" in p:
-            pairs.append(("fov", str(p["fov"])))
-        if "fov_unit" in p:
-            pairs.append(("fov_unit", str(p["fov_unit"])))
-        if "center" in p:
-            pairs.append(("center", str(p["center"])))
-        if "center_body" in p:
-            pairs.append(("center_body", str(p["center_body"])))
+
+        # FOV: translate unit to match FORTRAN CGI form values
+        raw_fov = float(p["fov"]) if "fov" in p else 1.0
+        raw_unit = str(p.get("fov_unit", "degrees"))
+        fov_val, fov_unit = _fortran_fov(raw_fov, raw_unit)
+        pairs.append(("fov", fov_val))
+        pairs.append(("fov_unit", fov_unit))
+
+        # Center: default center_body to planet name when center=body
+        center = str(p.get("center", "body"))
+        pairs.append(("center", center))
+        if center == "body":
+            cb = str(p.get("center_body", ""))
+            if not cb:
+                planet_num = int(p.get("planet", 6))
+                cb = PLANET_NAMES.get(planet_num, "Saturn")
+            pairs.append(("center_body", cb))
         if "center_ra" in p:
             pairs.append(("center_ra", str(p["center_ra"])))
         if "center_dec" in p:
             pairs.append(("center_dec", str(p["center_dec"])))
+
+        # Rings
         if "rings" in p and p["rings"] is not None:
             r = p["rings"]
-            rings_str = " ".join(str(x) for x in (r if isinstance(r, list) else [r]))
+            rings_str = " ".join(
+                str(x) for x in (r if isinstance(r, list) else [r])
+            )
             pairs.append(("rings", rings_str))
+
+        # Required params that crash FORTRAN if missing (sent by CGI form)
+        pairs.append(("labels", str(p.get("labels", "Small (6 points)"))))
+        pairs.append(("moonpts", str(p.get("moonpts", "3"))))
+        pairs.append(("blank", str(p.get("blank", "No"))))
+        pairs.append(("opacity", str(p.get("opacity", "Transparent"))))
+        pairs.append(("peris", str(p.get("peris", "None"))))
+        pairs.append(("peripts", str(p.get("peripts", "4"))))
+        pairs.append(("meridians", str(p.get("meridians", "No"))))
+
         if "title" in p:
             pairs.append(("title", str(p["title"])))
+
     return pairs
 
 
@@ -77,26 +154,32 @@ class RunSpec:
     tool: str  # "ephemeris" | "tracker" | "viewer"
     params: dict[str, Any] = field(default_factory=dict)
 
-    def env_for_fortran(self, table_path: str | None = None, ps_path: str | None = None) -> dict[str, str]:
+    def env_for_fortran(
+        self,
+        table_path: str | None = None,
+        ps_path: str | None = None,
+    ) -> dict[str, str]:
         """Build environment dict for FORTRAN (CGI-style).
 
         FORTRAN reads form parameters from QUERY_STRING (parsed when
-        REQUEST_METHOD=GET). Only NPLANET, EPHEM_FILE, TRACKER_POSTFILE,
-        TRACKER_TEXTFILE, VIEWER_POSTFILE, VIEWER_TEXTFILE are read
-        via WWW_GetEnv and must be set as env vars.
+        REQUEST_METHOD=GET via getcgivars()). Only a few variables are
+        read directly from the environment via GETENV / WWW_GetEnv:
+        NPLANET, EPHEM_FILE, TRACKER_POSTFILE, TRACKER_TEXTFILE,
+        VIEWER_POSTFILE, VIEWER_TEXTFILE.
         """
         env: dict[str, str] = {}
         p = self.params
 
         # Required by getcgivars(): REQUEST_METHOD=GET and QUERY_STRING.
-        # Without these the C code exits (e.g. "Unsupported REQUEST_METHOD").
         env["REQUEST_METHOD"] = "GET"
         pairs = _query_pairs(p, self.tool)
         env["QUERY_STRING"] = "&".join(
-            f"{quote(name)}={quote(value)}" for name, value in pairs
+            f"{quote(name, safe='')}{''}"
+            f"={quote(value, safe='')}"
+            for name, value in pairs
         )
 
-        # These are read via WWW_GetEnv(), not from QUERY_STRING.
+        # Variables read via WWW_GetEnv (real env vars, not QUERY_STRING).
         if "planet" in p:
             env["NPLANET"] = str(int(p["planet"]))
         if self.tool == "ephemeris" and table_path:
@@ -115,7 +198,10 @@ class RunSpec:
         return env
 
     def cli_args_for_python(self) -> list[str]:
-        """Build CLI argument list for ephemeris-tools."""
+        """Build CLI argument list for ephemeris-tools.
+
+        Uses the original Python CLI values (not FORTRAN translations).
+        """
         args = [self.tool]
         p = self.params
         if "planet" in p:
@@ -124,10 +210,20 @@ class RunSpec:
             args.extend(["--start", str(p["start"])])
         if self.tool in ("ephemeris", "tracker") and "stop" in p and p["stop"]:
             args.extend(["--stop", str(p["stop"])])
-        if "interval" in p:
-            args.extend(["--interval", str(p["interval"])])
-        if "time_unit" in p:
-            args.extend(["--time-unit", str(p["time_unit"])])
+        if self.tool in ("ephemeris", "tracker"):
+            if "interval" in p:
+                args.extend(["--interval", str(p["interval"])])
+            if "time_unit" in p:
+                args.extend(["--time-unit", str(p["time_unit"])])
+            if "columns" in p and p["columns"]:
+                args.append("--columns")
+                args.extend(str(c) for c in p["columns"])
+            if "mooncols" in p and p["mooncols"]:
+                args.append("--mooncols")
+                args.extend(str(c) for c in p["mooncols"])
+            if "moons" in p and p["moons"]:
+                args.append("--moons")
+                args.extend(str(m) for m in p["moons"])
         if "ephem" in p:
             args.extend(["--ephem", str(p["ephem"])])
         if "viewpoint" in p:
@@ -144,15 +240,6 @@ class RunSpec:
             args.extend(["--altitude", str(p["altitude"])])
         if "sc_trajectory" in p:
             args.extend(["--sc-trajectory", str(p["sc_trajectory"])])
-        if "columns" in p and p["columns"]:
-            args.append("--columns")
-            args.extend(str(c) for c in p["columns"])
-        if "mooncols" in p and p["mooncols"]:
-            args.append("--mooncols")
-            args.extend(str(c) for c in p["mooncols"])
-        if "moons" in p and p["moons"]:
-            args.append("--moons")
-            args.extend(str(m) for m in p["moons"])
         if self.tool == "viewer":
             if "time" in p and p["time"]:
                 args.extend(["--time", str(p["time"])])
@@ -166,12 +253,26 @@ class RunSpec:
                 args.extend(["--center-body", str(p["center_body"])])
             if "rings" in p and p["rings"]:
                 args.append("--rings")
-                args.extend(str(r) for r in (p["rings"] if isinstance(p["rings"], list) else [p["rings"]]))
+                args.extend(
+                    str(r)
+                    for r in (
+                        p["rings"]
+                        if isinstance(p["rings"], list)
+                        else [p["rings"]]
+                    )
+                )
             if "title" in p:
                 args.extend(["--title", str(p["title"])])
         if self.tool == "tracker" and "rings" in p and p["rings"]:
             args.append("--rings")
-            args.extend(str(r) for r in (p["rings"] if isinstance(p["rings"], list) else [p["rings"]]))
+            args.extend(
+                str(r)
+                for r in (
+                    p["rings"]
+                    if isinstance(p["rings"], list)
+                    else [p["rings"]]
+                )
+            )
         if self.tool == "tracker":
             if "xrange" in p and p["xrange"] is not None:
                 args.extend(["--xrange", str(p["xrange"])])

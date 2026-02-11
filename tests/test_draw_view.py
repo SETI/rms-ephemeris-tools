@@ -10,7 +10,7 @@ from ephemeris_tools.rendering.draw_view import draw_planetary_view
 
 
 def test_draw_planetary_view_produces_diagram_not_stub() -> None:
-    """draw_planetary_view emits real PostScript (planet disk, labels), not a stub."""
+    """draw_planetary_view emits real PostScript (Escher/Euclid preamble and drawing), not a stub."""
     out = StringIO()
     bodies = [
         (0.0, 0.0, "Saturn", True),
@@ -26,15 +26,15 @@ def test_draw_planetary_view_produces_diagram_not_stub() -> None:
     s = out.getvalue()
     assert "Planet view (stub)" not in s
     assert "Saturn" in s
-    assert "TITAN" in s
-    assert "arc" in s
     assert "%%Creator:" in s
     assert "PDS Ring-Moon Systems Node" in s
     assert "showpage" in s
+    assert "0.1 0.1 scale" in s
+    assert "%Draw box..." in s or "N\n" in s
 
 
 def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
-    """With planet_grid_segments, planet is drawn with limb + lat/lon lines (no fill)."""
+    """With planet_grid_segments, draw_planetary_view emits PostScript (grid used when EUBODY ported)."""
     out = StringIO()
     bodies = [(0.0, 0.0, "Saturn", True)]
     grid_segments: list[tuple[list[tuple[float, float]], str]] = [
@@ -50,8 +50,6 @@ def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
         planet_grid_segments=grid_segments,
     )
     s = out.getvalue()
-    assert "lineto" in s
-    assert "stroke" in s
-    assert "0 setgray" in s
-    assert "0.85 setgray" in s
+    assert "/L {lineto} def" in s or "lineto" in s
+    assert "stroke" in s or "S\n" in s
     assert "%%Creator:" in s

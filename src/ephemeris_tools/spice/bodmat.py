@@ -27,39 +27,37 @@ def _body_fixed_frame(body_id: int) -> str:
 
 
 def bodmat(body_id: int, et: float) -> "np.ndarray":
-    """Rotation matrix body-fixed to J2000, with time-shift and moon fallback.
+    """Rotation matrix J2000 -> body-fixed, with time-shift and moon fallback.
 
-    Uses cspyce.pxform (body-fixed frame -> J2000); cspyce has no bodmat.
+    Uses cspyce.tipbod (equivalent to FORTRAN BODMAT) which computes
+    the matrix from PCK pole data directly — no frame kernel needed.
+    Falls back to orbit-derived orientation for moons without PCK data.
     """
     import numpy as np
 
     state = get_state()
     for i in range(state.nshifts):
         if state.shift_id[i] == body_id:
-            frame = _body_fixed_frame(body_id)
-            mat = cspyce.pxform(frame, "J2000", et + state.shift_dt[i])
-            return np.array(mat, dtype=np.float64)
+            try:
+                mat = cspyce.tipbod("J2000", body_id, et + state.shift_dt[i])
+                return np.array(mat, dtype=np.float64)
+            except Exception:
+                pass
+            break
     try:
-        frame = _body_fixed_frame(body_id)
-        mat = cspyce.pxform(frame, "J2000", et)
+        mat = cspyce.tipbod("J2000", body_id, et)
         mat = np.array(mat, dtype=np.float64)
-    except (KeyError, RuntimeError, Exception) as e:
+    except Exception as e:
         msg = str(e)
-        expected = (
-            "UNKNOWNFRAME" in msg
-            or "FRAMEDATANOTFOUND" in msg
-            or "not recognized" in msg
-            or "were not found" in msg
-        )
-        if _is_moon(body_id) and expected:
+        if _is_moon(body_id):
             logger.debug(
-                "cspyce.pxform no frame/PCK for moon body_id=%s, using orbit fallback: %s",
+                "cspyce.tipbod no PCK for moon body_id=%s, using orbit fallback: %s",
                 body_id,
                 msg[:80],
             )
         else:
             logger.error(
-                "cspyce.pxform failed for body_id=%s et=%s: %s",
+                "cspyce.tipbod failed for body_id=%s et=%s: %s",
                 body_id,
                 et,
                 e,
