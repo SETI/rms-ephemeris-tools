@@ -13,10 +13,18 @@ def clip_line(
     x2: float,
     y2: float,
 ) -> tuple[float, float, float, float, bool]:
-    """Clip segment to rectangle. Returns (x1, y1, x2, y2, inside).
+    """Clip line segment to axis-aligned rectangle (port of ESCLIP).
 
-    Inside is True if the (possibly clipped) segment lies inside the rectangle.
-    Port of ESCLIP: interior is x > xmin, x < xmax, y > ymin, y < ymax.
+    Interior is strict: xmin < x < xmax, ymin < y < ymax.
+
+    Parameters:
+        xmin, xmax, ymin, ymax: Rectangle bounds.
+        x1, y1: First endpoint of segment.
+        x2, y2: Second endpoint of segment.
+
+    Returns:
+        Tuple (clipped_x1, clipped_y1, clipped_x2, clipped_y2, inside). inside is
+        True if the (possibly clipped) segment has a portion inside the rectangle.
     """
     dx = x2 - x1
     dy = y2 - y1

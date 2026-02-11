@@ -13,7 +13,7 @@ from ephemeris_tools.params import ephemeris_params_from_env, parse_planet, pars
 
 
 def _configure_logging(verbose: bool = False) -> None:
-    """Configure logging so package warnings are visible. Call once at CLI startup."""
+    """Configure logging for CLI (stderr, level from --verbose or EPHEMERIS_TOOLS_LOG)."""
     level = logging.DEBUG if verbose else logging.WARNING
     env_level = os.environ.get('EPHEMERIS_TOOLS_LOG', '').upper()
     if env_level in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
@@ -35,7 +35,15 @@ def _configure_logging(verbose: bool = False) -> None:
 
 
 def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
-    """Run ephemeris generator. Params from CLI args or env (CGI)."""
+    """Run ephemeris generator (ephemeris subcommand).
+
+    Parameters:
+        parser: Argument parser (unused).
+        args: Parsed args or CGI env; planet, start, stop, columns, etc.
+
+    Returns:
+        Exit code 0 on success, 1 on error.
+    """
     from ephemeris_tools.ephemeris import generate_ephemeris
     from ephemeris_tools.params import EphemerisParams, parse_column_spec, parse_mooncol_spec
     from ephemeris_tools.planets import parse_moon_spec
@@ -100,7 +108,11 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
 
 
 def main() -> int:
-    """Entry point for ephemeris-tools CLI."""
+    """Entry point for ephemeris-tools CLI (ephemeris | tracker | viewer).
+
+    Returns:
+        Exit code 0 on success, 1 on failure.
+    """
     parser = argparse.ArgumentParser(
         prog='ephemeris-tools',
         description='Planetary ephemeris, moon tracker, and planet viewer.',
@@ -426,7 +438,15 @@ def main() -> int:
 
 
 def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
-    """Run moon tracker."""
+    """Run moon tracker (tracker subcommand).
+
+    Parameters:
+        parser: Argument parser (unused).
+        args: Parsed args; planet, start, stop, moons, rings, output, etc.
+
+    Returns:
+        Exit code 0 on success, 1 on error.
+    """
     from ephemeris_tools.input_params import write_input_parameters_tracker
     from ephemeris_tools.planets import parse_moon_spec
     from ephemeris_tools.tracker import run_tracker
@@ -472,7 +492,15 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
 
 
 def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
-    """Run planet viewer."""
+    """Run planet viewer (viewer subcommand).
+
+    Parameters:
+        parser: Argument parser (unused).
+        args: Parsed args; planet, time, fov, center, output, etc.
+
+    Returns:
+        Exit code 0 on success, 1 on error.
+    """
     from ephemeris_tools.input_params import write_input_parameters_viewer
     from ephemeris_tools.planets import parse_moon_spec
     from ephemeris_tools.viewer import run_viewer
@@ -519,7 +547,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
 
 
 def cli_main() -> NoReturn:
-    """Called from console_scripts; exits with return code."""
+    """Entry point for console_scripts; calls main() and exits with its return code."""
     sys.exit(main())
 
 

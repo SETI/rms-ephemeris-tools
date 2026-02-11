@@ -80,7 +80,10 @@ MAXSECS = 360.0 * 60.0 * 60.0
 
 
 def _set_observer_from_params(params: EphemerisParams) -> None:
-    """Set SPICE observer from params (viewpoint, observatory, or latlon)."""
+    """Set SPICE observer from params (ephem3_xxx.f observer setup).
+
+    Uses latlon if viewpoint is latlon; else observatory name or Earth.
+    """
     if (
         params.viewpoint == 'latlon'
         and params.latitude_deg is not None
@@ -108,19 +111,42 @@ def _set_observer_from_params(params: EphemerisParams) -> None:
 
 
 def _round_sec_to_min(sec: float) -> float:
-    """Round seconds to nearest minute (60 * nint(sec/60))."""
+    """Round seconds to nearest minute (60 * round(sec/60)).
+
+    Parameters:
+        sec: Seconds within day.
+
+    Returns:
+        Seconds rounded to nearest 60.
+    """
     return 60.0 * round(sec / 60.0)
 
 
 def _round_sec_to_sec(sec: float) -> float:
-    """Round to nearest second."""
+    """Round to nearest second.
+
+    Parameters:
+        sec: Seconds (fractional).
+
+    Returns:
+        Rounded seconds.
+    """
     return round(sec)
 
 
 def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) -> None:
-    """Generate ephemeris table and write to output stream.
+    """Generate ephemeris table and write to output (port of ephem3_xxx.f).
 
-    If output is None, uses params.output. If both are None, no output is written.
+    Loads SPICE, sets observer from params, steps over time range, and writes
+    requested columns (and moon columns) to the given stream.
+
+    Parameters:
+        params: Time range, planet, columns, viewpoint, etc.
+        output: Output text stream; if None, uses params.output.
+
+    Raises:
+        ValueError: Invalid start/stop time or time range.
+        RuntimeError: SPICE load failure.
     """
     out = output or params.output
     if out is None:
@@ -420,9 +446,14 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
 
 
 def _moon_prefix(moon_id: int, planet_num: int) -> str:
-    """Short prefix for moon column labels: first 4 chars of uppercased name + '_'.
+    """Short prefix for moon column labels (ephem3_xxx.f 5-char style).
 
-    If name has fewer than 4 chars, pad with '_'. FORTRAN: 5-char prefix (e.g. Io -> IO___).
+    Parameters:
+        moon_id: SPICE body ID of moon.
+        planet_num: Planet number (4-9).
+
+    Returns:
+        Uppercased name prefix, 4 chars + '_', padded if needed.
     """
     from ephemeris_tools.planets import (
         JUPITER_CONFIG,

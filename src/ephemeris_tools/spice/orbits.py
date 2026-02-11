@@ -19,7 +19,16 @@ TWOPI = 2.0 * math.pi
 
 
 def orbit_opening(et: float, moon_id: int) -> tuple[float, float]:
-    """Observed opening angle of moon orbit and observer longitude (radians)."""
+    """Return observed opening angle of a moon's orbital plane (port of RSPK_OrbitOpen).
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        moon_id: SPICE body ID of the moon.
+
+    Returns:
+        Tuple of (obs_b, obs_long): opening angle in radians and observer
+        longitude relative to moon in radians.
+    """
     state = get_state()
     obs_pv = observer_state(et)
     _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'CN')
@@ -48,7 +57,18 @@ def orbit_opening(et: float, moon_id: int) -> tuple[float, float]:
 
 
 def moon_distances(et: float, moon_ids: list[int]) -> tuple[np.ndarray, float]:
-    """Projected angular offsets of moons from planet axis (radians), and limb angle."""
+    """Return projected angular offsets of moons from planet axis (port of RSPK_MoonDist).
+
+    Positive offsets are on the morning ansa (higher RA); negative on the
+    evening ansa. Values apply to Earth center or observatory per observer setup.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        moon_ids: List of SPICE body IDs for the moons.
+
+    Returns:
+        Tuple of (offsets array in radians, limb radius in radians).
+    """
     import numpy as np
 
     state = get_state()

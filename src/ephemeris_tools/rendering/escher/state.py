@@ -8,7 +8,11 @@ from ephemeris_tools.rendering.escher.constants import MINWIDTH
 
 
 class EscherState:
-    """Mutable state for Escher PS output (replaces FORTRAN common block)."""
+    """Mutable state for Escher PostScript output (replaces FORTRAN ESCOMM common block).
+
+    Holds output file path, stream, last-drawn point (xsave, ysave), and
+    current line width/color for grouping strokes.
+    """
 
     def __init__(self) -> None:
         self.outfil = ' '
@@ -25,7 +29,11 @@ class EscherState:
 
 
 class EscherViewState:
-    """Viewport and FOV for 3D->2D mapping; segment buffer for ESDRAW/ESDUMP."""
+    """Viewport, FOV, and segment buffer for Escher (ESVIEW/ESMAP1 state).
+
+    Holds device, view (0-1), FOV rectangle, mapping parameters (_ux, _uy,
+    _xcen, _ycen, _pcen, _lcen), and the segment buffer for esdraw/esdump.
+    """
 
     def __init__(self) -> None:
         self.device = 0

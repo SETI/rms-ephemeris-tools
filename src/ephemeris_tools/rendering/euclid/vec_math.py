@@ -15,30 +15,37 @@ def _dnint(x: float) -> float:
 
 
 def _vdot(a: Vec3, b: Vec3) -> float:
+    """Dot product of two 3-vectors (SPICE VDOT)."""
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
 
 def _vnorm(v: Vec3) -> float:
+    """Euclidean norm of 3-vector (SPICE VNORM)."""
     return math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
 
 
 def _vsub(a: Vec3, b: Vec3) -> Vec3:
+    """Vector difference a - b (SPICE VSUB)."""
     return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 
 
 def _vadd(a: Vec3, b: Vec3) -> Vec3:
+    """Vector sum a + b (SPICE VADD)."""
     return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 
 
 def _vscl(s: float, v: Vec3) -> Vec3:
+    """Scale vector: s * v (SPICE VSCL)."""
     return [s * v[0], s * v[1], s * v[2]]
 
 
 def _vlcom(a: float, v1: Vec3, b: float, v2: Vec3) -> Vec3:
+    """Linear combination a*v1 + b*v2 (SPICE VLCOM)."""
     return [a * v1[0] + b * v2[0], a * v1[1] + b * v2[1], a * v1[2] + b * v2[2]]
 
 
 def _vhat(v: Vec3) -> Vec3:
+    """Unit vector in direction of v; zero vector if v is zero (SPICE VHAT)."""
     n = _vnorm(v)
     if n == 0.0:
         return [0.0, 0.0, 0.0]
@@ -46,6 +53,7 @@ def _vhat(v: Vec3) -> Vec3:
 
 
 def _vequ(src: Vec3) -> Vec3:
+    """Copy 3-vector (SPICE VEQU)."""
     return [src[0], src[1], src[2]]
 
 

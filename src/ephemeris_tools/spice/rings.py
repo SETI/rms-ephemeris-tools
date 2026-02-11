@@ -21,7 +21,7 @@ TWOPI = 2.0 * math.pi
 
 @dataclass
 class RingGeometry:
-    """Ring opening and lighting geometry."""
+    """Ring opening and lighting geometry (output of ring_opening, port of RSPK_RingOpen)."""
 
     obs_b: float
     sun_b: float
@@ -32,7 +32,18 @@ class RingGeometry:
 
 
 def ring_opening(et: float) -> RingGeometry:
-    """Observed ring opening angle, Sun geometry, and whether rings are dark."""
+    """Return observed ring opening and lighting geometry (port of RSPK_RingOpen).
+
+    Returns opening angle, sub-observer/sub-solar longitudes, and whether the
+    visible ring side is lit. Longitudes are from the equatorial plane J2000
+    ascending node. Both sides are treated as lit while Sun crosses ring plane.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+
+    Returns:
+        RingGeometry with obs_b, sun_b, sun_db, is_dark, obs_long, sun_long.
+    """
     state = get_state()
     obs_pv = observer_state(et)
     _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'CN')
@@ -79,7 +90,19 @@ def ring_opening(et: float) -> RingGeometry:
 
 
 def ring_radec(et: float, radius_km: float, lon_rad: float) -> tuple[float, float]:
-    """J2000 RA and Dec (radians) of a point on the ring at given radius and longitude."""
+    """Return observed J2000 RA and Dec of a point on the ring (port of RSPK_RingRaDec).
+
+    Applies to Earth center or observatory per set_observer_*. Coordinates are
+    not corrected for stellar aberration (correct relative to star catalogs).
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        radius_km: Ring radius in km.
+        lon_rad: Longitude on ring in radians; positive = ring rotation direction.
+
+    Returns:
+        Tuple of (ra, dec) in radians.
+    """
     state = get_state()
     obs_pv = observer_state(et)
     planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
@@ -110,7 +133,22 @@ _EPS_ANSA = 1e-12
 
 
 def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, float]:
-    """J2000 RA and Dec (radians) of the right or left ring ansa."""
+    """Return observed J2000 RA and Dec of a ring ansa (port of RSPK_AnsaRaDec).
+
+    Right ansa is near 90 deg longitude; left ansa near 270 deg. Coordinates
+    apply to Earth center or observatory; not corrected for stellar aberration.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        radius_km: Ring radius in km.
+        is_right: True for right ansa, False for left ansa.
+
+    Returns:
+        Tuple of (ra, dec) in radians.
+
+    Raises:
+        ValueError: If geometry is edge-on (denom ~ 0).
+    """
     from ephemeris_tools.spice.geometry import planet_ranges
 
     _, obs_dist = planet_ranges(et)

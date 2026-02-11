@@ -13,7 +13,18 @@ if TYPE_CHECKING:
 
 
 def set_shift(body_id: int, dt: float) -> None:
-    """Apply a fixed time shift (seconds) to a moon's orbit. Positive = lead ephemeris."""
+    """Apply a fixed time shift to a moon's orbit (port of RSPK_SetShift).
+
+    Positive dt means the moon leads its ephemeris; negative means it lags.
+    Time shift is stored and used by spkapp_shifted.
+
+    Parameters:
+        body_id: SPICE body ID of the moon.
+        dt: Time shift in seconds.
+
+    Raises:
+        RuntimeError: If the limit on number of time-shifted bodies is reached.
+    """
     state = get_state()
     for i in range(state.nshifts):
         if state.shift_id[i] == body_id:
@@ -33,7 +44,21 @@ def spkapp_shifted(
     obs_pv: np.ndarray | list[float],
     aberr: str,
 ) -> tuple[np.ndarray, float]:
-    """Like cspyce.spkapp but with time-shift support. Returns (body_dpv, lt)."""
+    """Return apparent state of body; supports time offsets for moon orbits.
+
+    Port of RSPK_SPKAPP. Same interface as cspyce.spkapp; if set_shift was
+    called for this body, the moon's position is adjusted by the time shift.
+
+    Parameters:
+        body_id: SPICE body ID.
+        et: Ephemeris time.
+        ref: Reference frame (e.g. 'J2000').
+        obs_pv: Observer state (6) in km, km/s.
+        aberr: Aberration correction (e.g. 'LT', 'LT+S').
+
+    Returns:
+        Tuple of (body state 6-vector, light-time in seconds).
+    """
     import numpy as np
 
     state = get_state()

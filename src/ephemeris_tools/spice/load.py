@@ -14,12 +14,19 @@ logger = logging.getLogger(__name__)
 
 
 def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
-    """Load SPICE kernels for the given planet.
+    """Load SPICE kernels for the given planet (port of RSPK_LoadFiles).
 
-    Returns (True, None) if loaded, (False, reason) on failure.
+    Initializes the library for geometry calculations. Must be called before
+    other SPICE/RSPK calls (except set_observer_*). Subsequent calls for the
+    same planet do nothing. Observer is reset to Earth center.
 
-    planet: 4=Mars, 5=Jupiter, 6=Saturn, 7=Uranus, 8=Neptune, 9=Pluto.
-    version: ephemeris version or 0 for latest.
+    Parameters:
+        planet: Planet index: 4=Mars, 5=Jupiter, 6=Saturn, 7=Uranus, 8=Neptune,
+            9=Pluto.
+        version: Ephemeris version number, or 0 for latest.
+
+    Returns:
+        (True, None) if loaded successfully; (False, error_message) on failure.
     """
     state = get_state()
     if state.planet_num != 0 and state.planet_num != planet:
@@ -106,11 +113,20 @@ def load_spacecraft(
     version: int = 0,
     set_obs: bool = True,
 ) -> bool:
-    """Load SPICE kernels for spacecraft at planet. Optionally set observer to spacecraft.
+    """Load SPICE kernels for a spacecraft at a planet (port of RSPK_LoadSC).
 
-    sc_id: e.g. 'CAS', 'VG1', 'NH'.
-    planet: 5=Jupiter, 6=Saturn, etc.
-    version: 0 for latest.
+    Loads kernels needed for geometry with that spacecraft. Optionally sets
+    the observer to the spacecraft. Call after load_spice_files or in place
+    of it for the same planet.
+
+    Parameters:
+        sc_id: Spacecraft identifier (e.g. 'CAS', 'VG1', 'NH', 'GLL').
+        planet: Planet index: 5=Jupiter, 6=Saturn, 7=Uranus, 8=Neptune.
+        version: Ephemeris version, or 0 for latest.
+        set_obs: If True, set observer to this spacecraft.
+
+    Returns:
+        True if kernels were loaded, False otherwise.
     """
     state = get_state()
     if state.planet_num != 0 and state.planet_num != planet:

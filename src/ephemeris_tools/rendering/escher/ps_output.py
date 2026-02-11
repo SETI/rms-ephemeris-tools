@@ -31,7 +31,17 @@ def esfile(
     fonts: str,
     state: EscherState,
 ) -> None:
-    """Set output filename, creator, and fonts. Initialize state (port of ESFILE)."""
+    """Set PostScript output filename, creator, and document fonts (port of ESFILE).
+
+    Does not open the file; opening happens on first write (esopen or esdr07).
+    Resets state (drawn flag, stream handle).
+
+    Parameters:
+        filename: Output path for the PostScript file.
+        creator: Creator string for %%Creator.
+        fonts: Document fonts for %%DocumentFonts.
+        state: Escher state (modified in place).
+    """
     state.outfil = filename.strip() if filename else ' '
     state.creator = (creator or ' ').strip()
     state.fonts = (fonts or ' ').strip()
@@ -116,15 +126,27 @@ def write_ps_header(state: EscherState) -> None:
 
 
 def esopen(state: EscherState) -> None:
-    """Open file and write PS header (same as first-call block in ESDR07). Call after ESFILE."""
+    """Open the output file and write PostScript header (port of first-call in ESDR07).
+
+    Call after esfile. File is opened on first write if not already open.
+
+    Parameters:
+        state: Escher state (outfil, creator, fonts must be set).
+    """
     _ensure_open(state)
 
 
 def esdr07(nsegs: int, segs: list[int], state: EscherState) -> None:
-    """Draw segment buffer to PostScript (port of ESDR07).
+    """Draw buffered segments to PostScript (port of ESDR07).
 
-    segs: flat list of 5-tuples (BP, BL, EP, EL, COLOR) per segment.
-    nsegs: number of values (must be multiple of 5).
+    Groups connected segments with the same color into paths and strokes them.
+    Opens the output file on first call if not already open.
+
+    Parameters:
+        nsegs: Number of integers in segs (must be multiple of 5).
+        segs: Flat list of (BP, BL, EP, EL, COLOR) per segment: begin pixel/line,
+            end pixel/line, color code.
+        state: Escher state (file written, xsave/ysave/oldcol updated).
     """
     if nsegs < 5:
         return
@@ -224,7 +246,14 @@ def esdr07(nsegs: int, segs: list[int], state: EscherState) -> None:
 
 
 def eslwid(points: float, state: EscherState) -> None:
-    """Set line width in points (port of ESLWID). Writes only when changed."""
+    """Set line width in points for PostScript output (port of ESLWID).
+
+    Writes setlinewidth only when the width changes from the previous call.
+
+    Parameters:
+        points: Line width in points (scaled by 10 for internal units).
+        state: Escher state (oldwidth updated).
+    """
     if state.outuni is None:
         return
     width = max(_nint(points * 10.0), MINWIDTH)
@@ -235,7 +264,14 @@ def eslwid(points: float, state: EscherState) -> None:
 
 
 def eswrit(string: str, state: EscherState) -> None:
-    """Write raw string to PostScript file (port of ESWRIT)."""
+    """Write a raw string to the PostScript file (port of ESWRIT).
+
+    Adds a newline if the string does not end with one.
+
+    Parameters:
+        string: Text to write (e.g. PostScript commands).
+        state: Escher state (outuni must be open).
+    """
     if state.outuni is None:
         return
     state.outuni.write(string)
@@ -244,17 +280,29 @@ def eswrit(string: str, state: EscherState) -> None:
 
 
 def esmove(state: EscherState) -> None:
-    """Emit moveto to last stroked point (port of ESMOVE)."""
+    """Emit PostScript moveto to the end of the last stroked path (port of ESMOVE).
+
+    Used to continue drawing from the current point (e.g. for labels).
+
+    Parameters:
+        state: Escher state (xsave, ysave are the last point).
+    """
     if state.outuni is None:
         return
     state.outuni.write(_opairi(state.xsave, state.ysave, 'M') + '\n')
 
 
 def escl07(hmin: int, hmax: int, vmin: int, vmax: int, state: EscherState) -> None:
-    """Clear region or close page (port of ESCL07).
+    """Clear a region of the page or end the page (port of ESCL07).
 
-    If (hmin,hmax,vmin,vmax) equals (MINX,MAXX,MINY,MAXY), writes showpage and closes.
-    Otherwise draws white filled rectangle.
+    If the region equals the full page (MINX, MAXX, MINY, MAXY), writes
+    showpage and closes the file (unless external_stream is True). Otherwise
+    draws a white filled rectangle over the region.
+
+    Parameters:
+        hmin, hmax: Horizontal pixel bounds.
+        vmin, vmax: Vertical line bounds.
+        state: Escher state (file may be closed on full-page clear).
     """
     from ephemeris_tools.rendering.escher.constants import MAXX, MAXY, MINX, MINY
 
@@ -285,7 +333,11 @@ def escl07(hmin: int, hmax: int, vmin: int, vmax: int, state: EscherState) -> No
 
 
 def espl07() -> tuple[int, int, int, int]:
-    """Return graphics boundaries (port of ESPL07)."""
+    """Return graphics device boundaries in pixel/line (port of ESPL07).
+
+    Returns:
+        Tuple (MINX, MAXX, MINY, MAXY) for the device.
+    """
     from ephemeris_tools.rendering.escher.constants import MAXX, MAXY, MINX, MINY
 
     return (MINX, MAXX, MINY, MAXY)

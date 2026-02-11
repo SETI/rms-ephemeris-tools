@@ -11,11 +11,17 @@ if TYPE_CHECKING:
 
 
 def _w(stream: TextIO, line: str) -> None:
+    """Write a line to the stream (helper for input parameters section)."""
     stream.write(line + '\n')
 
 
 def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) -> None:
-    """Write Input Parameters section for ephemeris (ephem3_xxx.f)."""
+    """Write Input Parameters section for ephemeris (port of ephem3_xxx Summarize).
+
+    Parameters:
+        stream: Output text stream.
+        params: Ephemeris parameters to summarize.
+    """
     _w(stream, 'Input Parameters')
     _w(stream, '----------------')
     _w(stream, ' ')
@@ -79,7 +85,12 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
 
 
 def write_input_parameters_tracker(stream: TextIO, args: Namespace) -> None:
-    """Write Input Parameters section for tracker (tracker3_xxx.f)."""
+    """Write Input Parameters section for tracker (port of tracker3_xxx Summarize).
+
+    Parameters:
+        stream: Output text stream.
+        args: Parsed CLI/namespace with start, stop, interval, viewpoint, etc.
+    """
     _w(stream, 'Input Parameters')
     _w(stream, '----------------')
     _w(stream, ' ')
@@ -154,7 +165,12 @@ _PLANET_NAMES = {4: 'Mars', 5: 'Jupiter', 6: 'Saturn', 7: 'Uranus', 8: 'Neptune'
 
 
 def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
-    """Write Input Parameters section for viewer (viewer3_sat.f)."""
+    """Write Input Parameters section for viewer (port of viewer3_* Summarize).
+
+    Parameters:
+        stream: Output text stream.
+        args: Parsed CLI/namespace with time, fov, center, viewpoint, etc.
+    """
     _w(stream, 'Input Parameters')
     _w(stream, '----------------')
     _w(stream, ' ')

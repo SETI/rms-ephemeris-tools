@@ -44,7 +44,22 @@ def euring(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Draw ring ellipse (port of EURING)."""
+    """Draw an elliptical ring (port of EURING).
+
+    Ring is a curve only; it does not cast shadows. Lit and dark portions use
+    the given color codes. MAJOR and MINOR are assumed orthogonal (semi-axes).
+
+    Parameters:
+        ring_center: Center of the ring (e.g. planet center).
+        major: Semi-major axis vector (direction and length).
+        minor: Semi-minor axis vector (direction and length).
+        srcreq: Number of light sources required to consider a point lit.
+        bright: Color code for lit portion.
+        dark: Color code for unlit portion.
+        euclid_state: Euclid state (from eugeom/euview).
+        view_state: Escher view state.
+        escher_state: Escher output state.
+    """
     st = euclid_state
     if not st.initialized:
         euinit(st)

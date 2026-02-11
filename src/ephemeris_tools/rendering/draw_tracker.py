@@ -67,6 +67,7 @@ def _track_string(s: str) -> str:
 
 
 def _emit(out: TextIO, line: str) -> None:
+    """Write a line to the output stream (helper for PostScript emission)."""
     out.write(line + '\n')
 
 
@@ -77,7 +78,7 @@ def _plot_limb(
     xscaled: bool,
     rp: float,
 ) -> None:
-    """RSPK_PlotLimb: gray band for ring or planet."""
+    """Plot gray band for planetary limb/ring zone (port of RSPK_PlotLimb)."""
     for sign in (-1, 1):
         if xscaled:
             val = sign * rp
@@ -102,7 +103,7 @@ def _plot_moon(
     excluded: list[bool],
     irecband: int,
 ) -> None:
-    """RSPK_PlotMoon: one moon curve and label."""
+    """Plot one moon's track curve and optional label (port of RSPK_PlotMoon)."""
     xmax = -1e37
     imax = -1
     first = True
@@ -132,7 +133,7 @@ def _label_xaxis(
     xscaled: bool,
     planetstr: str,
 ) -> None:
-    """RSPK_LabelXAxis."""
+    """Draw x-axis labels and tick marks (port of RSPK_LabelXAxis)."""
     max_xstep = 2.0 * xrange / 3.0
     i = len(STEP1) - 1
     while i >= 1 and STEP1[i] > max_xstep:
@@ -166,9 +167,16 @@ def _label_yaxis(
     tai_from_day_sec: Callable[[int, float], float],
     use_doy_format: bool = False,
 ) -> None:
-    """RSPK_LabelYAxis: time axis ticks and date labels.
+    """Draw y-axis (time) labels and tick marks (port of RSPK_LabelYAxis).
 
-    use_doy_format: if True (spacecraft observer, not JWST/HST), use YYYY-DDD HHh (rspk_trackmoonc).
+    Parameters:
+        out: Output stream.
+        tai1, tai2: TAI time range (seconds).
+        dt: Time step between records.
+        day_sec_from_tai: Convert TAI to (day, sec).
+        ymd_from_day: Convert day to (year, month, day).
+        tai_from_day_sec: Convert (day, sec) to TAI.
+        use_doy_format: If True, use YYYY-DDD HHh format (e.g. spacecraft).
     """
     max_mark1_mins = (tai2 - tai1) / 60.0 / 4.0
     i = len(STEP1_MINS) - 1
@@ -268,9 +276,27 @@ def draw_moon_tracks(
     filename: str,
     use_doy_format: bool = False,
 ) -> None:
-    """Emit PostScript identical to RSPK_TrackMoons (rspk_trackmoons.f).
+    """Generate PostScript and table of east-west moon offsets (port of RSPK_TrackMoons).
 
-    use_doy_format: when True, Y-axis uses YYYY-DDD HHh (rspk_trackmoonc, spacecraft).
+    Time increases downward; west is toward the right. Moon positions are solid
+    lines; rings and planet are gray zones. Title and captions supported.
+
+    Parameters:
+        output: PostScript output stream.
+        planet_num: Planet index (4=Mars, 5=Jupiter, etc.).
+        ntimes: Number of time steps.
+        time1_tai, time2_tai: Start and stop TAI (seconds).
+        dt: Time step (seconds).
+        xrange: Half-range of x-axis (arcsec or planet radii).
+        xscaled: True to use planet radii on x-axis.
+        moon_arcsec: [moon][time] offset in arcsec.
+        limb_arcsec: Limb offset per time.
+        moon_names: Name per moon.
+        nrings, ring_flags, ring_rads_km, ring_grays: Ring data.
+        planet_gray, rplanet_km: Planet gray level and radius (km).
+        title, ncaptions, lcaptions, rcaptions, align_loc: Title and captions.
+        filename: Output filename (for PostScript comments).
+        use_doy_format: True for YYYY-DDD HHh on y-axis (spacecraft).
     """
     from ephemeris_tools.time_utils import (
         day_sec_from_tai,
@@ -453,7 +479,18 @@ def draw_moon_tracks_arcsec(
     moon_offsets: list[list[float]],
     limb_rad: float,
 ) -> None:
-    """Legacy: arcsec tracker with single limb_rad (radians). Calls full draw_moon_tracks."""
+    """Draw moon tracks with x-axis in arcsec (port of RSPK_TrackMoons in arcsec mode).
+
+    Convenience wrapper: builds limb_arcsec from single limb_rad and calls
+    draw_moon_tracks with xscaled=False.
+
+    Parameters:
+        output: PostScript output stream.
+        planet_num: Planet index.
+        times: List of TAI times (seconds).
+        moon_offsets: [moon][time] offset in radians (converted to arcsec).
+        limb_rad: Limb radius in radians (used for all times).
+    """
 
     rad_to_arcsec = 180.0 / math.pi * 3600.0
     limb_a = limb_rad * rad_to_arcsec
@@ -504,5 +541,10 @@ def draw_moon_tracks_degree(
     moon_offsets: list[list[float]],
     limb_rad: float,
 ) -> None:
+    """Draw moon tracks with x-axis in degrees (port of RSPK_TrackMoonC).
+
+    Same as draw_moon_tracks_arcsec but x-axis in degrees; suitable for
+    Cassini-style plots.
+    """
     """Legacy: degree tracker. Not FORTRAN-identical."""
     draw_moon_tracks_arcsec(output, planet_num, times, moon_offsets, limb_rad)

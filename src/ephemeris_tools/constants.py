@@ -67,7 +67,14 @@ EPHEM_DESCRIPTIONS_BY_PLANET: dict[int, str] = {
 
 
 def spacecraft_code_to_id(sc_code: int) -> str | None:
-    """Return spacecraft abbreviation for NAIF code, or None if unknown."""
+    """Return spacecraft abbreviation for NAIF code (port of RSPK_GetSCID inverse).
+
+    Parameters:
+        sc_code: NAIF spacecraft ID (e.g. -82 for Cassini).
+
+    Returns:
+        Abbreviation (e.g. 'CAS') or None if unknown.
+    """
     for i, code in enumerate(SPACECRAFT_CODES):
         if code == sc_code:
             return SPACECRAFT_IDS[i]
@@ -75,7 +82,14 @@ def spacecraft_code_to_id(sc_code: int) -> str | None:
 
 
 def spacecraft_name_to_code(name: str) -> int | None:
-    """Return NAIF code for spacecraft name or abbreviation (case-insensitive)."""
+    """Return NAIF ID for spacecraft by name or abbreviation (port of RSPK_GetSCID).
+
+    Parameters:
+        name: Full name or ID (e.g. 'VG1', 'Voyager 1', 'CASSINI').
+
+    Returns:
+        NAIF integer ID or None if not found.
+    """
     name_upper = name.strip().upper()
     for i, abbr in enumerate(SPACECRAFT_IDS):
         if abbr == name_upper:

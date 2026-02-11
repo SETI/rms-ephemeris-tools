@@ -19,9 +19,17 @@ class Star:
 
 
 def read_stars(filepath: str | Path, max_stars: int = 100) -> list[Star]:
-    """Read star list from file. Format: name, RA (hours or h m s), Dec (deg or d m s); repeat.
+    """Read star list from file (port of ReadStars).
 
-    Lines starting with '!' are skipped. Returns list of Star with ra/dec in radians.
+    Format: for each star, a line with name, then RA (hours or h m s), then Dec
+    (deg or d m s). Lines starting with '!' are skipped.
+
+    Parameters:
+        filepath: Path to star catalog file.
+        max_stars: Maximum number of stars to read.
+
+    Returns:
+        List of Star with name, ra (radians), dec (radians).
     """
     path = Path(filepath)
     stars: list[Star] = []

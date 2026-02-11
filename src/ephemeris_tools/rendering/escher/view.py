@@ -24,10 +24,19 @@ def _esclip(
     x2: float,
     y2: float,
 ) -> tuple[float, float, float, float, bool]:
-    """Clip segment to rectangle (port of ESCLIP).
+    """Clip line segment to rectangle (port of ESCLIP).
 
-    FORTRAN treats boundary points (x==xmin, etc.) as INSIDE the
-    rectangle (region 9).  Intersection tests use strict inequalities.
+    Boundary points (x==xmin, etc.) are treated as inside the rectangle.
+    Intersection tests use strict inequalities.
+
+    Parameters:
+        xmin, xmax, ymin, ymax: Rectangle bounds.
+        x1, y1: First endpoint of segment.
+        x2, y2: Second endpoint of segment.
+
+    Returns:
+        Tuple of (clipped_x1, clipped_y1, clipped_x2, clipped_y2, inside).
+        inside is False if segment is entirely outside.
     """
     # ------------------------------------------------------------------
     # Classify first endpoint into regions (FORTRAN uses strict .GT./.LT.)
@@ -162,7 +171,15 @@ def _esclip(
 
 
 def _esmap2(x: float, y: float, view_state: EscherViewState) -> tuple[int, int]:
-    """Map projection (x,y) to pixel/line (port of ESMAP2)."""
+    """Map point in projection (x,y) space to device pixel/line (port of ESMAP2).
+
+    Parameters:
+        x, y: Coordinates in projection (FOV) space.
+        view_state: View state from esview (must be initialized).
+
+    Returns:
+        Tuple of (pixel, line) in device coordinates.
+    """
     p = _nint(view_state._pcen + view_state._ux * (x - view_state._xcen))
     line = _nint(view_state._lcen + view_state._uy * (y - view_state._ycen))
     return (p, line)
@@ -179,7 +196,22 @@ def esview(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Set device, viewport (0-1), and FOV; set up mapping (port of ESVIEW + ESMAP1)."""
+    """Set display device, viewport, and FOV; set up projection mapping (ESVIEW + ESMAP1).
+
+    VIEW is the region of the device (0-1 in H and V). FOV is the field of view
+    rectangle in projection space (xmin, xmax, ymin, ymax). Scaling preserves
+    aspect ratio (squares in projection map to squares on device).
+
+    Parameters:
+        device: Graphics device number.
+        view: (Hmin, Hmax, Vmin, Vmax) in 0-1.
+        fov: (Xmin, Xmax, Ymin, Ymax) in projection space.
+        view_state: Updated with mapping and segment buffer cleared.
+        escher_state: Escher output state (unused but required for API).
+
+    Raises:
+        ValueError: If FOV has zero width or height.
+    """
     view_state.device = device
     view_state.view = view
     view_state.fov = fov
@@ -219,7 +251,18 @@ def esdraw(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Project 3D segment to 2D, clip, map, buffer; flush if full (port of ESDRAW)."""
+    """Draw a 3D line segment: project to 2D, clip to FOV, map to device, buffer (port of ESDRAW).
+
+    Segments are buffered; when buffer is full they are flushed to PostScript
+    via esdr07. Call esdump to flush remaining segments.
+
+    Parameters:
+        begin: Start point (x, y, z) in projection space (z > 0 visible).
+        end: End point (x, y, z).
+        color: Color code for the segment.
+        view_state: View state from esview.
+        escher_state: Escher output state.
+    """
     if not view_state._initialized or view_state.device == 0:
         return
     sign1 = 1.0 if begin[2] >= 0 else -1.0
@@ -253,7 +296,14 @@ def esdraw(
 
 
 def esdump(view_state: EscherViewState, escher_state: EscherState) -> None:
-    """Flush segment buffer to ESDR07 (port of ESDUMP)."""
+    """Flush segment buffer to PostScript (port of ESDUMP).
+
+    Writes all buffered segments via esdr07 and clears the buffer.
+
+    Parameters:
+        view_state: View state (segbuf cleared).
+        escher_state: Escher output state.
+    """
     if not view_state.segbuf:
         return
     n = len(view_state.segbuf)
@@ -267,7 +317,16 @@ def esclr(
     region: tuple[float, float, float, float],
     escher_state: EscherState,
 ) -> None:
-    """Clear viewport (port of ESCLR). Region is (Hmin,Hmax,Vmin,Vmax) in 0-1."""
+    """Clear a region of the display (port of ESCLR).
+
+    Region is (Hmin, Hmax, Vmin, Vmax) in 0-1. Full page clear writes
+    showpage and may close the file (unless external_stream is set).
+
+    Parameters:
+        device: Graphics device (unused; kept for API compatibility).
+        region: (Hmin, Hmax, Vmin, Vmax) in 0-1.
+        escher_state: Escher output state.
+    """
     _ = device
     hmin, hmax, vmin, vmax = region
     left, right, bottom, top = espl07()

@@ -56,9 +56,16 @@ PLANET_NAME_TO_NUM: dict[str, int] = {
 
 
 def parse_planet(value: str) -> int:
-    """Parse a planet specifier: integer 4-9 or name (mars..pluto).
+    """Parse planet specifier: integer 4-9 or name (mars..pluto).
 
-    Raises ValueError if unrecognised.
+    Parameters:
+        value: Planet number string or name (case-insensitive).
+
+    Returns:
+        Planet number (4-9).
+
+    Raises:
+        ValueError: If value is not a valid planet.
     """
     v = value.strip()
     try:
@@ -117,10 +124,13 @@ MCOL_NAME_TO_ID: dict[str, int] = {
 
 
 def parse_column_spec(tokens: list[str]) -> list[int]:
-    """Convert list of column tokens (int strings or names) to column IDs.
+    """Convert column tokens to column IDs (ephem3_xxx.f COL_*).
 
-    Each token may be a decimal column ID or a case-insensitive column name
-    (e.g. ymdhms, radec, obslon). Invalid tokens are skipped with a log message.
+    Parameters:
+        tokens: List of decimal IDs or case-insensitive names (e.g. ymdhms, radec).
+
+    Returns:
+        List of column IDs; invalid tokens are skipped (logged).
     """
     out: list[int] = []
     for s in tokens:
@@ -141,10 +151,13 @@ def parse_column_spec(tokens: list[str]) -> list[int]:
 
 
 def parse_mooncol_spec(tokens: list[str]) -> list[int]:
-    """Convert list of moon column tokens (int strings or names) to moon column IDs.
+    """Convert moon column tokens to moon column IDs (MCOL_*).
 
-    Each token may be a decimal ID or a case-insensitive name (e.g. radec, offset).
-    Invalid tokens are skipped with a log message.
+    Parameters:
+        tokens: List of decimal IDs or case-insensitive names (e.g. radec, offset).
+
+    Returns:
+        List of moon column IDs; invalid tokens are skipped (logged).
     """
     out: list[int] = []
     for s in tokens:
@@ -227,7 +240,7 @@ def parse_ring_spec(planet_num: int, tokens: list[str]) -> list[int]:
 
 @dataclass
 class EphemerisParams:
-    """Parameters for ephemeris table generation."""
+    """Parameters for ephemeris table generation (ephem3_xxx.f request summary)."""
 
     planet_num: int
     start_time: str
@@ -249,12 +262,27 @@ class EphemerisParams:
 
 
 def _get_env(key: str, default: str = '') -> str:
-    """Get environment variable, stripped."""
+    """Get environment variable, stripped.
+
+    Parameters:
+        key: Environment variable name.
+        default: Value if key missing.
+
+    Returns:
+        Stripped string.
+    """
     return os.environ.get(key, default).strip()
 
 
 def _get_keys_env(key: str) -> list[str]:
-    """Get repeated env keys (e.g. columns#1, columns#2). Perl/CGI convention."""
+    """Get repeated env keys (e.g. columns#1, columns#2). Perl/CGI convention.
+
+    Parameters:
+        key: Base name (e.g. 'columns').
+
+    Returns:
+        List of values from key, key#1, key#2, ... or comma/split of single value.
+    """
     out: list[str] = []
     i = 1
     while True:
@@ -276,7 +304,13 @@ def _get_keys_env(key: str) -> list[str]:
 
 
 def ephemeris_params_from_env() -> EphemerisParams | None:
-    """Build EphemerisParams from CGI-style environment variables. Returns None if invalid."""
+    """Build EphemerisParams from CGI-style environment variables.
+
+    Reads NPLANET, start, stop, interval, viewpoint, columns, etc. from env.
+
+    Returns:
+        EphemerisParams or None if required keys are missing/invalid.
+    """
     nplanet_s = _get_env('NPLANET')
     if not nplanet_s:
         return None

@@ -7,7 +7,12 @@ from ephemeris_tools.rendering.euclid.vec_math import Vec3
 
 
 class EuclidState:
-    """Geometry and view state for Euclid (replaces FORTRAN saved variables)."""
+    """Geometry and view state for Euclid (replaces FORTRAN saved variables).
+
+    Holds trig tables (from euinit), viewport/FOV (from euview), and scene
+    geometry including limb and terminator data (from eugeom). Passed through
+    eubody, euring, eustar, etc.
+    """
 
     def __init__(self) -> None:
         self.device = 0

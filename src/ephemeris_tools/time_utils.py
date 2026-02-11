@@ -47,10 +47,14 @@ def _ensure_leapsecs() -> None:
 
 
 def parse_datetime(string: str) -> tuple[int, float] | None:
-    """Parse date/time string to (day, sec) in UTC. Returns None on parse failure.
+    """Parse date/time string to UTC (day, sec) (replaces FJUL_ParseDT).
 
-    day = days since J2000 (Jan 1 2000), sec = seconds within that day.
-    Replaces FJUL_ParseDT(string, ' ', dutc, secs).
+    Parameters:
+        string: Date/time string (format accepted by rms-julian).
+
+    Returns:
+        (day, sec) where day is days since J2000, sec is seconds within that day;
+        None on parse failure.
     """
     _ensure_leapsecs()
     try:
@@ -62,63 +66,139 @@ def parse_datetime(string: str) -> tuple[int, float] | None:
 
 
 def tai_from_day_sec(day: int, sec: float) -> float:
-    """Convert UTC (day, sec) to TAI seconds. Replaces FJUL_TAIofDUTC(dutc) + secs."""
+    """Convert UTC (day, sec) to TAI seconds (replaces FJUL_TAIofDUTC + secs).
+
+    Parameters:
+        day: Days since J2000.
+        sec: Seconds within that day.
+
+    Returns:
+        TAI in seconds.
+    """
     _ensure_leapsecs()
     return float(julian.tai_from_day_sec(day, sec))
 
 
 def tdb_from_tai(tai: float) -> float:
-    """Convert TAI seconds to TDB (barycentric dynamical time) in seconds.
+    """Convert TAI to TDB seconds (replaces FJUL_ETofTAI). Used as ET for SPICE.
 
-    Used as ET (ephemeris time) for SPICE. Replaces FJUL_ETofTAI(tai).
+    Parameters:
+        tai: TAI in seconds.
+
+    Returns:
+        TDB (ephemeris time) in seconds.
     """
     return float(julian.tdb_from_tai(tai))
 
 
 def tai_from_tdb(tdb: float) -> float:
-    """Convert TDB seconds to TAI. Replaces inverse of FJUL_ETofTAI."""
+    """Convert TDB seconds to TAI (inverse of FJUL_ETofTAI).
+
+    Parameters:
+        tdb: TDB (ephemeris time) in seconds.
+
+    Returns:
+        TAI in seconds.
+    """
     return float(julian.tai_from_tdb(tdb))
 
 
 def mjd_from_tai(tai: float) -> float:
-    """Convert TAI seconds to Modified Julian Date. Replaces FJUL_MJDofTAI(tai, 0)."""
+    """Convert TAI to Modified Julian Date (replaces FJUL_MJDofTAI).
+
+    Parameters:
+        tai: TAI in seconds.
+
+    Returns:
+        MJD (float).
+    """
     return float(julian.mjd_from_tai(tai))
 
 
 def day_sec_from_tai(tai: float) -> tuple[int, float]:
-    """Convert TAI seconds to UTC (day, sec). Replaces FJUL_DUTCofTAI(tai, secs)."""
+    """Convert TAI to UTC (day, sec) (replaces FJUL_DUTCofTAI).
+
+    Parameters:
+        tai: TAI in seconds.
+
+    Returns:
+        (day, sec) where day is days since J2000.
+    """
     _ensure_leapsecs()
     day, sec = julian.day_sec_from_tai(tai)
     return (int(day), float(sec))
 
 
 def ymd_from_day(day: int) -> tuple[int, int, int]:
-    """Convert day (since J2000) to (year, month, day). Replaces FJUL_YMDofDUTC(dutc)."""
+    """Convert day since J2000 to calendar date (replaces FJUL_YMDofDUTC).
+
+    Parameters:
+        day: Days since J2000.
+
+    Returns:
+        (year, month, day).
+    """
     return julian.ymd_from_day(day)
 
 
 def yd_from_day(day: int) -> tuple[int, int]:
-    """Convert day to (year, day_of_year). Replaces FJUL_YDofDUTC(dutc)."""
+    """Convert day since J2000 to year and day-of-year (replaces FJUL_YDofDUTC).
+
+    Parameters:
+        day: Days since J2000.
+
+    Returns:
+        (year, day_of_year).
+    """
     return julian.yd_from_day(day)
 
 
 def hms_from_sec(sec: float) -> tuple[int, int, float]:
-    """Convert seconds within day to (hour, minute, second). Replaces FJUL_HMSofSec."""
+    """Convert seconds within day to (hour, minute, second) (replaces FJUL_HMSofSec).
+
+    Parameters:
+        sec: Seconds within day (0..86400).
+
+    Returns:
+        (hour, minute, second).
+    """
     return julian.hms_from_sec(sec)
 
 
 def tai_from_jd(jd: float) -> float:
-    """Convert Julian Date to TAI seconds. Replaces FJUL_TAIofJD(jd, 2)."""
+    """Convert Julian Date to TAI seconds (replaces FJUL_TAIofJD).
+
+    Parameters:
+        jd: Julian Date.
+
+    Returns:
+        TAI in seconds.
+    """
     return float(julian.tai_from_jd(jd))
 
 
 def day_from_ymd(year: int, month: int, day: int) -> int:
-    """Convert calendar date to day since J2000. Replaces FJUL_DUTCofYMD."""
+    """Convert calendar date to days since J2000 (replaces FJUL_DUTCofYMD).
+
+    Parameters:
+        year, month, day: Calendar date.
+
+    Returns:
+        Days since J2000.
+    """
     return int(julian.day_from_ymd(year, month, day))
 
 
 def format_utc(tai: float, fmt: str | None = None) -> str:
-    """Format TAI as UTC string. Replaces FJUL_FormatPDS / FJUL_FormatDate etc."""
+    """Format TAI as UTC string (replaces FJUL_FormatPDS / FJUL_FormatDate).
+
+    Parameters:
+        tai: TAI in seconds.
+        fmt: Optional format string for rms-julian; None = default.
+
+    Returns:
+        Formatted UTC string.
+    """
     _ensure_leapsecs()
     if fmt is not None:
         return julian.format_tai(tai, fmt)
@@ -126,7 +206,15 @@ def format_utc(tai: float, fmt: str | None = None) -> str:
 
 
 def utc_to_et(day: int, sec: float) -> float:
-    """Convert UTC (day, sec) to ET (TDB) seconds for SPICE. Common convenience."""
+    """Convert UTC (day, sec) to ET (TDB) seconds for SPICE.
+
+    Parameters:
+        day: Days since J2000.
+        sec: Seconds within day.
+
+    Returns:
+        ET (TDB) in seconds.
+    """
     tai = tai_from_day_sec(day, sec)
     return tdb_from_tai(tai)
 

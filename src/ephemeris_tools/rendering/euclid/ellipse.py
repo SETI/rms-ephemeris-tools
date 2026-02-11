@@ -29,10 +29,21 @@ def _ellips(
     center: Vec3,
     vufrom: Vec3,
 ) -> tuple[Vec3, Vec3, Vec3, Vec3, bool]:
-    """Compute limb ellipse of triaxial body (port of ELLIPS).
+    """Compute limb ellipse of triaxial ellipsoid (port of ELLIPS).
+
+    Finds principal axes, center, and plane normal of the observed limb.
+    NORMAL points into the half-space containing the observer.
+
+    Parameters:
+        axis1: First principal axis from center (length = semi-axis length).
+        axis2: Second principal axis from center.
+        axis3: Third principal axis from center.
+        center: Center of the ellipsoid.
+        vufrom: Viewpoint position.
 
     Returns:
-        (normal, major, minor, midpnt, cansee).
+        Tuple of (normal, major, minor, midpnt, cansee). cansee is False if
+        observer is inside the body.
     """
     r1sqr = _vdot(axis1, axis1)
     r2sqr = _vdot(axis2, axis2)
@@ -128,10 +139,17 @@ def _eclpmd(
     source: Vec3,
     radius: float,
 ) -> tuple[Vec3, Vec3, Vec3, Vec3, Vec3, Vec3, bool]:
-    """Compute terminator/eclipse model (port of ECLPMD).
+    """Compute terminator and eclipse cone for ellipsoid + spherical source (port of ECLPMD).
+
+    Parameters:
+        axis1, axis2, axis3: Principal axes of ellipsoid (from center, length = semi-axis).
+        center: Center of ellipsoid.
+        source: Center of illumination source.
+        radius: Radius of spherical source.
 
     Returns:
-        (normal, major, minor, midpnt, vertex, caxis, canecl).
+        Tuple of (normal, major, minor, midpnt, vertex, caxis, canecl). canecl
+        is True if the light source is outside the body (eclipse cone valid).
     """
     sight = _vsub(center, source)
     r1sqr = _vdot(axis1, axis1)
@@ -170,7 +188,20 @@ def _eclpmd(
 
 
 def _ovrlap(centr1: Vec3, r1: float, centr2: Vec3, r2: float) -> int:
-    """Disk overlap test (port of OVRLAP). Returns -1,0,1,2,3."""
+    """Determine degree of overlap of two disks (port of OVRLAP).
+
+    Disks are defined by center vectors and radii (on a cone). Return code:
+    -1=invalid, 0=no intersection, 1=disk1 inside 2, 2=disk2 inside 1, 3=partial.
+
+    Parameters:
+        centr1: Center of first disk (3-vector).
+        r1: Radius of first disk.
+        centr2: Center of second disk.
+        r2: Radius of second disk.
+
+    Returns:
+        Overlap code: -1, 0, 1, 2, or 3.
+    """
     a = _vnorm(centr1)
     b_val = _vnorm(centr2)
     if a == 0.0 or b_val == 0.0:
@@ -204,10 +235,19 @@ def _elipln(
     major: Vec3,
     minor: Vec3,
 ) -> tuple[int, list[float], list[float]]:
-    """Ellipse-plane intersection (port of ELIPLN).
+    """Find intersection(s) of ellipse with plane (port of ELIPLN).
+
+    Plane: <normal, x> = constn. Ellipse: cos(t)*major + sin(t)*minor + center.
+
+    Parameters:
+        normal: Plane normal.
+        constn: Plane constant.
+        major: Semi-major axis vector.
+        minor: Semi-minor axis vector.
 
     Returns:
-        (nintsc, cosins[2], sins[2]).
+        Tuple of (nintsc, cosins, sins). nintsc is number of intersections (0, 1, 2,
+        or -1 for degenerate). cosins/sins give parameter values at intersections.
     """
     a = _vdot(major, normal)
     b = _vdot(minor, normal)
@@ -253,10 +293,19 @@ def _plpnts(
     n: int,
     solve: list[bool],
 ) -> tuple[list[float], list[float], int]:
-    """Find ellipse-plane intersections (port of PLPNTS).
+    """Find intersections of ellipse with a family of planes (port of PLPNTS).
+
+    Parameters:
+        major: Semi-major axis of ellipse.
+        minor: Semi-minor axis of ellipse.
+        center: Center of ellipse.
+        normls: Plane normals (n planes).
+        consts: Plane constants (n planes).
+        n: Number of planes.
+        solve: For each plane, True to compute intersection.
 
     Returns:
-        (pointx, pointy, meetns).
+        Tuple of (pointx, pointy, meetns): x/y coords of intersection points and count.
     """
     pointx: list[float] = []
     pointy: list[float] = []
@@ -273,7 +322,7 @@ def _plpnts(
 
 
 def _arderd(x1: float, y1: float, x2: float, y2: float) -> bool:
-    """Angle ordering test (port of ARDERD)."""
+    """Return True if (x2,y2) is counterclockwise from (x1,y1) in the plane (port of ARDERD)."""
     if y1 >= 0.0:
         quad1 = 1 if x1 >= 0.0 else 2
     else:
@@ -294,7 +343,7 @@ def _asort(
     ycoord: list[float],
     n: int,
 ) -> None:
-    """Shell sort by angle (port of ASORT). Sorts in place."""
+    """Sort n points by angle (port of ASORT). Modifies xcoord and ycoord in place."""
     gap = n // 2
     while gap > 0:
         for i in range(gap, n):

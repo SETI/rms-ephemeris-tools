@@ -12,7 +12,16 @@ _RAD_TO_ARCSEC = 180.0 / math.pi * 3600.0
 
 
 def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int) -> list[bool]:
-    """Convert CGI ring option codes to ring_flags (FORTRAN tracker3_xxx.f logic)."""
+    """Convert CGI ring option codes to ring visibility flags (tracker3_xxx.f).
+
+    Parameters:
+        planet_num: Planet number (5=Jupiter, 6=Saturn, etc.).
+        ring_options: List of option codes (e.g. 61=Saturn main, 62=G+E).
+        nrings: Number of ring entries in geometry.
+
+    Returns:
+        List of bool, one per ring; True = show.
+    """
     required = 5 if planet_num == 6 else (3 if planet_num == 5 else 1)
     flags = [False] * max(nrings, required, 1)
     for opt in ring_options:
@@ -49,7 +58,27 @@ def run_tracker(
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
 ) -> None:
-    """Generate moon tracker plot and optional text table."""
+    """Generate moon tracker PostScript plot and optional text table (tracker3_xxx.f).
+
+    Loads SPICE, computes moon offsets over the time range, draws plot and table.
+
+    Parameters:
+        planet_num: Planet index 4-9.
+        start_time, stop_time: Time range strings.
+        interval, time_unit: Step (e.g. 1 hour).
+        viewpoint: Observer (e.g. Earth).
+        moon_ids: Moon body IDs to include; empty = all.
+        ephem_version: SPICE version or 0.
+        xrange: Plot x-axis range (arcsec or radii if xscaled).
+        xscaled: If True, xrange in planet radii.
+        title: Plot title.
+        ring_options: Ring option codes for drawing rings.
+        output_ps, output_txt: Optional output streams.
+
+    Raises:
+        ValueError: Invalid time range or planet.
+        RuntimeError: SPICE load failure.
+    """
     from ephemeris_tools.constants import EARTH_ID
     from ephemeris_tools.spice.geometry import moon_tracker_offsets
     from ephemeris_tools.spice.load import load_spice_files

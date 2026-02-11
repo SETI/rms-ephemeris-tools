@@ -7,15 +7,27 @@ import re
 
 
 def get_key(name: str, default: str | None = '') -> str:
-    """Read one parameter from environment (WWW_GetKey). Sanitized."""
+    """Read one CGI parameter from environment (WWW_GetKey).
+
+    Parameters:
+        name: Environment variable name.
+        default: Value if name is missing.
+
+    Returns:
+        Sanitized, stripped string.
+    """
     raw = os.environ.get(name, default)
     return _sanitize(str(raw).strip())
 
 
 def get_keys(name: str) -> list[str]:
-    """Read repeated parameters (WWW_GetKeys). Returns list of values.
+    """Read repeated CGI parameters (WWW_GetKeys): name, name#1, name#2 or split.
 
-    Env vars like COLUMNS#1, COLUMNS#2 or COLUMNS=1#2#3 (split on #).
+    Parameters:
+        name: Base environment variable name.
+
+    Returns:
+        List of sanitized values (no duplicates, order preserved).
     """
     out: list[str] = []
     seen = set()
@@ -51,12 +63,24 @@ def get_keys(name: str) -> list[str]:
 
 
 def get_env(name: str, default: str | None = '') -> str:
-    """Read environment variable (WWW_GetEnv). No sanitization."""
+    """Read environment variable (WWW_GetEnv); no sanitization.
+
+    Parameters:
+        name: Environment variable name.
+        default: Value if name is missing.
+
+    Returns:
+        Stripped string.
+    """
     raw = os.environ.get(name, default)
     return str(raw).strip()
 
 
 def _sanitize(s: str) -> str:
-    """Basic sanitization: remove control chars and limit length."""
+    """Basic sanitization: remove control chars and limit length to 256.
+
+    Returns:
+        Sanitized string.
+    """
     s = ''.join(c for c in s if ord(c) >= 32 and ord(c) != 127)
     return s[:256] if len(s) > 256 else s

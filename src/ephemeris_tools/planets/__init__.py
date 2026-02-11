@@ -23,7 +23,15 @@ _PLANET_CONFIGS: dict[int, PlanetConfig] = {
 
 
 def get_moon_name_to_index(planet_num: int) -> dict[str, int]:
-    """Return mapping of lowercase moon name -> 1-based index for the planet."""
+    """Return mapping of lowercase moon name to list index for the planet.
+
+    Parameters:
+        planet_num: Planet number (4-9).
+
+    Returns:
+        Dict mapping moon name (lowercase) to index in moons list (planet center
+        excluded from count).
+    """
     cfg = _PLANET_CONFIGS.get(planet_num)
     if cfg is None:
         return {}
@@ -37,12 +45,16 @@ def get_moon_name_to_index(planet_num: int) -> dict[str, int]:
 
 
 def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
-    """Convert list of moon tokens to moon IDs (1-based indices or NAIF IDs).
+    """Convert moon tokens to indices or NAIF IDs (CLI/CGI moon selection).
 
-    Each token may be: a 1-based index (e.g. 1, 2), a NAIF ID (e.g. 601, 602),
-    or a case-insensitive moon name (e.g. io, europa for Jupiter). Returns
-    list of values that are either 1-based indices (1-99) or NAIF IDs (>=100).
-    Caller should convert to full moon_ids: [v if v >= 100 else 100*planet_num+v].
+    Parameters:
+        planet_num: Planet number (4-9).
+        tokens: List of 1-based indices, NAIF IDs, or case-insensitive names.
+
+    Returns:
+        List of 1-based indices (1-99) or NAIF IDs (>=100). Caller converts to
+        full moon body IDs via v if v >= 100 else 100*planet_num+v. Unknown names
+        are skipped (logged).
     """
     name_to_idx = get_moon_name_to_index(planet_num)
     out: list[int] = []

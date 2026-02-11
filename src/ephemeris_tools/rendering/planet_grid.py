@@ -99,14 +99,23 @@ def compute_planet_grid(
     n_meridians: int = PLANET_MERIDS,
     n_lats: int = PLANET_LATS,
 ) -> tuple[float, list[tuple[list[tuple[float, float]], LineType]]]:
-    """Compute limb radius (plot units) and grid segments for the planet.
+    """Compute limb radius and latitude/longitude grid segments for the planet.
 
-    Port of FORTRAN RSPK_DrawView + Euclid EUBODY: meridians and latitude
-    circles at 15° spacing, lit=black, dark=light gray, terminator=black.
+    No direct Fortran equivalent; used by viewer to draw planet grid in plot
+    coordinates. Meridians and latitude circles; lit=black, dark=light gray,
+    terminator=black.
+
+    Parameters:
+        et: Ephemeris time.
+        planet_id: SPICE planet ID.
+        center_ra_rad, center_dec_rad: View center (radians).
+        scale: Scale factor (plot units per radian).
+        n_meridians: Number of meridian circles.
+        n_lats: Number of latitude circles.
 
     Returns:
-        (limb_radius_plot, segments) where each segment is
-        (points, line_type) with points in plot coords (origin at view center).
+        (limb_radius_plot, segments). Each segment is (points, line_type) with
+        points in plot coordinates (origin at view center).
     """
     import cspyce
 

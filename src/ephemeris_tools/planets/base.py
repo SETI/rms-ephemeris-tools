@@ -65,11 +65,22 @@ class PlanetConfig:
     ring_offsets_km: dict[int, float] = field(default_factory=dict)
 
     def moon_ids(self) -> list[int]:
-        """Ordered list of moon NAIF IDs (excluding planet at index 0)."""
+        """Ordered list of moon NAIF body IDs (excluding planet center).
+
+        Returns:
+            List of moon IDs in config order.
+        """
         return [m.id for m in self.moons if m.id != self.planet_id]
 
     def moon_by_id(self, body_id: int) -> MoonSpec | None:
-        """Return MoonSpec for given NAIF ID or None."""
+        """Return MoonSpec for given NAIF body ID.
+
+        Parameters:
+            body_id: SPICE body ID.
+
+        Returns:
+            MoonSpec or None if not found.
+        """
         for m in self.moons:
             if m.id == body_id:
                 return m

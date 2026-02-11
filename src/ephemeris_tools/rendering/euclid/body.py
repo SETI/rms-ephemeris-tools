@@ -46,7 +46,24 @@ def eubody(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Draw one body (port of EUBODY)."""
+    """Draw one ellipsoid body with terminator and optional grid (port of EUBODY).
+
+    Draws the body specified by index (1..nbods from eugeom). Meridians and
+    latitude circles form a coordinate grid; lit/dark/terminator use the given
+    color codes. SRCREQ is the number of lights required to consider a point lit.
+
+    Parameters:
+        body: Body index (1-based, must be in range from last eugeom call).
+        merids: Number of meridian circles.
+        latcir: Number of latitude circles.
+        srcreq: Number of light sources required for a point to be lit.
+        bright: Color for lit regions.
+        dark: Color for unlit regions.
+        term: Color for terminator (lit/dark boundary).
+        euclid_state: Euclid state from eugeom/euview.
+        view_state: Escher view state.
+        escher_state: Escher output state.
+    """
     st = euclid_state
     bi = body - 1  # 0-based index
 

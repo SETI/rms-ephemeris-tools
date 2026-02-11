@@ -36,7 +36,15 @@ _SEC_PER_DAY = 86400.0
 
 
 def _propagated_uranus_rings(et: float, cfg: PlanetConfig) -> tuple[list[float], list[float]]:
-    """Propagate Uranus ring elements to et. Returns (peri_deg_list, node_deg_list)."""
+    """Propagate Uranus ring elements to et (viewer3_*.f ring propagation).
+
+    Parameters:
+        et: Ephemeris time (seconds).
+        cfg: Planet config with rings (e.g. Uranus).
+
+    Returns:
+        (peri_deg_list, node_deg_list) in degrees.
+    """
     import cspyce
 
     from ephemeris_tools.planets.uranus import (
@@ -73,7 +81,15 @@ def _propagated_uranus_rings(et: float, cfg: PlanetConfig) -> tuple[list[float],
 
 
 def _propagated_neptune_arcs(et: float, cfg: PlanetConfig) -> list[tuple[float, float]]:
-    """Propagate Neptune arc longitudes to et. Returns [(minlon_deg, maxlon_deg), ...]."""
+    """Propagate Neptune arc longitudes to et (viewer3_*.f arc propagation).
+
+    Parameters:
+        et: Ephemeris time (seconds).
+        cfg: Planet config with arcs (Neptune).
+
+    Returns:
+        List of (minlon_deg, maxlon_deg) per arc.
+    """
     import cspyce
 
     from ephemeris_tools.spice.common import get_state
@@ -101,7 +117,15 @@ def _propagated_neptune_arcs(et: float, cfg: PlanetConfig) -> list[tuple[float, 
 
 
 def _propagated_saturn_f_ring(et: float, cfg: PlanetConfig) -> tuple[float, float] | None:
-    """Propagate Saturn F ring to et. Returns (peri_rad, node_rad) or None."""
+    """Propagate Saturn F ring elements to et.
+
+    Parameters:
+        et: Ephemeris time (seconds).
+        cfg: Planet config (Saturn with f_ring_index set).
+
+    Returns:
+        (peri_rad, node_rad) in radians, or None if not applicable.
+    """
     if cfg.f_ring_index is None or cfg.planet_num != 6:
         return None
     import cspyce
@@ -124,7 +148,15 @@ def _propagated_saturn_f_ring(et: float, cfg: PlanetConfig) -> tuple[float, floa
 
 
 def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[float, float, float]]:
-    """Compute ring center offset vectors (J2000 km) for Mars and Pluto. FORTRAN ring_offsets."""
+    """Compute ring center offset vectors in J2000 km (viewer3_*.f ring_offsets).
+
+    Parameters:
+        et: Ephemeris time (seconds).
+        cfg: Planet config with rings (Mars/Pluto use offsets).
+
+    Returns:
+        List of (x, y, z) offset in km per ring.
+    """
     import cspyce
 
     from ephemeris_tools.constants import SUN_ID
@@ -176,9 +208,13 @@ def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[flo
 
 
 def _compute_jupiter_torus_node(et: float) -> float | None:
-    """Compute Io torus ring node (radians) from Jupiter BODMAT.
+    """Compute Io torus ring node in radians from Jupiter BODMAT (System III 248°).
 
-    System III ascending node at 248°.
+    Parameters:
+        et: Ephemeris time (seconds).
+
+    Returns:
+        Node longitude in radians, or None if not Jupiter.
     """
     import cspyce
 
@@ -203,7 +239,14 @@ def _compute_jupiter_torus_node(et: float) -> float | None:
 
 
 def get_planet_config(planet_num: int) -> PlanetConfig | None:
-    """Return PlanetConfig for planet number (4=Mars..9=Pluto)."""
+    """Return PlanetConfig for planet number (port of viewer3_* planet config).
+
+    Parameters:
+        planet_num: Planet index 4 (Mars) through 9 (Pluto).
+
+    Returns:
+        PlanetConfig or None if planet_num not supported.
+    """
     return _PLANET_CONFIGS.get(planet_num)
 
 
@@ -381,7 +424,15 @@ _FOV_UNIT_MULT_DEG = {
 
 
 def _fov_deg_from_unit(fov: float, fov_unit: str | None) -> float:
-    """Apply fov_unit multiplier; return FOV in degrees."""
+    """Convert FOV to degrees using fov_unit (e.g. arcmin -> deg).
+
+    Parameters:
+        fov: FOV value in the given unit.
+        fov_unit: Unit string (deg, arcmin, arcsec, etc.) or None for degrees.
+
+    Returns:
+        FOV in degrees.
+    """
     if not fov_unit or 'fov' not in fov_unit.lower():
         return fov
     s = fov_unit.lower()
@@ -405,7 +456,28 @@ def run_viewer(
     output_txt: TextIO | None = None,
     fov_unit: str | None = None,
 ) -> None:
-    """Generate planet viewer PostScript diagram and Field of View table."""
+    """Generate planet viewer PostScript diagram and FOV table (port of viewer3_*.f).
+
+    Loads SPICE, sets observer, computes geometry, and draws planet/rings/moons.
+    Writes PostScript to output_ps (if set) and FOV table to output_txt or stdout.
+
+    Parameters:
+        planet_num: Planet index 4-9.
+        time_str: Observation time string (parseable by parse_datetime).
+        fov: Field of view value; units from fov_unit.
+        center_ra, center_dec: Center RA/Dec in degrees (0,0 = planet center).
+        viewpoint: Observer viewpoint (e.g. Earth, latlon).
+        ephem_version: SPICE ephemeris version or 0.
+        moon_ids: Optional moon body IDs to show; None = all.
+        blank_disks: If True, draw planet/ring disks as blank.
+        output_ps: PostScript output stream; None = no PS.
+        output_txt: FOV table stream; None = stdout.
+        fov_unit: Optional unit string for fov (e.g. deg, arcmin).
+
+    Raises:
+        ValueError: Unknown planet or invalid time.
+        RuntimeError: SPICE load failure.
+    """
     cfg = get_planet_config(planet_num)
     if cfg is None:
         raise ValueError(f'Unknown planet number: {planet_num}')

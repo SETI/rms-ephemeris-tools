@@ -17,11 +17,22 @@ if TYPE_CHECKING:
 
 
 def _is_moon(body_id: int) -> bool:
+    """Return True if body_id is a moon (300 < id < 999, id mod 100 != 99)."""
     return 300 < body_id < 999 and (body_id % 100) != 99
 
 
 def _body_fixed_frame(body_id: int) -> str:
-    """Return IAU body-fixed frame name for body ID (e.g. IAU_SATURN)."""
+    """Return IAU body-fixed frame name for body ID (e.g. IAU_SATURN).
+
+    Parameters:
+        body_id: SPICE body ID.
+
+    Returns:
+        Frame name string (e.g. 'IAU_SATURN').
+
+    Raises:
+        ValueError: If body_id is invalid.
+    """
     try:
         name = cspyce.bodc2n(body_id)
     except Exception as e:
@@ -30,11 +41,17 @@ def _body_fixed_frame(body_id: int) -> str:
 
 
 def bodmat(body_id: int, et: float) -> np.ndarray:
-    """Rotation matrix J2000 -> body-fixed, with time-shift and moon fallback.
+    """Return rotation matrix from J2000 to body-fixed frame (port of RSPK_BODMAT).
 
-    Uses cspyce.tipbod (equivalent to FORTRAN BODMAT) which computes
-    the matrix from PCK pole data directly — no frame kernel needed.
-    Falls back to orbit-derived orientation for moons without PCK data.
+    Replaces SPICE BODMAT with support for time offsets via set_shift. For moons
+    without PCK data, falls back to orbit-derived orientation (tidally locked).
+
+    Parameters:
+        body_id: SPICE body ID.
+        et: Ephemeris time (e.g. from cspyce.utc2et).
+
+    Returns:
+        3x3 rotation matrix (J2000 to body-fixed). Identity on failure for moons.
     """
     import numpy as np
 
@@ -82,7 +99,14 @@ def bodmat(body_id: int, et: float) -> np.ndarray:
 
 
 def _spkez_state(state_planet: object) -> list[float]:
-    """Return 6-element state [x,y,z,vx,vy,vz] from cspyce.spkez return (handles tuple or array)."""
+    """Return 6-element state from cspyce.spkez result (tuple or array).
+
+    Parameters:
+        state_planet: First element of cspyce.spkez return (state vector).
+
+    Returns:
+        List of 6 floats: position (3) and velocity (3).
+    """
     import numpy as np
 
     arr = np.asarray(state_planet, dtype=np.float64)
@@ -91,7 +115,18 @@ def _spkez_state(state_planet: object) -> list[float]:
 
 
 def bodmat_from_orbit(body_id: int, et: float) -> np.ndarray:
-    """Rotation matrix for tidally-locked moon from orbit geometry (X toward planet, Z = pole)."""
+    """Rotation matrix for tidally-locked moon from orbit (port of RSPK_BODMAT_from_orbit).
+
+    X-axis toward planet, Z-axis is orbit pole (X cross V). Uranus pole
+    direction is reversed to match convention.
+
+    Parameters:
+        body_id: SPICE body ID of the moon.
+        et: Ephemeris time.
+
+    Returns:
+        3x3 rotation matrix (J2000 to body-fixed).
+    """
     import numpy as np
 
     state = get_state()
@@ -128,6 +163,7 @@ def bodmat_from_orbit(body_id: int, et: float) -> np.ndarray:
 
 
 def _identity_rotmat() -> np.ndarray:
+    """Return 3x3 identity matrix (used when orbit geometry is degenerate)."""
     import numpy as np
 
     return np.eye(3, dtype=np.float64)
@@ -136,7 +172,17 @@ def _identity_rotmat() -> np.ndarray:
 def _bodmat_from_orbit_fallback(
     body_id: int, et: float, pos: list[float], pos_norm: float
 ) -> np.ndarray:
-    """Fallback when twovec fails (parallel pos/vel): Z = planet pole, X = pos."""
+    """Fallback when twovec fails (parallel pos/vel): Z = planet pole, X = pos.
+
+    Parameters:
+        body_id: SPICE body ID (used for planet context).
+        et: Ephemeris time.
+        pos: Position vector of moon (3 elements).
+        pos_norm: Norm of pos.
+
+    Returns:
+        3x3 rotation matrix.
+    """
     import numpy as np
 
     state = get_state()

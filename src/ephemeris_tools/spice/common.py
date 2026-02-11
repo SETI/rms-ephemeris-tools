@@ -9,7 +9,11 @@ MAXSHIFTS = 20
 
 @dataclass
 class SpiceState:
-    """Mirrors RSPK common block: planet, observer, time shifts."""
+    """Shared state for SPICE/RSPK layer (replaces FORTRAN RSPK_COMMON).
+
+    Holds current planet, observer (ID or geodetic), and time-shift list for
+    moon orbits. Modified by load_spice_files, set_observer_*, set_shift.
+    """
 
     planet_num: int = 0
     planet_id: int = 0
@@ -24,7 +28,7 @@ class SpiceState:
     shift_dt: list[float] = field(default_factory=lambda: [0.0] * MAXSHIFTS)
 
     def reset_shifts(self) -> None:
-        """Clear all time shifts."""
+        """Clear all time shifts (no Fortran equivalent; utility)."""
         self.nshifts = 0
         self.shift_id = [0] * MAXSHIFTS
         self.shift_dt = [0.0] * MAXSHIFTS
@@ -35,5 +39,5 @@ _state = SpiceState()
 
 
 def get_state() -> SpiceState:
-    """Return the global SpiceState instance."""
+    """Return the global SpiceState instance (replaces RSPK_COMMON access)."""
     return _state

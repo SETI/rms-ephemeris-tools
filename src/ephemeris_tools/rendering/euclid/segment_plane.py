@@ -21,7 +21,18 @@ from ephemeris_tools.rendering.euclid.vec_math import (
 
 
 def _euskip(major: float, center: Vec3, fovrad: float) -> int:
-    """Determine segment skip count (port of EUSKIP)."""
+    """Determine how many segments to skip when drawing a circle (port of EUSKIP).
+
+    Used to reduce segments for small circles in the FOV. Returns 1, 2, 3, 4, or 6.
+
+    Parameters:
+        major: Semi-major axis length.
+        center: Center of circle (3-vector).
+        fovrad: Field-of-view radius.
+
+    Returns:
+        Skip count (1 = draw every segment).
+    """
     x = _vnorm(center)
     if x > 0.0 and fovrad > 0.0:
         ratio = major / (x * fovrad)
@@ -39,7 +50,16 @@ def _euskip(major: float, center: Vec3, fovrad: float) -> int:
 
 
 def _fovclp(p: Vec3, q: Vec3, cosfov: float) -> tuple[Vec3, Vec3]:
-    """Clip segment to FOV cone (port of FOVCLP). Returns (p, q)."""
+    """Clip segment p-q to cone about z-axis (port of FOVCLP).
+
+    Parameters:
+        p: Start of segment.
+        q: End of segment.
+        cosfov: Cosine of half-angle of cone.
+
+    Returns:
+        Tuple of (clipped_start, clipped_end); both inside or on cone.
+    """
     x = _vhat(p)
     y = _vhat(q)
 
@@ -107,7 +127,19 @@ def _smside(
     center: Vec3,
     refpnt: Vec3,
 ) -> bool:
-    """Test if segment and refpnt are on same side of plane (port of SMSIDE)."""
+    """Return True if segment p-q and refpnt are on the same side of the plane (port of SMSIDE).
+
+    Plane: <normal, x> = <normal, center>.
+
+    Parameters:
+        p, q: Segment endpoints.
+        normal: Plane normal.
+        center: Point on plane.
+        refpnt: Reference point.
+
+    Returns:
+        True if segment and refpnt are on same side of plane.
+    """
     c = _vdot(center, normal)
     rfside = _vdot(refpnt, normal) - c
     pside = _vdot(p, normal) - c
@@ -136,10 +168,19 @@ def _plelsg(
     center: Vec3,
     refpnt: Vec3,
 ) -> tuple[list[Vec3], list[Vec3], list[bool], list[bool], int]:
-    """Project segment onto plane, intersect with ellipse (port of PLELSG).
+    """Project segment onto plane and find intersections with ellipse (port of PLELSG).
+
+    Parameters:
+        p, q: Segment endpoints.
+        normal: Plane normal (ellipse lies in plane).
+        major: Semi-major axis of ellipse.
+        minor: Semi-minor axis of ellipse.
+        center: Center of ellipse.
+        refpnt: Reference point for plane.
 
     Returns:
-        (begsub_list, endsub_list, inside_list, inback_list, nsub).
+        Tuple of (begsub_list, endsub_list, inside_list, inback_list, nsub):
+        subsegment endpoints and flags, and number of subsegments.
     """
     quanta = 134217728.0  # 2^27
 

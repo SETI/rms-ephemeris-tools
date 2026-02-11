@@ -6,11 +6,17 @@ import re
 
 
 def parse_angle(string: str) -> float | None:
-    """Parse angle as hours or degrees, minutes, seconds. Returns value or None on failure.
+    """Parse an angle as hours/degrees, minutes, and seconds (port of ParseAngle).
 
     Accepts three numbers (deg/h, m, s), two (deg/h, m), or one (deg/h).
     Minutes and seconds must be non-negative. Leading minus makes result negative.
     Returned value is in the same units as the first number (hours or degrees).
+
+    Parameters:
+        string: Whitespace-separated numbers (e.g. "12 30 45" or "-5 30").
+
+    Returns:
+        Angle in hours or degrees, or None on parse failure.
     """
     s = string.strip()
     if len(s) == 0:
@@ -55,11 +61,15 @@ def dms_string(
     separator: str,
     ndecimal: int = 3,
 ) -> str:
-    """Format angle as deg/h min sec with given separator characters.
+    """Format angle as degrees/hours, minutes, seconds (port of DMS_string).
 
-    value: angle in degrees (or hours for RA).
-    separator: 3-char string, e.g. 'hms' or 'dms' (chars between d/h-m, m-s, and after sec).
-    ndecimal: 3 or 4 decimal places for seconds.
+    Parameters:
+        value: Angle in degrees (or hours for RA).
+        separator: 3-character string for separators (e.g. 'hms' or 'dms').
+        ndecimal: 3 or 4 decimal places for seconds.
+
+    Returns:
+        Formatted string (e.g. " 12 30 45.123").
     """
     if len(separator) < 3:
         sep1 = sep2 = sep3 = ' '

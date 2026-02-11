@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 @dataclass
 class EllipseLimb:
-    """Observed limb ellipse of a triaxial ellipsoid (ELLIPS output)."""
+    """Observed limb ellipse of a triaxial ellipsoid (port of ELLIPS output)."""
 
     normal: tuple[float, float, float]
     major: tuple[float, float, float]
@@ -35,9 +35,13 @@ def ellipsoid_limb(
 ) -> EllipseLimb:
     """Limb ellipse of triaxial ellipsoid as seen from view_from (port of ELLIPS).
 
-    Returns the projected limb as a 2D ellipse in 3D: normal to limb plane,
-    semi-major and semi-minor vectors, and center (midpt). CANSEE is True
-    when the observer is outside the body.
+    Parameters:
+        axis1, axis2, axis3: Principal axes from center (length = semi-axis length).
+        center: Center of ellipsoid.
+        view_from: Viewpoint position.
+
+    Returns:
+        EllipseLimb with normal, major, minor, midpt, and can_see.
     """
     a1, _a2, _a3 = list(axis1), list(axis2), list(axis3)
     cen = list(center)
@@ -94,7 +98,15 @@ def ellipsoid_limb(
 
 
 def fov_clip(x: float, y: float, z: float, cos_fov: float) -> tuple[float, float, float] | None:
-    """Clip point to field-of-view cone (port of FOVCLP). Returns clipped (x,y,z) or None."""
+    """Test if point is inside FOV cone about z-axis (port of FOVCLP).
+
+    Parameters:
+        x, y, z: Point coordinates.
+        cos_fov: Cosine of half-angle of cone.
+
+    Returns:
+        (x, y, z) if point is inside cone (z/r >= cos_fov), else None.
+    """
     r = math.sqrt(x * x + y * y + z * z)
     if r < 1e-10:
         return (x, y, z)
@@ -112,8 +124,16 @@ def segment_ellipse_intersect(
 ) -> list[tuple[float, float, float]]:
     """Intersection of segment p1-p2 with ellipse in 3D (port of PLELSG).
 
-    Ellipse is in the plane through center spanned by major and minor semi-axis
-    vectors. Returns 0, 1, or 2 intersection points.
+    Ellipse lies in the plane through center with semi-axes major and minor.
+
+    Parameters:
+        p1, p2: Segment endpoints.
+        center: Center of ellipse.
+        major: Semi-major axis vector.
+        minor: Semi-minor axis vector.
+
+    Returns:
+        List of 0, 1, or 2 intersection points.
     """
     p1, p2 = list(p1), list(p2)
     center = list(center)
@@ -162,11 +182,18 @@ def ray_plane_intersect(
     direction: Sequence[float],
     origin: Sequence[float] | None = None,
 ) -> tuple[float, float, float] | None:
-    """Ray-plane intersection (port of PLNRAY).
+    """Intersection of ray from origin in direction with plane (port of PLNRAY).
 
-    refpt is a point on the plane; origin is the ray start (default (0,0,0)).
-    Returns the intersection point or None if the ray does not hit the plane
-    (parallel or behind).
+    Plane: <normal, x - refpt> = 0.
+
+    Parameters:
+        refpt: Point on the plane.
+        normal: Plane normal.
+        direction: Ray direction (need not be unit).
+        origin: Ray origin (default (0,0,0)).
+
+    Returns:
+        Intersection point or None if ray is parallel or hits behind origin.
     """
     if origin is None:
         origin = (0.0, 0.0, 0.0)
@@ -190,14 +217,26 @@ def disk_overlap(
     center2: Sequence[float],
     r2: float,
 ) -> bool:
-    """True if two disks (in plane) overlap (port of OVRLAP)."""
+    """Return True if two disks in the plane overlap (port of OVRLAP).
+
+    Disks are in the xy-plane; z is ignored. Overlap when distance < r1 + r2.
+
+    Parameters:
+        center1: Center of first disk (x, y [, z]).
+        r1: Radius of first disk.
+        center2: Center of second disk.
+        r2: Radius of second disk.
+
+    Returns:
+        True if disks overlap.
+    """
     d = math.sqrt((center2[0] - center1[0]) ** 2 + (center2[1] - center1[1]) ** 2)
     return d < r1 + r2
 
 
 @dataclass
 class EclipseCone:
-    """Eclipse/shadow cone (port of ECLPMD)."""
+    """Eclipse/shadow cone from ellipsoid occulting a spherical source (port of ECLPMD)."""
 
     apex: tuple[float, float, float]
     axis: tuple[float, float, float]
@@ -210,12 +249,16 @@ def eclipse_model(
     source: Sequence[float],
     radius: float,
 ) -> EclipseCone:
-    """Eclipse cone from occulting triaxial ellipsoid (port of ECLPMD).
+    """Eclipse cone from occulting triaxial ellipsoid and spherical source (port of ECLPMD).
 
-    Input: ellipsoid semi-axes (axis1, axis2, axis3) as 3-vectors, center, light
-    source position, and source angular radius (e.g. Sun radius in rad).
-    Output: cone apex (behind body), axis (unit vector toward dark side), half_angle
-    (angular radius of body from apex). Used to classify ring segments as shadowed.
+    Parameters:
+        axes: Ellipsoid semi-axes (axis1, axis2, axis3) as 3-vectors.
+        center: Center of ellipsoid.
+        source: Position of light source.
+        radius: Radius of spherical source.
+
+    Returns:
+        EclipseCone with apex, axis (unit vector toward dark side), and half_angle.
     """
     center = list(center)
     source = list(source)

@@ -19,14 +19,32 @@ EARTH_FLAT = 1.0 / 298.257222
 
 
 def set_observer_id(body_id: int) -> None:
-    """Set observer to a SPICE body (e.g. spacecraft). Use 0 for Earth center."""
+    """Set the observation point to a SPICE body (e.g. spacecraft).
+
+    Port of RSPK_SetObsId. Subsequent geometry calls use this observer.
+    Use 0 to reset to Earth's center.
+
+    Parameters:
+        body_id: SPICE body ID of the observer, or 0 for Earth center.
+    """
     state = get_state()
     state.obs_id = EARTH_ID if body_id == 0 else body_id
     state.obs_is_set = False
 
 
 def set_observer_location(lat_deg: float, lon_deg: float, alt_m: float) -> None:
-    """Set observer to geodetic location on Earth. Abs(lat) > 90 disables (Earth center)."""
+    """Set observer to a geodetic location on Earth.
+
+    Port of RSPK_SetObs. Subsequent geometry calls are corrected for the
+    observatory's offset from Earth's center. If latitude is outside
+    [-90, 90], the observatory offset is disabled (Earth's center used).
+
+    Parameters:
+        lat_deg: Geodetic latitude in degrees. Outside [-90, 90] disables
+            observatory offset.
+        lon_deg: East longitude in degrees.
+        alt_m: Altitude in meters (relative to GRS 80 reference spheroid).
+    """
     state = get_state()
     state.obs_id = EARTH_ID
     state.obs_lat = math.radians(lat_deg)
@@ -40,7 +58,18 @@ _EARTH_ROT_RATE_RAD_S = 2.0 * math.pi / 86400.0
 
 
 def observer_state(et: float) -> np.ndarray:
-    """Return observer state (6) in J2000: position (3) and velocity (3) in km, km/s."""
+    """Return observer state (position and velocity) in J2000 at ephemeris time.
+
+    Port of RSPK_ObsLoc. Uses coordinates from set_observer_location or
+    set_observer_id. Position is in km; velocity in km/s. For an Earth
+    observatory, velocity includes Earth rotation.
+
+    Parameters:
+        et: Ephemeris time (e.g. from cspyce.utc2et).
+
+    Returns:
+        Length-6 array: position (3) and velocity (3) in km and km/s.
+    """
     import numpy as np
 
     state = get_state()

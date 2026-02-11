@@ -24,7 +24,14 @@ from ephemeris_tools.rendering.euclid.vec_math import (
 
 
 def euinit(state: EuclidState) -> None:
-    """Initialize Euclid trig tables (port of EUINIT)."""
+    """Initialize Euclid: compute trig tables and constants (port of EUINIT).
+
+    Call once before any other Euclid entry points. Repeated calls have no
+    effect after the first.
+
+    Parameters:
+        state: EuclidState to initialize (modified in place).
+    """
     angle = 2.0 * _PI / float(STDSEG)
     q4 = STDSEG // 4  # 24
     state.stdcos[q4] = 0.0
@@ -64,7 +71,22 @@ def euview(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Set viewport and FOV, initialize Escher (port of EUVIEW)."""
+    """Set display region and field of view (port of EUVIEW).
+
+    Describes where the image goes (device, h1-h2, v1-v2) and what portion
+    of the image plane is displayed (x1-x2, y1-y2). Image plane is at
+    distance 1 from pinhole; e.g. x1=-tan(A/2), x2=tan(A/2) for FOV A radians.
+
+    Parameters:
+        device: Display device number recognized by Escher.
+        h1, h2: Horizontal limits of display region.
+        v1, v2: Vertical limits of display region.
+        x1, x2: x-coordinate bounds in image plane.
+        y1, y2: y-coordinate bounds in image plane.
+        euclid_state: Euclid state (initialized if needed).
+        view_state: Escher view state (updated).
+        escher_state: Escher output state (updated).
+    """
     if not euclid_state.initialized:
         euinit(euclid_state)
 
@@ -114,7 +136,23 @@ def eugeom(
     axes: list[list[Vec3]],
     euclid_state: EuclidState,
 ) -> None:
-    """Store scene geometry, compute limbs/terminators (port of EUGEOM)."""
+    """Set scene geometry: lights, camera, bodies; compute limbs/terminators (port of EUGEOM).
+
+    Defines illumination sources (positions and radii), camera position and
+    orientation (obsrve, camfrm), and ellipsoid bodies (positions and principal
+    axes). Computes limb ellipses and terminator/eclipse geometry per body/light.
+
+    Parameters:
+        nlites: Number of light sources.
+        source: Light positions (list of 3-vectors).
+        srcrad: Light radii.
+        obsrve: Camera (pinhole) position.
+        camfrm: 3x3 camera frame (columns = x, y, z in image plane and toward scene).
+        nbods: Number of bodies.
+        bodies: Body center positions.
+        axes: Body principal axes; axes[i][j] is j-th axis of body i (length = semi-axis).
+        euclid_state: Euclid state (modified in place).
+    """
     if not euclid_state.initialized:
         euinit(euclid_state)
 

@@ -23,7 +23,22 @@ def eustar(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Draw star symbol at position (port of EUSTAR)."""
+    """Draw star/point markers with a line-segment font (port of EUSTAR).
+
+    Characters are scaled by fntscl times the display size so they do not
+    scale with zoom. Font is a list of ((x1,y1),(x2,y2)) segment endpoints.
+
+    Parameters:
+        strpos: Position of the point (e.g. star) in scene coordinates.
+        nstars: Number of points (unused; single point drawn).
+        font: Segment list for the marker; font[i] = ((x1,y1), (x2,y2)).
+        fntsiz: Number of segments to use.
+        fntscl: Scale factor (0-1) for marker size vs display.
+        color: Color code for drawing.
+        euclid_state: Euclid state.
+        view_state: Escher view state.
+        escher_state: Escher output state.
+    """
     _ = nstars
     cam = euclid_state.camera
     if cam is None:
@@ -54,7 +69,21 @@ def eutemp(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Draw overlay segments in image plane (port of EUTEMP)."""
+    """Draw line-segment overlay on the image plane (port of EUTEMP).
+
+    Draws reference marks (e.g. angle scale) in image-plane coordinates.
+    Segment i has start (xbegin[i], ybegin[i]) and end (xend[i], yend[i]).
+
+    Parameters:
+        xbegin: x-coordinates of segment starts.
+        ybegin: y-coordinates of segment starts.
+        xend: x-coordinates of segment ends.
+        yend: y-coordinates of segment ends.
+        nsegs: Number of segments.
+        color: Color code for drawing.
+        view_state: Escher view state.
+        escher_state: Escher output state.
+    """
     for i in range(nsegs):
         beg = (-xbegin[i], -ybegin[i], 1.0)
         end = (-xend[i], -yend[i], 1.0)

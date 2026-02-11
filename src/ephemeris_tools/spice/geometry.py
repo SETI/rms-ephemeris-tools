@@ -20,7 +20,20 @@ TWOPI = 2.0 * math.pi
 
 
 def body_radec(et: float, body_id: int) -> tuple[float, float]:
-    """Observed J2000 RA and Dec of body (radians)."""
+    """Return observed J2000 right ascension and declination of a body at a time.
+
+    Port of RSPK_BodyRaDec. Returns values for Earth center or an observatory
+    depending on set_observer_location/set_observer_id. Coordinates are in the
+    barycenter frame and are not corrected for stellar aberration (correct
+    relative to cataloged star positions).
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        body_id: SPICE body ID.
+
+    Returns:
+        Tuple of (ra, dec) in radians.
+    """
     obs_pv = observer_state(et)
     body_dpv, _ = spkapp_shifted(body_id, et, 'J2000', obs_pv, 'LT')
     _, ra, dec = cspyce.recrad(body_dpv[:3])
@@ -28,9 +41,16 @@ def body_radec(et: float, body_id: int) -> tuple[float, float]:
 
 
 def body_phase(et: float, body_id: int) -> float:
-    """Solar phase angle of body as seen from observer (radians).
+    """Return solar phase angle of a body as seen from the observer (radians).
 
-    Port of RSPK_BodyPhase: uses standard SPKAPP with 'LT', not shifted.
+    Port of RSPK_BodyPhase. Uses standard SPKAPP with 'LT' (no time shift).
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        body_id: SPICE body ID.
+
+    Returns:
+        Phase angle in radians.
     """
     obs_pv = observer_state(et)
     body_dpv, dt = cspyce.spkapp(body_id, et, 'J2000', obs_pv[:6], 'LT')
@@ -42,7 +62,17 @@ def body_phase(et: float, body_id: int) -> float:
 
 
 def body_ranges(et: float, body_id: int) -> tuple[float, float]:
-    """Sun-body and observer-body distances (km)."""
+    """Return Sun-body and observer-body distances (km).
+
+    Port of RSPK_BodyRanges.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        body_id: SPICE body ID.
+
+    Returns:
+        Tuple of (sundist, observer_dist) in km.
+    """
     obs_pv = observer_state(et)
     body_dpv, dt = spkapp_shifted(body_id, et, 'J2000', obs_pv, 'LT')
     body_time = et - dt
@@ -52,10 +82,15 @@ def body_ranges(et: float, body_id: int) -> tuple[float, float]:
 
 
 def planet_phase(et: float) -> float:
-    """Solar phase angle of planet as seen from observer (radians).
+    """Return solar phase angle of the planet as seen from the observer (radians).
 
-    Port of RSPK_Phase: VMINUS(planet_dpv) gives direction from planet
-    to observer, then VSEP with sun direction gives the phase angle.
+    Port of RSPK_Phase. Works for arbitrary observers (Earth or spacecraft).
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+
+    Returns:
+        Phase angle in radians.
     """
     state = get_state()
     obs_pv = observer_state(et)
@@ -68,7 +103,16 @@ def planet_phase(et: float) -> float:
 
 
 def planet_ranges(et: float) -> tuple[float, float]:
-    """Sun-planet and observer-planet distances (km)."""
+    """Return Sun-planet and observer-planet distances (km).
+
+    Port of RSPK_Ranges.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+
+    Returns:
+        Tuple of (sundist, observer_dist) in km.
+    """
     state = get_state()
     obs_pv = observer_state(et)
     planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
@@ -79,7 +123,16 @@ def planet_ranges(et: float) -> tuple[float, float]:
 
 
 def limb_radius(et: float) -> tuple[float, float]:
-    """Planet radius (km) and projected angular radius (radians)."""
+    """Return planet radius (km) and projected angular radius (radians).
+
+    Port of RSPK_LimbRad.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+
+    Returns:
+        Tuple of (rkm, rradians).
+    """
     state = get_state()
     obs_pv = observer_state(et)
     planet_dpv, _ = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
@@ -90,7 +143,18 @@ def limb_radius(et: float) -> tuple[float, float]:
 
 
 def conjunction_angle(et: float, body1_id: int, body2_id: int) -> float:
-    """Angular separation between two bodies as seen from observer (radians)."""
+    """Return angular distance between two bodies as seen from the observer (radians).
+
+    Port of RSPK_Conjunc.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        body1_id: SPICE body ID of first body.
+        body2_id: SPICE body ID of second body.
+
+    Returns:
+        Angular separation in radians.
+    """
     obs_pv = observer_state(et)
     b1_dpv, _ = spkapp_shifted(body1_id, et, 'J2000', obs_pv, 'LT+S')
     b2_dpv, _ = spkapp_shifted(body2_id, et, 'J2000', obs_pv, 'LT+S')
@@ -98,7 +162,18 @@ def conjunction_angle(et: float, body1_id: int, body2_id: int) -> float:
 
 
 def anti_sun(et: float, body_id: int) -> tuple[float, float]:
-    """Anti-Sun direction as RA, Dec (radians) for the body's system."""
+    """Return anti-Sun right ascension and declination (radians).
+
+    Port of RSPK_AntiSun. Returns the direction away from the Sun as seen
+    from the body's frame, in J2000 RA/Dec.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        body_id: SPICE body ID.
+
+    Returns:
+        Tuple of (ra, dec) in radians.
+    """
     obs_pv = observer_state(et)
     _planet_dpv, dt = cspyce.spkapp(body_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
@@ -110,11 +185,20 @@ def anti_sun(et: float, body_id: int) -> tuple[float, float]:
 
 
 def body_latlon(et: float, body_id: int) -> tuple[float, float, float, float]:
-    """Sub-observer and sub-solar lat/long (radians).
+    """Return sub-observer and sub-solar latitude and longitude (radians).
 
-    Returns (subobs_lat, subsol_lat, subobs_long, subsol_long).
-    Matches rspk_bodylonlat.f: body with CN, Sun with CN+S, observer with XCN+S;
-    body_time adjusted by + r_eq/clight for observer direction.
+    Port of RSPK_BodyLatLon. Longitudes are from the body's prime meridian;
+    the longitude beneath a fixed observer increases with time.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        body_id: SPICE body ID.
+
+    Returns:
+        Tuple of (subobs_lat, subsol_lat, subobs_long, subsol_long) in radians.
+
+    Raises:
+        ValueError: If observer or Sun direction in body frame has zero length.
     """
     state = get_state()
     obs_pv = observer_state(et)
@@ -158,19 +242,36 @@ def body_latlon(et: float, body_id: int) -> tuple[float, float, float, float]:
 
 
 def body_lonlat(et: float, body_id: int) -> tuple[float, float, float, float]:
-    """Sub-observer and sub-solar lon/lat (radians).
+    """Return sub-observer and sub-solar longitude and latitude (radians).
 
-    Returns (subobs_lon, subobs_lat, subsol_lon, subsol_lat).
+    Port of RSPK_BodyLonLat. Same as body_latlon but returns (lon, lat) order.
+    Longitude increases with time (east for Uranus, west for others).
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        body_id: SPICE body ID.
+
+    Returns:
+        Tuple of (subobs_lon, subobs_lat, subsol_lon, subsol_lat) in radians.
     """
     subobs_lat, subsol_lat, subobs_long, subsol_long = body_latlon(et, body_id)
     return (subobs_long, subobs_lat, subsol_long, subsol_lat)
 
 
 def moon_tracker_offsets(et: float, moon_ids: list[int]) -> tuple[list[float], float]:
-    """East-west angular offsets of moons from planet and limb radius (radians).
+    """Return projected angular offsets of moons from planet axis (radians).
 
-    Delegates to orbits.moon_distances (FORTRAN RSPK_MoonDist). Positive offset
-    = morning ansa (higher RA). Returns (offsets per moon in radians, limb rad).
+    Port of RSPK_MoonDist. Positive offsets are on the morning ansa (higher RA);
+    negative on the evening ansa. Values apply to Earth center or observatory
+    depending on observer setup.
+
+    Parameters:
+        et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        moon_ids: List of SPICE body IDs for the moons.
+
+    Returns:
+        Tuple of (list of offset angles in radians per moon, limb radius in
+        radians).
     """
     from ephemeris_tools.spice.orbits import moon_distances
 

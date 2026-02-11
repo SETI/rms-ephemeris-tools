@@ -152,11 +152,15 @@ def _radrec(r: float, lon_rad: float, lat_rad: float) -> tuple[float, float, flo
 
 
 def _rspk_write_string(s: str, state: EscherState) -> None:
-    """Emit PostScript string with escaped parentheses (port of RSPK_WriteString).
+    """Write a PostScript-format string with escaped parentheses (port of RSPK_WriteString).
 
-    The FORTRAN RSPK_WriteString only escapes parentheses, NOT backslashes.
-    Backslashes are passed through for PostScript octal escapes like \\260
-    (degree symbol).
+    Parentheses are escaped so the string can be used in PostScript. Backslashes
+    are not escaped (for octal escapes like \\260). String length is limited by
+    PostScript.
+
+    Parameters:
+        s: String to write.
+        state: Escher state (outuni must be open).
     """
     safe = s.replace('(', '\\(').replace(')', '\\)')
     eswrit(f'({safe})', state)
@@ -167,7 +171,13 @@ def _rspk_write_label(
     offset: str,
     escher_state: EscherState,
 ) -> None:
-    """Write numeric label at current point (port of RSPK_WriteLabel)."""
+    """Write a numeric label at the current point in deg/min/sec (port of RSPK_WriteLabel).
+
+    Parameters:
+        secs: Value in seconds (e.g. arcseconds or time).
+        offset: 'B' = below, 'L' = left (label placement).
+        escher_state: Escher state.
+    """
     secs1 = secs
     if offset == 'B':
         secs1 = secs1 % _MAXSECS
@@ -205,7 +215,17 @@ def _rspk_annotate(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Write moon/star name at position (port of RSPK_Annotate)."""
+    """Write body name at position (port of RSPK_Annotate).
+
+    Parameters:
+        name: Label text (e.g. moon or star name).
+        los: J2000 line-of-sight to the body (3-vector).
+        radius: Sky radius of body (radians).
+        cmatrix: Camera orientation matrix.
+        delta: FOV size (for visibility check).
+        view_state: Escher view state.
+        escher_state: Escher output state.
+    """
     # camera_los = transpose(cmatrix) * los
     cam = [
         cmatrix[0][0] * los[0] + cmatrix[1][0] * los[1] + cmatrix[2][0] * los[2],
@@ -232,7 +252,15 @@ def _rspk_labels2(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Plot tick marks and numeric labels (port of RSPK_Labels2)."""
+    """Plot RA/Dec tick marks and numeric labels on the figure (port of RSPK_Labels2).
+
+    Parameters:
+        cmatrix: Camera orientation matrix.
+        delta: Field-of-view size (half-width).
+        ltype: Line type (color) for tick marks.
+        view_state: Escher view state.
+        escher_state: Escher output state.
+    """
     dpr = DPR
     _, ra, dec = _recrad((cmatrix[0][2], cmatrix[1][2], cmatrix[2][2]))
     delta_ra = delta / math.cos(dec) if abs(math.cos(dec)) > 1e-12 else delta
@@ -339,7 +367,11 @@ def _rspk_draw_bodies(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Draw planet and moons (port of RSPK_DrawBodies)."""
+    """Draw all bodies (planet and moons) with terminators (port of RSPK_DrawBodies).
+
+    Optionally clears body names for bodies not visible. Uses prime_pts for
+    prime meridian emphasis when > 0.
+    """
     l1 = lit_line
     l2 = dark_line
     l3 = term_line
@@ -406,7 +438,11 @@ def _rspk_draw_rings(
     view_state: EscherViewState,
     escher_state: EscherState,
 ) -> None:
-    """Draw rings and arcs (port of RSPK_DrawRings)."""
+    """Draw all rings and arc segments with lit/dark/shadow/terminator (port of RSPK_DrawRings).
+
+    Differentiates dark (unlit) vs shadowed rings. iring1..iring2 index the ring
+    list; loops are arc segments on specified rings.
+    """
     for iring in range(iring1, iring2 + 1):
         ri = iring - 1  # 0-based
         if ri < 0 or ri >= len(ring_flags):
@@ -466,10 +502,14 @@ def _rspk_draw_rings(
 
 
 def camera_matrix(center_ra_rad: float, center_dec_rad: float) -> list[list[float]]:
-    """Camera C-matrix in J2000 (port of RSPK_DrawView lines ~584-594).
+    """Camera orientation matrix for center (ra, dec) in J2000 (port of RSPK_DrawView).
 
-    Returns 3x3 column-major matrix (list of 3 column vectors) matching
-    FORTRAN cmatrix(3,3).
+    Parameters:
+        center_ra_rad: Center right ascension (radians).
+        center_dec_rad: Center declination (radians).
+
+    Returns:
+        3x3 row-major matrix (list of 3 rows); columns are camera x, y, z axes.
     """
     cos_d = math.cos(center_dec_rad)
     sin_d = math.sin(center_dec_rad)
@@ -517,7 +557,19 @@ def radec_to_plot(
     center_dec_rad: float,
     fov_rad: float,
 ) -> tuple[float, float]:
-    """Convert (ra, dec) to plot (x, y) using camera matrix and FOV_PTS scale."""
+    """Convert (ra, dec) to plot coordinates (x, y) in points.
+
+    Uses camera matrix for center and FOV scale. Returns (0, 0) if point is
+    behind the camera (z_cam <= 0).
+
+    Parameters:
+        ra_rad, dec_rad: Point RA/Dec in radians.
+        center_ra_rad, center_dec_rad: FOV center in radians.
+        fov_rad: Field of view in radians.
+
+    Returns:
+        (x_plot, y_plot) in points.
+    """
     cmat = camera_matrix(center_ra_rad, center_dec_rad)
     cos_d = math.cos(dec_rad)
     d = [cos_d * math.cos(ra_rad), cos_d * math.sin(ra_rad), math.sin(dec_rad)]
@@ -610,7 +662,11 @@ def draw_planetary_view(
     rcaptions: list[str] | None = None,
     align_loc: float = 108.0,
 ) -> None:
-    """Generate PostScript via Escher/Euclid to match FORTRAN rspk_drawview output.
+    """Generate PostScript showing planetary system at a time (port of RSPK_DrawView).
+
+    Renders planet and moons as triaxial ellipsoids with terminators, optional
+    rings (with vertical offsets and opacity), arcs, and stars. Frame is J2000
+    (dec up, RA left). Title and captions supported.
 
     Parameters:
         output: Open text stream for PostScript output.
