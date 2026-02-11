@@ -216,7 +216,12 @@ def _label_yaxis(
                 doy = (date(y, m, d) - date(y, 1, 1)).days + 1
                 label = f"{y:4d}-{doy:03d} {h:2d}h"
             else:
+                # FORTRAN format: (i4, '-', a3, '-', i2.2, 1x, i2, 'h')
+                # = 15 chars; pad to 32 to match FORTRAN character*32 label
                 label = f"{y:4d}-{MONTH_NAMES[m - 1]}-{d:02d} {h:2d}h"
+            # Pad to at least k2 chars (FORTRAN label is space-padded)
+            label = label.ljust(32)
+            # FORTRAN: label(k1:k2) — 1-based inclusive
             label = label[k1_use - 1 : k2]
             y_index = (tai - tai1) / dt + 1.0
             _emit(out, f"{y_index:7.2f} ({label}) YT1")
@@ -353,11 +358,13 @@ def draw_moon_tracks(
 
     irecband = int(BAND_WIDTH / PLOT_HEIGHT / 2 * ntimes)
     excluded = [False] * ntimes
+    # FORTRAN: do i = 1, irecband+1 → excluded(i) = .TRUE.
     for i in range(irecband + 1):
         excluded[i] = True
-    for i in range(ntimes - irecband, ntimes):
-        if i >= 0:
-            excluded[i] = True
+    # FORTRAN: do i = ntimes-irecband, ntimes → excluded(i) = .TRUE.
+    # In 0-based Python: indices (ntimes-1-irecband) to (ntimes-1)
+    for i in range(max(0, ntimes - 1 - irecband), ntimes):
+        excluded[i] = True
 
     _emit(output, "ClipBox 1.5 setlinewidth")
     for i in range(nmoons):
@@ -391,8 +398,13 @@ def draw_moon_tracks(
         for i in range(ncaptions):
             _emit(output, "0 TextHeight -1.4 mul translate")
             _emit(output, "0 0 moveto")
-            _emit(output, _track_string(rcaptions[i].strip()) + " show")
-            _emit(output, _track_string(lcaptions[i].strip() + "  "))
+            # FORTRAN: RSPK_TrackString writes parenthesized text on one line,
+            # then 'show' on the next line.
+            rcap = rcaptions[i].strip() if rcaptions[i].strip() else ""
+            _emit(output, _track_string(rcap))
+            _emit(output, "show")
+            lcap = lcaptions[i].strip() + "  "
+            _emit(output, _track_string(lcap))
             _emit(output, "dup stringwidth pop neg 0 moveto show")
         _emit(output, "grestore")
 

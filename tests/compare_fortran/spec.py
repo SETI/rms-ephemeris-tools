@@ -24,6 +24,23 @@ _OBSERVATORY_TO_FORTRAN: dict[str, str] = {
     "Earth's Center": "Earth's center",  # FORTRAN checks first 5 chars only
 }
 
+# Moon index → CGI form value used by FORTRAN tracker/ephemeris HTML forms.
+# Format: "NNN Name (Xn)" where NNN = zero-padded index, X = planet letter.
+_SATURN_MOON_CGI: dict[int, str] = {
+    1: "001 Mimas (S1)", 2: "002 Enceladus (S2)", 3: "003 Tethys (S3)",
+    4: "004 Dione (S4)", 5: "005 Rhea (S5)", 6: "006 Titan (S6)",
+    7: "007 Hyperion (S7)", 8: "008 Iapetus (S8)", 9: "009 Phoebe (S9)",
+    10: "010 Janus (S10)", 11: "011 Epimetheus (S11)", 12: "012 Helene (S12)",
+    13: "013 Telesto (S13)", 14: "014 Calypso (S14)", 15: "015 Atlas (S15)",
+    16: "016 Prometheus (S16)", 17: "017 Pandora (S17)", 18: "018 Pan (S18)",
+    32: "032 Methone (S32)", 33: "033 Pallene (S33)",
+    34: "034 Polydeuces (S34)", 35: "035 Daphnis (S35)",
+    49: "049 Anthe (S49)", 53: "053 Aegaeon (S53)",
+}
+
+# Default tracker moons (8 classical Saturn moons).
+DEFAULT_TRACKER_MOONS_SATURN: list[int] = [1, 2, 3, 4, 5, 6, 7, 8]
+
 # Planet number → name used by viewer FORTRAN binaries (PLANET_NAME parameter).
 PLANET_NAMES: dict[int, str] = {
     4: "Mars",
@@ -91,8 +108,31 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         pairs.append(("columns", str(col)))
     for col in p.get("mooncols") or []:
         pairs.append(("mooncols", str(col)))
+    # FORTRAN moons: CGI format "NNN Name (Xn)" from HTML form.
+    planet_num = int(p.get("planet", 6))
+    moon_cgi = _SATURN_MOON_CGI if planet_num == 6 else {}
     for moon in p.get("moons") or []:
-        pairs.append(("moons", str(moon)))
+        moon_int = int(moon)
+        cgi_val = moon_cgi.get(moon_int, str(moon_int))
+        pairs.append(("moons", cgi_val))
+
+    # Tracker-specific params
+    if tool == "tracker":
+        if "xrange" in p and p["xrange"] is not None:
+            pairs.append(("xrange", str(p["xrange"])))
+        else:
+            # Default xrange: 180 arcsec for Saturn
+            pairs.append(("xrange", "180"))
+        if "xunit" in p and p["xunit"]:
+            pairs.append(("xunit", str(p["xunit"])))
+        else:
+            pairs.append(("xunit", "arcsec"))
+        # Tracker rings: each option as a separate "rings" parameter.
+        if "rings" in p and p["rings"]:
+            for r in (p["rings"] if isinstance(p["rings"], list) else [p["rings"]]):
+                pairs.append(("rings", str(r)))
+        if "title" in p and p["title"]:
+            pairs.append(("title", str(p["title"])))
 
     # Viewer-specific params
     if tool == "viewer":
@@ -215,10 +255,10 @@ class RunSpec:
                 args.extend(["--interval", str(p["interval"])])
             if "time_unit" in p:
                 args.extend(["--time-unit", str(p["time_unit"])])
-            if "columns" in p and p["columns"]:
+            if self.tool == "ephemeris" and "columns" in p and p["columns"]:
                 args.append("--columns")
                 args.extend(str(c) for c in p["columns"])
-            if "mooncols" in p and p["mooncols"]:
+            if self.tool == "ephemeris" and "mooncols" in p and p["mooncols"]:
                 args.append("--mooncols")
                 args.extend(str(c) for c in p["mooncols"])
             if "moons" in p and p["moons"]:

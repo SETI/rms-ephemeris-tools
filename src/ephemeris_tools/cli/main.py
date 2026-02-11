@@ -212,6 +212,8 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
 
     out_ps = open(args.output, "w") if getattr(args, "output", None) else None
     out_txt = open(args.output_txt, "w") if getattr(args, "output_txt", None) else None
+    moons_raw = args.moons or []
+    moon_ids = [100 * args.planet + idx for idx in moons_raw] if moons_raw else []
     try:
         run_tracker(
             planet_num=args.planet,
@@ -220,7 +222,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
             interval=getattr(args, "interval", 1.0),
             time_unit=getattr(args, "time_unit", "hour"),
             viewpoint=(args.viewpoint or "Earth").strip() or "Earth",
-            moon_ids=args.moons or [],
+            moon_ids=moon_ids,
             ephem_version=getattr(args, "ephem", 1),
             xrange=getattr(args, "xrange", None),
             xscaled=(getattr(args, "xunit", "arcsec") == "radii"),

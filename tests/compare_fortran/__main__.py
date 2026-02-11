@@ -19,7 +19,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from tests.compare_fortran.spec import RunSpec
+from tests.compare_fortran.spec import RunSpec, DEFAULT_TRACKER_MOONS_SATURN
 from tests.compare_fortran.runner import run_python, run_fortran
 from tests.compare_fortran.diff_utils import compare_tables, compare_postscript
 
@@ -107,9 +107,12 @@ def main() -> int:
         "lon_dir": args.lon_dir,
         "altitude": args.altitude,
         "sc_trajectory": args.sc_trajectory,
-        "columns": columns,
-        "mooncols": args.mooncols,
-        "moons": args.moons,
+        "columns": columns if args.tool == "ephemeris" else None,
+        "mooncols": args.mooncols if args.tool == "ephemeris" else None,
+        "moons": args.moons or (
+            DEFAULT_TRACKER_MOONS_SATURN if args.tool == "tracker" and args.planet == 6
+            else None
+        ),
         "time": args.time or "2022-01-01 12:00",
         "fov": args.fov,
         "fov_unit": args.fov_unit,
@@ -117,7 +120,7 @@ def main() -> int:
         "center_body": args.center_body,
         "rings": args.rings,
         "title": args.title,
-        "xrange": args.xrange,
+        "xrange": args.xrange or (180.0 if args.tool == "tracker" else None),
         "xunit": args.xunit,
     }
     spec = RunSpec(tool=args.tool, params=params)

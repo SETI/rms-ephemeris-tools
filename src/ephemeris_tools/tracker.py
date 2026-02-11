@@ -148,19 +148,44 @@ def run_tracker(
     filename = str(out_name) if out_name else "tracker.ps"
 
     # Captions: Ephemeris and Viewpoint (match original FORTRAN output).
-    ephem_caption = str(ephem_version)
+    # FORTRAN: rcaptions(1) = WWW_GetKey('ephem')(5:) — first 4 chars stripped.
+    # CGI value "15" → (5:) is empty. For longer values like "SAT345" → (5:) = "45".
+    ephem_str = str(ephem_version)
+    ephem_caption = ephem_str[4:] if len(ephem_str) >= 5 else ""
+
+    # FORTRAN: rcaptions(2) = observatory_name + " (" + sc_trajectory(5:) + ")"
+    # For Earth's center with sc_trajectory=0: "Earth's center ()"
     viewpoint_caption = (viewpoint or "Earth").strip()
-    if not viewpoint_caption or viewpoint_caption.lower() == "earth":
+    if not viewpoint_caption or viewpoint_caption.lower() in ("earth", "observatory"):
         viewpoint_caption = "Earth's center"
+    # Append sc_trajectory in parentheses (FORTRAN always does this for observatory)
+    viewpoint_caption = f"{viewpoint_caption} ()"
+
     ncaptions = 2
     lcaptions = ["Ephemeris:", "Viewpoint:"]
     rcaptions = [ephem_caption, viewpoint_caption]
 
-    use_doy_format = bool(
-        viewpoint
-        and "Earth" not in viewpoint
-        and "JWST" not in viewpoint.upper()
-        and "HST" not in viewpoint.upper()
+    # FORTRAN uses DOY format only for spacecraft observers (not Earth, JWST, HST).
+    # obs_isc==0 means Earth's center or ground-based observatory.
+    # The Python viewpoint string is "observatory", "latlon", "Earth", or a spacecraft name.
+    from ephemeris_tools.constants import SPACECRAFT_NAMES, SPACECRAFT_IDS
+    obs_is_spacecraft = False
+    obs_vp = (viewpoint or "").strip()
+    if obs_vp.lower() not in ("", "earth", "observatory", "latlon"):
+        # Check if it matches a known spacecraft name/ID
+        for sc_name in SPACECRAFT_NAMES:
+            if obs_vp.lower() == sc_name.lower():
+                obs_is_spacecraft = True
+                break
+        if not obs_is_spacecraft:
+            for sc_id in SPACECRAFT_IDS:
+                if obs_vp.upper() == sc_id:
+                    obs_is_spacecraft = True
+                    break
+    use_doy_format = (
+        obs_is_spacecraft
+        and "JWST" not in obs_vp.upper()
+        and "HST" not in obs_vp.upper()
     )
     if output_ps:
         draw_moon_tracks(
@@ -199,7 +224,9 @@ def run_tracker(
         )
         header = " mjd        year mo dy hr mi   limb"
         for name in moon_names[:25]:
-            header += " " + (name[:9] if len(name) >= 9 else name + " " * (9 - len(name)))
+            # FORTRAN: moon_names are uppercase (transformed in tracker3_xxx.f)
+            uname = name.upper()
+            header += " " + (uname[:9] if len(uname) >= 9 else uname + " " * (9 - len(uname)))
         output_txt.write(header + "\n")
         for irec in range(ntimes):
             tai = times_tai[irec]
