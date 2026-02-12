@@ -16,7 +16,7 @@ See CODE_OF_CONDUCT.md.
    git clone https://github.com/your-username/rms-ephemeris-tools.git
    cd rms-ephemeris-tools
    ```
-   
+
 3. Create a virtual environment and install the package with dev dependencies:
 
    ```bash
