@@ -103,14 +103,8 @@ def test_compare_tables_different() -> None:
 def test_compare_tables_ignore_column_suffixes() -> None:
     """compare_tables with ignore_column_suffixes treats ignored columns as matching."""
     # Tables differ only in MIMA_orbit and MIMA_open (known FORTRAN bug); rest match.
-    table_a = (
-        'mjd phase MIMA_ra MIMA_dec MIMA_orbit MIMA_open\n'
-        '1.0 5.0 1.1 2.2 100.0 3.14\n'
-    )
-    table_b = (
-        'mjd phase MIMA_ra MIMA_dec MIMA_orbit MIMA_open\n'
-        '1.0 5.0 1.1 2.2 99.0 3.00\n'
-    )
+    table_a = 'mjd phase MIMA_ra MIMA_dec MIMA_orbit MIMA_open\n1.0 5.0 1.1 2.2 100.0 3.14\n'
+    table_b = 'mjd phase MIMA_ra MIMA_dec MIMA_orbit MIMA_open\n1.0 5.0 1.1 2.2 99.0 3.00\n'
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         f.write(table_a)
         path_a = Path(f.name)
@@ -273,7 +267,7 @@ def test_cli_args_viewer_includes_moons() -> None:
     args = spec.cli_args_for_python()
     assert '--moons' in args
     idx = args.index('--moons')
-    assert args[idx + 1:idx + 3] == ['1', '2']
+    assert args[idx + 1 : idx + 3] == ['1', '2']
 
 
 def test_viewer_ring_defaults_match_fortran_form_values() -> None:
@@ -281,18 +275,19 @@ def test_viewer_ring_defaults_match_fortran_form_values() -> None:
     for planet, default in VIEWER_DEFAULT_RINGS.items():
         valid = VIEWER_VALID_RING_FORMS.get(planet, frozenset())
         assert default in valid, (
-            f"planet {planet}: default {default!r} not in VIEWER_VALID_RING_FORMS"
+            f'planet {planet}: default {default!r} not in VIEWER_VALID_RING_FORMS'
         )
     for planet, code_map in VIEWER_RING_CODE_TO_FORM.items():
         valid = VIEWER_VALID_RING_FORMS.get(planet, frozenset())
         for code, form_value in code_map.items():
             assert form_value in valid, (
-                f"planet {planet} code {code}: {form_value!r} not in VIEWER_VALID_RING_FORMS"
+                f'planet {planet} code {code}: {form_value!r} not in VIEWER_VALID_RING_FORMS'
             )
 
 
 def test_viewer_ring_codes_cover_python_ring_names() -> None:
-    """Every Python --rings name/code (params.RING_NAME_TO_CODE) has a viewer form mapping where applicable."""
+    """Every Python --rings name/code (params.RING_NAME_TO_CODE) has a viewer
+    form mapping where applicable."""
     from ephemeris_tools.params import RING_NAME_TO_CODE
 
     for planet, name_to_code in RING_NAME_TO_CODE.items():
@@ -301,5 +296,6 @@ def test_viewer_ring_codes_cover_python_ring_names() -> None:
             continue
         for _name, code in name_to_code.items():
             assert code in code_to_form, (
-                f"planet {planet} ring code {code} from params has no VIEWER_RING_CODE_TO_FORM entry"
+                f'planet {planet} ring code {code} from params has no '
+                'VIEWER_RING_CODE_TO_FORM entry'
             )

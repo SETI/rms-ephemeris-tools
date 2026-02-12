@@ -16,7 +16,7 @@ from ephemeris_tools.planets import (
 )
 
 if TYPE_CHECKING:
-    from ephemeris_tools.planets.base import PlanetConfig
+    from ephemeris_tools.planets.base import PlanetConfig, RingSpec
 
 _PLANET_CONFIGS = {
     4: MARS_CONFIG,
@@ -216,7 +216,7 @@ _URANUS_OPTION_71_NAMES: frozenset[str] = frozenset(
 def _resolve_viewer_ring_flags(
     planet_num: int,
     ring_selection: list[str],
-    rings: list,
+    rings: list[RingSpec],
 ) -> list[bool]:
     """Resolve ring selection tokens to per-ring visibility flags.
 
@@ -558,7 +558,8 @@ def run_viewer(
         ring_selection: Raw ring tokens from the CLI (e.g. ``['alpha']``,
             ``['71']``).  Each token is a numeric group code or a ring name;
             matched by ``_resolve_viewer_ring_flags``.
-        ring_selection_display: Optional string for PostScript caption "Ring selection:" (e.g. "alpha").
+        ring_selection_display: Optional string for PostScript caption
+            "Ring selection:" (e.g. "alpha").
         output_ps: PostScript output stream; None = no PS.
         output_txt: FOV table stream; None = stdout.
         fov_unit: Optional unit string for fov (e.g. deg, arcmin).
@@ -739,9 +740,7 @@ def run_viewer(
             ring_offset_list = _compute_ring_center_offsets(et, cfg)
             resolved_flags: list[bool] | None = None
             if ring_selection:
-                resolved_flags = _resolve_viewer_ring_flags(
-                    planet_num, ring_selection, cfg.rings
-                )
+                resolved_flags = _resolve_viewer_ring_flags(planet_num, ring_selection, cfg.rings)
             for i, r in enumerate(cfg.rings):
                 if resolved_flags is not None:
                     flag = resolved_flags[i] if i < len(resolved_flags) else False

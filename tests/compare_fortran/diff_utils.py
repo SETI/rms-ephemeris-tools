@@ -80,20 +80,14 @@ def compare_tables(
             details.append(f'  Line count: Python {len(lines_a)}, FORTRAN {len(lines_b)}')
         else:
             for i, (la, lb) in enumerate(zip(lines_a, lines_b, strict=True)):
-                if float_tolerance is not None and _lines_match_numeric(
-                    la, lb, float_tolerance
-                ):
+                if float_tolerance is not None and _lines_match_numeric(la, lb, float_tolerance):
                     continue
                 if la != lb:
                     num_diffs += 1
                     if len(details) < 50:
                         details.append(f'  Line {i + 1}:')
-                        details.append(
-                            f'    Python:  {la[:100]}{"..." if len(la) > 100 else ""}'
-                        )
-                        details.append(
-                            f'    FORTRAN: {lb[:100]}{"..." if len(lb) > 100 else ""}'
-                        )
+                        details.append(f'    Python:  {la[:100]}{"..." if len(la) > 100 else ""}')
+                        details.append(f'    FORTRAN: {lb[:100]}{"..." if len(lb) > 100 else ""}')
     same = num_diffs == 0
     return CompareResult(
         same=same,
@@ -120,14 +114,10 @@ def _compare_tables_column_aware(
     header_b = lines_b[0].split()
     if len(header_a) != len(header_b):
         num_diffs += 1
-        details.append(
-            f'  Column count: Python {len(header_a)}, FORTRAN {len(header_b)}'
-        )
+        details.append(f'  Column count: Python {len(header_a)}, FORTRAN {len(header_b)}')
         return num_diffs, details
     ignore_indexes = {
-        i
-        for i, name in enumerate(header_a)
-        if any(name.endswith(s) for s in ignore_suffixes)
+        i for i, name in enumerate(header_a) if any(name.endswith(s) for s in ignore_suffixes)
     }
     for i, (la, lb) in enumerate(zip(lines_a, lines_b, strict=True)):
         if i == 0:
@@ -156,32 +146,22 @@ def _compare_tables_column_aware(
                     if ra != rb:
                         num_diffs += 1
                         if len(details) < 50:
-                            details.append(
-                                f'  Line {i + 1} col {j + 1} ({header_a[j]}):'
-                            )
-                            details.append(
-                                f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}'
-                            )
+                            details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
+                            details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
                         break
                 except ValueError:
                     if fields_a[j] != fields_b[j]:
                         num_diffs += 1
                         if len(details) < 50:
-                            details.append(
-                                f'  Line {i + 1} col {j + 1} ({header_a[j]}):'
-                            )
-                            details.append(
-                                f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}'
-                            )
+                            details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
+                            details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
                         break
             else:
                 if fields_a[j] != fields_b[j]:
                     num_diffs += 1
                     if len(details) < 50:
                         details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
-                        details.append(
-                            f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}'
-                        )
+                        details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
                     break
     return num_diffs, details
 

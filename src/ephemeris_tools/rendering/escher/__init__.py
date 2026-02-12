@@ -8,7 +8,7 @@ them internally to reduce I/O, and draws them on the target graphics device
 (here, PostScript).
 
 Particulars
-----------
+-----------
 Escher has several entry points: esview, esdraw, esdump, esclr (and esfile,
 esopen, esdr07, eslwid, eswrit, esmove, escl07, espl07 for PostScript output).
 Each is documented in its module. Escher is never called directly as a single

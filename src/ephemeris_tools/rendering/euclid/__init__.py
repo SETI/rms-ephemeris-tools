@@ -6,7 +6,7 @@ Euclid renders the appearance of a collection of solid ellipsoids illuminated
 by a number of light sources. The scene is realistic: bodies partially or
 completely behind others are properly obscured, and shadows cast by bodies
 onto other bodies are portrayed accurately. In addition to ellipsoids, Euclid
-can draw elliptical rings, ``stars'', and figures overlaid onto the image plane.
+can draw elliptical rings, stars, and figures overlaid onto the image plane.
 
 To use Euclid you must have a working copy of Escher — the subroutine package
 that draws vectors on the display device (here, PostScript via the Escher layer).

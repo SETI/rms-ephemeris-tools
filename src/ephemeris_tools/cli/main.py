@@ -526,9 +526,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             moon_ids = [v if v >= 100 else 100 * args.planet + v for v in moon_parsed]
         rings_raw = getattr(args, 'rings', None)
         # Pass raw ring tokens to viewer; it resolves names and codes internally.
-        ring_selection_display = (
-            ' '.join(str(r) for r in rings_raw).strip() if rings_raw else None
-        )
+        ring_selection_display = ' '.join(str(r) for r in rings_raw).strip() if rings_raw else None
         blank = (getattr(args, 'blank', None) or '').strip().lower()
         blank_disks = blank in ('yes', 'y', 'true', '1')
         try:

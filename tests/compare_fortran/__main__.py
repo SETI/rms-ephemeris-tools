@@ -176,9 +176,7 @@ def main() -> int:
     columns_resolved = (
         parse_column_spec(args.columns) if args.columns is not None else default_ephem_columns
     )
-    mooncols_resolved = (
-        parse_mooncol_spec(args.mooncols) if args.mooncols is not None else None
-    )
+    mooncols_resolved = parse_mooncol_spec(args.mooncols) if args.mooncols is not None else None
     moons_raw = args.moons or []
     moons_resolved = (
         parse_moon_spec(args.planet, [str(x) for x in moons_raw]) if moons_raw else None
@@ -195,9 +193,7 @@ def main() -> int:
         'altitude': args.altitude,
         'sc_trajectory': args.sc_trajectory,
         'columns': columns_resolved if args.tool == 'ephemeris' else None,
-        'mooncols': (
-            mooncols_resolved if mooncols_resolved is not None else default_ephem_mooncols
-        )
+        'mooncols': (mooncols_resolved if mooncols_resolved is not None else default_ephem_mooncols)
         if args.tool == 'ephemeris'
         else None,
         'moons': moons_resolved

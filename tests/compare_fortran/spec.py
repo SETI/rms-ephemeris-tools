@@ -61,25 +61,31 @@ VIEWER_VALID_RING_FORMS: dict[int, frozenset[str]] = {
     4: frozenset({'None', 'Phobos, Deimos'}),
     5: frozenset({'None', 'Main', 'Main & Gossamer'}),
     6: frozenset({'A,B,C', 'A,B,C,F', 'A,B,C,F,E', 'A,B,C,F,G,E'}),
-    7: frozenset({
-        'Alpha, Beta, Eta, Gamma, Delta, Epsilon',
-        'Nine major rings',
-        'All inner rings',
-        'All rings',
-    }),
-    8: frozenset({
-        'LeVerrier, Adams',
-        'LeVerrier, Arago, Adams',
-        'Galle, LeVerrier, Arago, Adams',
-    }),
-    9: frozenset({
-        'None',
-        'Charon',
-        'Charon, Nix, Hydra',
-        'Charon, Styx, Nix, Kerberos, Hydra',
-        'Nix, Hydra',
-        'Styx, Nix, Kerberos, Hydra',
-    }),
+    7: frozenset(
+        {
+            'Alpha, Beta, Eta, Gamma, Delta, Epsilon',
+            'Nine major rings',
+            'All inner rings',
+            'All rings',
+        }
+    ),
+    8: frozenset(
+        {
+            'LeVerrier, Adams',
+            'LeVerrier, Arago, Adams',
+            'Galle, LeVerrier, Arago, Adams',
+        }
+    ),
+    9: frozenset(
+        {
+            'None',
+            'Charon',
+            'Charon, Nix, Hydra',
+            'Charon, Styx, Nix, Kerberos, Hydra',
+            'Nix, Hydra',
+            'Styx, Nix, Kerberos, Hydra',
+        }
+    ),
 }
 
 # Planet number → default viewer ring selection (FORM form "checked" value).
@@ -120,9 +126,7 @@ def _build_moon_cgi_map(planet_num: int) -> dict[int, str]:
 
 
 # Moon index → CGI form value per planet (FORTRAN tracker/ephemeris HTML form format).
-_MOON_CGI_BY_PLANET: dict[int, dict[int, str]] = {
-    p: _build_moon_cgi_map(p) for p in range(4, 10)
-}
+_MOON_CGI_BY_PLANET: dict[int, dict[int, str]] = {p: _build_moon_cgi_map(p) for p in range(4, 10)}
 
 # Column ID → CGI description template; use {planet} for planet-specific columns.
 _COLUMN_CGI_TEMPLATES: dict[int, str] = {
@@ -181,6 +185,7 @@ def _column_cgi_value(col_id: int, planet_name: str) -> str:
     if tpl is None:
         return str(col_id)
     return tpl.format(planet=planet_name)
+
 
 # Default tracker moons (8 classical Saturn moons).
 DEFAULT_TRACKER_MOONS_SATURN: list[int] = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -339,7 +344,7 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
                 code_to_form = VIEWER_RING_CODE_TO_FORM.get(planet_num, {})
                 form_vals = [code_to_form.get(c) for c in r]
                 if all(form_vals) and len(set(form_vals)) == 1:
-                    rings_str = form_vals[0]
+                    rings_str = form_vals[0] or VIEWER_DEFAULT_RINGS.get(planet_num, 'None')
                 else:
                     rings_str = VIEWER_DEFAULT_RINGS.get(planet_num, 'None')
             elif isinstance(r, str):
