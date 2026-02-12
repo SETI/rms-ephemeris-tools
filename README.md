@@ -30,7 +30,8 @@
 
 # Introduction
 
-Planetary ephemeris generator, moon tracker, and planet viewer (Python port of the PDS Ring-Moon Systems Node FORTRAN tools).
+Planetary ephemeris generator, moon tracker, and planet viewer (Python port of
+the PDS Ring-Moon Systems Node FORTRAN tools).
 
 # Quick Start
 
@@ -178,6 +179,7 @@ mypy src
    ```bash
    pip install -e ".[dev]"
    ```
+
    Or install only runtime dependencies: `pip install -e .`
 
 4. Set up SPICE kernels:
@@ -189,13 +191,10 @@ mypy src
      ```
 
 > **Note**: To fix mypy operability with editable pip installs:
+>
 > ```bash
 > export SETUPTOOLS_ENABLE_FEATURES="legacy-editable"
 > ```
-
-# Quick Start
-
-TODO
 
 # Documentation
 
