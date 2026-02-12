@@ -207,6 +207,89 @@ def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[flo
     return offsets
 
 
+# Uranus viewer form option 71 = "Alpha, Beta, Eta, Gamma, Delta, Epsilon" (six major rings).
+_URANUS_OPTION_71_NAMES: frozenset[str] = frozenset(
+    {'Alpha', 'Beta', 'Eta', 'Gamma', 'Delta', 'Epsilon'}
+)
+
+
+def _resolve_viewer_ring_flags(
+    planet_num: int,
+    ring_selection: list[str],
+    rings: list,
+) -> list[bool]:
+    """Resolve ring selection tokens to per-ring visibility flags.
+
+    Each token may be a numeric group code (e.g. ``71`` for all six
+    major Uranus rings) or an individual ring name that is matched
+    case-insensitively against the config ring entries.  Group codes
+    are the same codes used by the FORTRAN web form (51, 52, 61, 62,
+    63, 71, 81).
+
+    Parameters:
+        planet_num: Planet number (4-9).
+        ring_selection: Raw tokens from the CLI (e.g. ``['alpha']``,
+            ``['71']``, ``['alpha', 'beta']``).
+        rings: List of RingSpec from planet config.
+
+    Returns:
+        One bool per ring; True = draw.
+    """
+    n = len(rings)
+    if n == 0:
+        return []
+    flags = [False] * n
+
+    # Split tokens into numeric group codes and individual ring names
+    codes: list[int] = []
+    names: set[str] = set()
+    for tok in ring_selection:
+        tok = tok.strip()
+        if not tok:
+            continue
+        try:
+            codes.append(int(tok))
+        except ValueError:
+            names.add(tok.lower())
+
+    # Apply numeric group codes (FORTRAN form compatibility)
+    for opt in codes:
+        if planet_num == 5:
+            # Jupiter: 51=Main (ring 0), 52=Gossamer (rings 1,2)
+            if opt == 51 and n > 0:
+                flags[0] = True
+            elif opt == 52 and n >= 3:
+                flags[1] = True
+                flags[2] = True
+        elif planet_num == 6:
+            # Saturn: 61=Main (0), 62=G+E (1,2), 63=outer (3,4)
+            if opt == 61 and n > 0:
+                flags[0] = True
+            elif opt == 62 and n >= 3:
+                flags[1] = True
+                flags[2] = True
+            elif opt == 63 and n >= 5:
+                flags[3] = True
+                flags[4] = True
+        elif planet_num == 7 and opt == 71:
+            for i, r in enumerate(rings):
+                if getattr(r, 'name', None) in _URANUS_OPTION_71_NAMES:
+                    flags[i] = True
+        elif planet_num == 8 and opt == 81:
+            # Neptune: 81=rings (LeVerrier, Adams; show all 4 by default)
+            for i in range(n):
+                flags[i] = True
+
+    # Apply individual ring names (case-insensitive match against config)
+    if names:
+        for i, r in enumerate(rings):
+            ring_name = getattr(r, 'name', None)
+            if ring_name and ring_name.lower() in names:
+                flags[i] = True
+
+    return flags
+
+
 def _compute_jupiter_torus_node(et: float) -> float | None:
     """Compute Io torus ring node in radians from Jupiter BODMAT (System III 248°).
 
@@ -452,6 +535,8 @@ def run_viewer(
     ephem_version: int = 0,
     moon_ids: list[int] | None = None,
     blank_disks: bool = False,
+    ring_selection: list[str] | None = None,
+    ring_selection_display: str | None = None,
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
     fov_unit: str | None = None,
@@ -470,6 +555,10 @@ def run_viewer(
         ephem_version: SPICE ephemeris version or 0.
         moon_ids: Optional moon body IDs to show; None = all.
         blank_disks: If True, draw planet/ring disks as blank.
+        ring_selection: Raw ring tokens from the CLI (e.g. ``['alpha']``,
+            ``['71']``).  Each token is a numeric group code or a ring name;
+            matched by ``_resolve_viewer_ring_flags``.
+        ring_selection_display: Optional string for PostScript caption "Ring selection:" (e.g. "alpha").
         output_ps: PostScript output stream; None = no PS.
         output_txt: FOV table stream; None = stdout.
         fov_unit: Optional unit string for fov (e.g. deg, arcmin).
@@ -586,14 +675,16 @@ def run_viewer(
         # So output is "Earth's center ()" for typical case
         rc.append(viewpoint_display + ' ()')
 
-        # Caption 4: Moon selection — FORTRAN uses moons CGI value(5:)
+        # Caption 4: Moon selection — FORTRAN uses moons CGI value(5:); we show list
         lc.append('Moon selection:')
-        # When no moons specified in CGI, the value is blank → (5:) is blank
-        rc.append('')
+        if track_moon_ids:
+            rc.append(', '.join(id_to_name.get(mid, str(mid)) for mid in track_moon_ids))
+        else:
+            rc.append('')
 
-        # Caption 5: Ring selection — from rings CGI value, typically blank
+        # Caption 5: Ring selection — from CLI/CGI rings value
         lc.append('Ring selection:')
-        rc.append('')
+        rc.append(ring_selection_display if ring_selection_display else '')
 
         # Caption 6: Center body (lon,lat)
         center_body_id = cfg.planet_id  # Default center is planet
@@ -622,11 +713,10 @@ def run_viewer(
         f_moon_ids = [cfg.planet_id]
         f_moon_names = [' ']
         for m in all_moons:
-            f_moon_flags.append(True)  # Show all moons by default
+            f_moon_flags.append(True)
             f_moon_ids.append(m.id)
             f_moon_names.append(m.name)
 
-        # Filter moons if specific ones requested
         if moon_ids:
             for i in range(1, len(f_moon_ids)):
                 if f_moon_ids[i] not in moon_ids:
@@ -647,8 +737,17 @@ def run_viewer(
 
         if hasattr(cfg, 'rings') and cfg.rings:
             ring_offset_list = _compute_ring_center_offsets(et, cfg)
+            resolved_flags: list[bool] | None = None
+            if ring_selection:
+                resolved_flags = _resolve_viewer_ring_flags(
+                    planet_num, ring_selection, cfg.rings
+                )
             for i, r in enumerate(cfg.rings):
-                f_ring_flags.append(not r.dashed)  # FORTRAN: dashed rings hidden by default
+                if resolved_flags is not None:
+                    flag = resolved_flags[i] if i < len(resolved_flags) else False
+                else:
+                    flag = not r.dashed  # FORTRAN: dashed rings hidden by default
+                f_ring_flags.append(flag)
                 f_ring_rads.append(r.outer_km)
                 f_ring_elevs.append(getattr(r, 'elev_km', 0.0))
                 f_ring_eccs.append(getattr(r, 'ecc', 0.0))

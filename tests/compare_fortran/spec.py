@@ -6,6 +6,16 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import quote
 
+from ephemeris_tools.planets import (
+    JUPITER_CONFIG,
+    MARS_CONFIG,
+    NEPTUNE_CONFIG,
+    PLUTO_CONFIG,
+    SATURN_CONFIG,
+    URANUS_CONFIG,
+)
+from ephemeris_tools.planets.base import PlanetConfig
+
 # Maps Python CLI values → FORTRAN CGI form values.
 # The FORTRAN parses these with string comparisons like
 #   string .eq. 'degrees'   or   string(1:3) .eq. 'sec'
@@ -24,34 +34,153 @@ _OBSERVATORY_TO_FORTRAN: dict[str, str] = {
     "Earth's Center": "Earth's center",  # FORTRAN checks first 5 chars only
 }
 
-# Moon index → CGI form value used by FORTRAN tracker/ephemeris HTML forms.
-# Format: "NNN Name (Xn)" where NNN = zero-padded index, X = planet letter.
-_SATURN_MOON_CGI: dict[int, str] = {
-    1: '001 Mimas (S1)',
-    2: '002 Enceladus (S2)',
-    3: '003 Tethys (S3)',
-    4: '004 Dione (S4)',
-    5: '005 Rhea (S5)',
-    6: '006 Titan (S6)',
-    7: '007 Hyperion (S7)',
-    8: '008 Iapetus (S8)',
-    9: '009 Phoebe (S9)',
-    10: '010 Janus (S10)',
-    11: '011 Epimetheus (S11)',
-    12: '012 Helene (S12)',
-    13: '013 Telesto (S13)',
-    14: '014 Calypso (S14)',
-    15: '015 Atlas (S15)',
-    16: '016 Prometheus (S16)',
-    17: '017 Pandora (S17)',
-    18: '018 Pan (S18)',
-    32: '032 Methone (S32)',
-    33: '033 Pallene (S33)',
-    34: '034 Polydeuces (S34)',
-    35: '035 Daphnis (S35)',
-    49: '049 Anthe (S49)',
-    53: '053 Aegaeon (S53)',
+# Planet number → PlanetConfig for building moon CGI maps.
+_PLANET_CONFIGS: dict[int, PlanetConfig] = {
+    4: MARS_CONFIG,
+    5: JUPITER_CONFIG,
+    6: SATURN_CONFIG,
+    7: URANUS_CONFIG,
+    8: NEPTUNE_CONFIG,
+    9: PLUTO_CONFIG,
 }
+
+# Planet number → letter used in moon CGI format "(Xn)".
+_PLANET_LETTER: dict[int, str] = {
+    4: 'M',
+    5: 'J',
+    6: 'S',
+    7: 'U',
+    8: 'N',
+    9: 'P',
+}
+
+# Valid FORTRAN viewer RING_SELECTION form values per planet (from VIEWER3_FORM_*.shtml).
+# Uranus viewer rejects any other value (goto 9999); others accept any string but only
+# these match the HTML radio options and set ring flags correctly.
+VIEWER_VALID_RING_FORMS: dict[int, frozenset[str]] = {
+    4: frozenset({'None', 'Phobos, Deimos'}),
+    5: frozenset({'None', 'Main', 'Main & Gossamer'}),
+    6: frozenset({'A,B,C', 'A,B,C,F', 'A,B,C,F,E', 'A,B,C,F,G,E'}),
+    7: frozenset({
+        'Alpha, Beta, Eta, Gamma, Delta, Epsilon',
+        'Nine major rings',
+        'All inner rings',
+        'All rings',
+    }),
+    8: frozenset({
+        'LeVerrier, Adams',
+        'LeVerrier, Arago, Adams',
+        'Galle, LeVerrier, Arago, Adams',
+    }),
+    9: frozenset({
+        'None',
+        'Charon',
+        'Charon, Nix, Hydra',
+        'Charon, Styx, Nix, Kerberos, Hydra',
+        'Nix, Hydra',
+        'Styx, Nix, Kerberos, Hydra',
+    }),
+}
+
+# Planet number → default viewer ring selection (FORM form "checked" value).
+# FORTRAN viewer requires a non-empty RING_SELECTION; use these when user omits --rings.
+VIEWER_DEFAULT_RINGS: dict[int, str] = {
+    4: 'Phobos, Deimos',
+    5: 'Main',
+    6: 'A,B,C',
+    7: 'Nine major rings',
+    8: 'LeVerrier, Adams',
+    9: 'None',
+}
+
+# Planet number → (ring option code → viewer form value).
+# Python --rings accepts names/codes (params.RING_NAME_TO_CODE); viewer FORTRAN expects
+# form strings. This maps parse_ring_spec() output to a valid VIEWER_VALID_RING_FORMS value.
+VIEWER_RING_CODE_TO_FORM: dict[int, dict[int, str]] = {
+    5: {51: 'Main', 52: 'Main & Gossamer'},
+    6: {61: 'A,B,C', 62: 'A,B,C,F,E', 63: 'A,B,C,F,G,E'},
+    7: {71: 'Alpha, Beta, Eta, Gamma, Delta, Epsilon'},
+    8: {81: 'LeVerrier, Adams'},
+}
+
+
+def _build_moon_cgi_map(planet_num: int) -> dict[int, str]:
+    """Build moon index → CGI form value for a planet. Format: "NNN Name (Xn)"."""
+    cfg = _PLANET_CONFIGS.get(planet_num)
+    if cfg is None:
+        return {}
+    letter = _PLANET_LETTER.get(planet_num, '?')
+    out: dict[int, str] = {}
+    for moon in cfg.moons:
+        if moon.id == cfg.planet_id:
+            continue
+        idx = moon.id % 100
+        out[idx] = f'{idx:03d} {moon.name} ({letter}{idx})'
+    return out
+
+
+# Moon index → CGI form value per planet (FORTRAN tracker/ephemeris HTML form format).
+_MOON_CGI_BY_PLANET: dict[int, dict[int, str]] = {
+    p: _build_moon_cgi_map(p) for p in range(4, 10)
+}
+
+# Column ID → CGI description template; use {planet} for planet-specific columns.
+_COLUMN_CGI_TEMPLATES: dict[int, str] = {
+    1: '001 Modified Julian Date',
+    2: '002 Year, Month, Day, Hour, Minute',
+    3: '003 Year, Month, Day, Hour, Minute, Second',
+    4: '004 Year, DOY, Hour, Minute',
+    5: '005 Year, DOY, Hour, Minute, Second',
+    6: '006 Observer-{planet} distance',
+    7: '007 Sun-{planet} distance',
+    8: '008 {planet} phase angle',
+    9: '009 Ring plane opening angle to observer',
+    10: '010 Ring plane opening angle to Sun',
+    11: '011 Sub-observer inertial longitude',
+    12: '012 Sub-solar inertial longitude',
+    13: '013 Sub-observer latitude & rotating longitude',
+    14: '014 Sub-solar latitude & rotating longitude',
+    15: '015 {planet} RA & Dec',
+    16: '016 Earth RA & Dec',
+    17: '017 Sun RA & Dec',
+    18: '018 {planet} projected equatorial radius',
+    19: '019 {planet} projected equatorial radius',
+    20: '020 Lunar phase angle',
+    21: '021 Sun-{planet} sky separation angle',
+    22: '022 Lunar-{planet} sky separation angle',
+}
+
+# Moon column ID → CGI form value (ephemeris HTML form).
+_MOONCOL_CGI: dict[int, str] = {
+    1: '001 Observer-moon distance',
+    2: '002 Moon phase angle',
+    3: '003 Sub-observer latitude & rotating longitude',
+    4: '004 Sub-solar latitude & rotating longitude',
+    5: '005 RA & Dec',
+    6: '006 Offset RA & Dec from the moon',
+    7: '007 Offset RA & Dec from the moon',
+    8: '008 Orbital longitude relative to observer',
+    9: '009 Orbit plane opening angle to observer',
+}
+
+# Tracker ring option code → CGI form value (TRACKER3_FORM.shtml).
+_TRACKER_RING_CGI: dict[int, str] = {
+    51: '051 Main Ring',
+    52: '052 Gossamer Rings',
+    61: '061 Main Rings',
+    62: '062 G Ring',
+    63: '063 E Ring',
+    71: '071 Epsilon Ring',
+    81: '081 Adams Ring',
+}
+
+
+def _column_cgi_value(col_id: int, planet_name: str) -> str:
+    """Return CGI form value for a column ID; substitute planet name where needed."""
+    tpl = _COLUMN_CGI_TEMPLATES.get(col_id)
+    if tpl is None:
+        return str(col_id)
+    return tpl.format(planet=planet_name)
 
 # Default tracker moons (8 classical Saturn moons).
 DEFAULT_TRACKER_MOONS_SATURN: list[int] = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -98,15 +227,16 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
     """
     pairs: list[tuple[str, str]] = []
 
-    # Time range (ephemeris / tracker)
-    if p.get('start'):
-        pairs.append(('start', str(p['start'])))
-    if p.get('stop'):
-        pairs.append(('stop', str(p['stop'])))
-    if 'interval' in p:
-        pairs.append(('interval', str(p['interval'])))
-    if 'time_unit' in p:
-        pairs.append(('time_unit', str(p['time_unit'])))
+    # Time range (ephemeris / tracker only; viewer uses single 'time' param)
+    if tool in ('ephemeris', 'tracker'):
+        if p.get('start'):
+            pairs.append(('start', str(p['start'])))
+        if p.get('stop'):
+            pairs.append(('stop', str(p['stop'])))
+        if 'interval' in p:
+            pairs.append(('interval', str(p['interval'])))
+        if 'time_unit' in p:
+            pairs.append(('time_unit', str(p['time_unit'])))
 
     # Ephemeris selection: web format "NNN DESCRIPTION" (FORTRAN (i3) + header string(5:)).
     if 'ephem' in p:
@@ -133,18 +263,28 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
     if 'sc_trajectory' in p:
         pairs.append(('sc_trajectory', str(p['sc_trajectory'])))
 
-    # Multi-value params (ephemeris / tracker)
-    for col in p.get('columns') or []:
-        pairs.append(('columns', str(col)))
-    for col in p.get('mooncols') or []:
-        pairs.append(('mooncols', str(col)))
-    # FORTRAN moons: CGI format "NNN Name (Xn)" from HTML form.
+    # Multi-value params: use CGI format "NNN Description" for FORTRAN header output.
     planet_num = int(p.get('planet', 6))
-    moon_cgi = _SATURN_MOON_CGI if planet_num == 6 else {}
-    for moon in p.get('moons') or []:
-        moon_int = int(moon)
-        cgi_val = moon_cgi.get(moon_int, str(moon_int))
+    planet_name = PLANET_NAMES.get(planet_num, 'Saturn')
+    for col in p.get('columns') or []:
+        col_int = int(col)
+        pairs.append(('columns', _column_cgi_value(col_int, planet_name)))
+    for col in p.get('mooncols') or []:
+        col_int = int(col)
+        pairs.append(('mooncols', _MOONCOL_CGI.get(col_int, str(col_int))))
+    # FORTRAN moons: CGI "NNN Name (Xn)". Viewer = single cutoff; tracker/ephemeris = list.
+    moon_list = p.get('moons') or []
+    moon_cgi = _MOON_CGI_BY_PLANET.get(planet_num, {})
+    if tool == 'viewer' and moon_list:
+        # Viewer: single moons= entry with highest moon index as cutoff.
+        cutoff = max(int(m) for m in moon_list)
+        cgi_val = moon_cgi.get(cutoff, f'{cutoff:03d}')
         pairs.append(('moons', cgi_val))
+    else:
+        for moon in moon_list:
+            moon_int = int(moon)
+            cgi_val = moon_cgi.get(moon_int, str(moon_int))
+            pairs.append(('moons', cgi_val))
 
     # Tracker-specific params
     if tool == 'tracker':
@@ -157,10 +297,11 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
             pairs.append(('xunit', str(p['xunit'])))
         else:
             pairs.append(('xunit', 'arcsec'))
-        # Tracker rings: each option as a separate "rings" parameter.
+        # Tracker rings: CGI format "NNN Description" per option.
         if p.get('rings'):
             for r in p['rings'] if isinstance(p['rings'], list) else [p['rings']]:
-                pairs.append(('rings', str(r)))
+                r_int = int(r)
+                pairs.append(('rings', _TRACKER_RING_CGI.get(r_int, str(r_int))))
         if p.get('title'):
             pairs.append(('title', str(p['title'])))
 
@@ -190,11 +331,24 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         if 'center_dec' in p:
             pairs.append(('center_dec', str(p['center_dec'])))
 
-        # Rings
+        # Rings: FORTRAN expects form value strings (e.g. "Nine major rings"), not option codes.
+        planet_num = int(p.get('planet', 6))
         if 'rings' in p and p['rings'] is not None:
             r = p['rings']
-            rings_str = ' '.join(str(x) for x in (r if isinstance(r, list) else [r]))
+            if isinstance(r, list) and r and all(isinstance(x, int) for x in r):
+                code_to_form = VIEWER_RING_CODE_TO_FORM.get(planet_num, {})
+                form_vals = [code_to_form.get(c) for c in r]
+                if all(form_vals) and len(set(form_vals)) == 1:
+                    rings_str = form_vals[0]
+                else:
+                    rings_str = VIEWER_DEFAULT_RINGS.get(planet_num, 'None')
+            elif isinstance(r, str):
+                rings_str = r
+            else:
+                rings_str = ' '.join(str(x) for x in (r if isinstance(r, list) else [r]))
             pairs.append(('rings', rings_str))
+        else:
+            pairs.append(('rings', VIEWER_DEFAULT_RINGS.get(planet_num, 'None')))
 
         # Required params that crash FORTRAN if missing (sent by CGI form)
         pairs.append(('labels', str(p.get('labels', 'Small (6 points)'))))
@@ -287,9 +441,9 @@ class RunSpec:
             if self.tool == 'ephemeris' and 'mooncols' in p and p['mooncols']:
                 args.append('--mooncols')
                 args.extend(str(c) for c in p['mooncols'])
-            if p.get('moons'):
-                args.append('--moons')
-                args.extend(str(m) for m in p['moons'])
+        if p.get('moons'):
+            args.append('--moons')
+            args.extend(str(m) for m in p['moons'])
         if 'ephem' in p:
             args.extend(['--ephem', str(p['ephem'])])
         if 'viewpoint' in p:

@@ -81,11 +81,27 @@ def main() -> int:
     parser.add_argument(
         '--planet', type=parse_planet, default=6, help='Planet number or name (4-9 / mars..pluto)'
     )
-    parser.add_argument('--start', type=str, default='2022-01-01 00:00', help='Start time')
-    parser.add_argument('--stop', type=str, default='2022-01-02 00:00', help='Stop time')
-    parser.add_argument('--interval', type=float, default=1.0, help='Time step')
     parser.add_argument(
-        '--time-unit', type=str, default='hour', choices=['sec', 'min', 'hour', 'day']
+        '--start',
+        type=str,
+        default='2022-01-01 00:00',
+        help='Start time (ephemeris/tracker only)',
+    )
+    parser.add_argument(
+        '--stop',
+        type=str,
+        default='2022-01-02 00:00',
+        help='Stop time (ephemeris/tracker only)',
+    )
+    parser.add_argument(
+        '--interval', type=float, default=1.0, help='Time step (ephemeris/tracker only)'
+    )
+    parser.add_argument(
+        '--time-unit',
+        type=str,
+        default='hour',
+        choices=['sec', 'min', 'hour', 'day'],
+        help='Time step unit (ephemeris/tracker only)',
     )
     parser.add_argument(
         '--ephem', type=int, default=0, help='Ephemeris version (0=latest, matches web/FORTRAN)'
@@ -100,7 +116,12 @@ def main() -> int:
     parser.add_argument('--columns', type=str, nargs='*', default=None)
     parser.add_argument('--mooncols', type=str, nargs='*', default=None)
     parser.add_argument('--moons', type=str, nargs='*', default=None)
-    parser.add_argument('--time', type=str, default='', help='Viewer observation time')
+    parser.add_argument(
+        '--time',
+        type=str,
+        default='',
+        help='Observation time (viewer only; use instead of --start/--stop)',
+    )
     parser.add_argument('--fov', type=float, default=1.0, help='Viewer field of view')
     parser.add_argument('--fov-unit', type=str, default='deg', choices=['deg', 'arcmin', 'arcsec'])
     parser.add_argument('--center', type=str, default='body')
@@ -130,6 +151,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.tool == 'viewer' and ('--start' in sys.argv or '--stop' in sys.argv):
+        print(
+            'viewer does not accept --start or --stop; use --time for observation time.',
+            file=sys.stderr,
+        )
+        return 1
+
     # Repo root: this file is tests/compare_fortran/__main__.py.
     repo_root = Path(__file__).resolve().parent.parent.parent
     if args.fortran_cmd:
@@ -142,12 +170,15 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # FORTRAN ephemeris requires at least one column in QUERY_STRING or ncolumns=0
-    # and it writes only blank lines. Use same default as Python CLI (MJD, YMDHMS, RADEC, phase).
+    # and it writes only blank lines. Use same defaults as Python CLI.
     default_ephem_columns = [1, 2, 3, 15, 8]
+    default_ephem_mooncols = [5, 6, 8, 9]  # RA&Dec, offset, orb lon, orb open (match CLI default)
     columns_resolved = (
         parse_column_spec(args.columns) if args.columns is not None else default_ephem_columns
     )
-    mooncols_resolved = parse_mooncol_spec(args.mooncols) if args.mooncols is not None else None
+    mooncols_resolved = (
+        parse_mooncol_spec(args.mooncols) if args.mooncols is not None else None
+    )
     moons_raw = args.moons or []
     moons_resolved = (
         parse_moon_spec(args.planet, [str(x) for x in moons_raw]) if moons_raw else None
@@ -155,10 +186,6 @@ def main() -> int:
 
     params = {
         'planet': args.planet,
-        'start': args.start,
-        'stop': args.stop,
-        'interval': args.interval,
-        'time_unit': args.time_unit,
         'ephem': args.ephem,
         'viewpoint': args.viewpoint,
         'observatory': args.observatory,
@@ -168,7 +195,11 @@ def main() -> int:
         'altitude': args.altitude,
         'sc_trajectory': args.sc_trajectory,
         'columns': columns_resolved if args.tool == 'ephemeris' else None,
-        'mooncols': mooncols_resolved if args.tool == 'ephemeris' else None,
+        'mooncols': (
+            mooncols_resolved if mooncols_resolved is not None else default_ephem_mooncols
+        )
+        if args.tool == 'ephemeris'
+        else None,
         'moons': moons_resolved
         or (DEFAULT_TRACKER_MOONS_SATURN if args.tool == 'tracker' and args.planet == 6 else None),
         'time': args.time or '2022-01-01 12:00',
@@ -181,6 +212,12 @@ def main() -> int:
         'xrange': args.xrange or (180.0 if args.tool == 'tracker' else None),
         'xunit': args.xunit,
     }
+    # Viewer uses only --time; ephemeris/tracker use --start, --stop, --interval, --time-unit.
+    if args.tool in ('ephemeris', 'tracker'):
+        params['start'] = args.start
+        params['stop'] = args.stop
+        params['interval'] = args.interval
+        params['time_unit'] = args.time_unit
     spec = RunSpec(tool=args.tool, params=params)
 
     py_table = out_dir / 'python_table.txt'
@@ -244,10 +281,12 @@ def main() -> int:
 
         exit_code = 0
         if py_table_use and fort_table_use:
+            # Ignore *_orbit and *_open columns: known FORTRAN bug in RSPK_OrbitOpen.
             res = compare_tables(
                 py_table_use,
                 fort_table_use,
                 float_tolerance=args.float_tol,
+                ignore_column_suffixes=('_orbit', '_open'),
             )
             print(res.message)
             for d in res.details:

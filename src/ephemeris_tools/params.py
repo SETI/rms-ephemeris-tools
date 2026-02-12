@@ -190,6 +190,11 @@ RING_NAME_TO_CODE: dict[int, dict[str, int]] = {
         'outer': 63,
     },
     7: {
+        'alpha': 71,
+        'beta': 71,
+        'eta': 71,
+        'gamma': 71,
+        'delta': 71,
         'epsilon': 71,
     },
     8: {

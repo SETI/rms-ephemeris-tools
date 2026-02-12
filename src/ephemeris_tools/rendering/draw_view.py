@@ -722,11 +722,11 @@ def draw_planetary_view(
     planet_id = spice_state.planet_id
     planet_num = spice_state.planet_num
 
-    # Default list args
+    # Default list args; copy ring_flags before padding so we do not mutate caller's list
     moon_flags = moon_flags or []
     moon_ids = moon_ids or []
     moon_names = moon_names or []
-    ring_flags = ring_flags or []
+    ring_flags = list(ring_flags or [])
     ring_rads = ring_rads or []
     ring_elevs = ring_elevs or []
     ring_eccs = ring_eccs or []

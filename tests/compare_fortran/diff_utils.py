@@ -37,12 +37,19 @@ def compare_tables(
     path_b: Path | str,
     ignore_blank: bool = True,
     float_tolerance: int | None = None,
+    ignore_column_suffixes: tuple[str, ...] | None = None,
 ) -> CompareResult:
     """Compare two table (text) files line-by-line.
 
     If float_tolerance is set (e.g. 6), numeric fields are compared only
     to that many significant digits. Otherwise exact string match after
     normalization (strip, collapse whitespace).
+
+    If ignore_column_suffixes is set (e.g. ("_orbit", "_open")), the first
+    line is treated as a header; when comparing data lines, fields whose
+    header column name ends with any of these suffixes are ignored (known
+    FORTRAN bugs). Use for ephemeris table comparison when moon columns
+    include orbit/open.
     """
     pa = Path(path_a)
     pb = Path(path_b)
@@ -57,19 +64,36 @@ def compare_tables(
         lines_b = [ln for ln in lines_b if ln.strip()]
     details: list[str] = []
     num_diffs = 0
-    if len(lines_a) != len(lines_b):
-        num_diffs += 1
-        details.append(f'  Line count: Python {len(lines_a)}, FORTRAN {len(lines_b)}')
+
+    if ignore_column_suffixes and lines_a and lines_b:
+        # Column-aware: parse header, compare field-by-field skipping ignored columns.
+        num_diffs, details = _compare_tables_column_aware(
+            lines_a,
+            lines_b,
+            ignore_column_suffixes,
+            float_tolerance,
+            details,
+        )
     else:
-        for i, (la, lb) in enumerate(zip(lines_a, lines_b, strict=True)):
-            if float_tolerance is not None and _lines_match_numeric(la, lb, float_tolerance):
-                continue
-            if la != lb:
-                num_diffs += 1
-                if len(details) < 50:
-                    details.append(f'  Line {i + 1}:')
-                    details.append(f'    Python:  {la[:100]}{"..." if len(la) > 100 else ""}')
-                    details.append(f'    FORTRAN: {lb[:100]}{"..." if len(lb) > 100 else ""}')
+        if len(lines_a) != len(lines_b):
+            num_diffs += 1
+            details.append(f'  Line count: Python {len(lines_a)}, FORTRAN {len(lines_b)}')
+        else:
+            for i, (la, lb) in enumerate(zip(lines_a, lines_b, strict=True)):
+                if float_tolerance is not None and _lines_match_numeric(
+                    la, lb, float_tolerance
+                ):
+                    continue
+                if la != lb:
+                    num_diffs += 1
+                    if len(details) < 50:
+                        details.append(f'  Line {i + 1}:')
+                        details.append(
+                            f'    Python:  {la[:100]}{"..." if len(la) > 100 else ""}'
+                        )
+                        details.append(
+                            f'    FORTRAN: {lb[:100]}{"..." if len(lb) > 100 else ""}'
+                        )
     same = num_diffs == 0
     return CompareResult(
         same=same,
@@ -77,6 +101,89 @@ def compare_tables(
         details=details,
         num_diffs=num_diffs,
     )
+
+
+def _compare_tables_column_aware(
+    lines_a: list[str],
+    lines_b: list[str],
+    ignore_suffixes: tuple[str, ...],
+    float_tolerance: int | None,
+    details: list[str],
+) -> tuple[int, list[str]]:
+    """Compare tables line-by-line, ignoring columns whose header ends with given suffixes."""
+    num_diffs = 0
+    if len(lines_a) != len(lines_b):
+        num_diffs += 1
+        details.append(f'  Line count: Python {len(lines_a)}, FORTRAN {len(lines_b)}')
+        return num_diffs, details
+    header_a = lines_a[0].split()
+    header_b = lines_b[0].split()
+    if len(header_a) != len(header_b):
+        num_diffs += 1
+        details.append(
+            f'  Column count: Python {len(header_a)}, FORTRAN {len(header_b)}'
+        )
+        return num_diffs, details
+    ignore_indexes = {
+        i
+        for i, name in enumerate(header_a)
+        if any(name.endswith(s) for s in ignore_suffixes)
+    }
+    for i, (la, lb) in enumerate(zip(lines_a, lines_b, strict=True)):
+        if i == 0:
+            if la != lb:
+                num_diffs += 1
+                if len(details) < 50:
+                    details.append('  Line 1 (header):')
+                    details.append(f'    Python:  {la[:100]}{"..." if len(la) > 100 else ""}')
+                    details.append(f'    FORTRAN: {lb[:100]}{"..." if len(lb) > 100 else ""}')
+            continue
+        fields_a = la.split()
+        fields_b = lb.split()
+        if len(fields_a) != len(header_a) or len(fields_b) != len(header_b):
+            num_diffs += 1
+            if len(details) < 50:
+                details.append(f'  Line {i + 1}: field count mismatch')
+            continue
+        for j in range(len(fields_a)):
+            if j in ignore_indexes:
+                continue
+            if float_tolerance is not None:
+                try:
+                    fa, fb = float(fields_a[j]), float(fields_b[j])
+                    ra = f'{fa:.{float_tolerance}g}'
+                    rb = f'{fb:.{float_tolerance}g}'
+                    if ra != rb:
+                        num_diffs += 1
+                        if len(details) < 50:
+                            details.append(
+                                f'  Line {i + 1} col {j + 1} ({header_a[j]}):'
+                            )
+                            details.append(
+                                f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}'
+                            )
+                        break
+                except ValueError:
+                    if fields_a[j] != fields_b[j]:
+                        num_diffs += 1
+                        if len(details) < 50:
+                            details.append(
+                                f'  Line {i + 1} col {j + 1} ({header_a[j]}):'
+                            )
+                            details.append(
+                                f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}'
+                            )
+                        break
+            else:
+                if fields_a[j] != fields_b[j]:
+                    num_diffs += 1
+                    if len(details) < 50:
+                        details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
+                        details.append(
+                            f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}'
+                        )
+                    break
+    return num_diffs, details
 
 
 def _lines_match_numeric(line_a: str, line_b: str, sig: int) -> bool:
