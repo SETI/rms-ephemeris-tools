@@ -18,7 +18,7 @@
     <div class="container form" role="main">
         <h1><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Moon Tracker <!--#echo var="VERSION"--></h1>
 
-        <form id="moon-tracker" method="PUT" action="/cgi-bin/tools/tracker3_xxx.pl">
+        <form id="moon-tracker" method="PUT" action="/cgi-bin/tools/tracker3_xxx.sh">
 
             <input type="hidden" name="abbrev" value="<!--#echo var='ABBREV'-->"/>
             <input type="hidden" name="version" value="<!--#echo var='VERSION'-->"/>

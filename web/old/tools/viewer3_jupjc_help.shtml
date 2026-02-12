@@ -1,0 +1,18 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!--#set var="PREFIX" value="JUICE/"  -->
+<!--#set var="PLANET" value="Jupiter" -->
+<!--#set var="ABBREV" value="jupjc"   -->
+
+<!--#if expr="0 eq 1"-->
+<head><title>JUICE/Jupiter Viewer Help CONFIGURATION ERROR</title></head>
+<body style="font-family:arial;">
+<h1 style="color:red;"><b>JUICE/Jupiter Viewer Help CONFIGURATION ERROR</h1>
+<p>
+Please report this error to the RMS website administrator,
+<a href="mailto:pds-admin@seti.org">pds-admin@seti.org</a>.
+</p>
+</body>
+</html>
+<!--#endif-->
+
+<!--#include file="VIEWER3_HELP.shtml"-->

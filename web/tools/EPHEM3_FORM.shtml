@@ -17,7 +17,7 @@
     <div class="container" role="main">
         <h1><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Ephemeris Generator <!--#echo var="VERSION"--></h1>
 
-        <form method="PUT" action="/cgi-bin/tools/ephem3_xxx.pl">
+        <form method="PUT" action="/cgi-bin/tools/ephem3_xxx.sh">
 
             <input type="hidden" name="abbrev" value="<!--#echo var='ABBREV'-->"/>
             <input type="hidden" name="version" value="<!--#echo var='VERSION'-->"/>
