@@ -67,6 +67,9 @@ def _tracker_call_kwargs_from_params(params: TrackerParams) -> dict[str, object]
         'xscaled': 'radii' in xunit,
         'title': params.title,
         'ring_options': ring_options,
+        'observer_latitude': params.observer.latitude_deg,
+        'observer_longitude': params.observer.longitude_deg,
+        'observer_altitude': params.observer.altitude_m,
         'output_ps': params.output_ps,
         'output_txt': params.output_txt,
     }
@@ -85,6 +88,9 @@ def run_tracker(
     xscaled: bool = False,
     title: str = '',
     ring_options: list[int] | None = None,
+    observer_latitude: float | None = None,
+    observer_longitude: float | None = None,
+    observer_altitude: float | None = None,
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
 ) -> None:
@@ -128,6 +134,9 @@ def run_tracker(
             xscaled=kwargs['xscaled'],  # type: ignore[arg-type]
             title=kwargs['title'],  # type: ignore[arg-type]
             ring_options=kwargs['ring_options'],  # type: ignore[arg-type]
+            observer_latitude=kwargs['observer_latitude'],  # type: ignore[arg-type]
+            observer_longitude=kwargs['observer_longitude'],  # type: ignore[arg-type]
+            observer_altitude=kwargs['observer_altitude'],  # type: ignore[arg-type]
             output_ps=kwargs['output_ps'],  # type: ignore[arg-type]
             output_txt=kwargs['output_txt'],  # type: ignore[arg-type]
         )
@@ -137,7 +146,7 @@ def run_tracker(
         moon_ids = []
 
     from ephemeris_tools.spice.load import load_spice_files
-    from ephemeris_tools.spice.observer import set_observer_id
+    from ephemeris_tools.spice.observer import set_observer_id, set_observer_location
     from ephemeris_tools.time_utils import (
         interval_seconds,
         parse_datetime,
@@ -149,7 +158,25 @@ def run_tracker(
     ok, reason = load_spice_files(planet_num, ephem_version)
     if not ok:
         raise RuntimeError(f'Failed to load SPICE kernels: {reason}')
-    set_observer_id(EARTH_ID)
+    if observer_latitude is not None and observer_longitude is not None:
+        set_observer_location(
+            observer_latitude,
+            observer_longitude,
+            observer_altitude if observer_altitude is not None else 0.0,
+        )
+    else:
+        from ephemeris_tools.constants import spacecraft_code_to_id, spacecraft_name_to_code
+        from ephemeris_tools.spice.load import load_spacecraft
+
+        code = spacecraft_name_to_code(viewpoint)
+        if code is not None:
+            sc_id = spacecraft_code_to_id(code)
+            if sc_id:
+                load_spacecraft(sc_id, planet_num, ephem_version, set_obs=True)
+            else:
+                set_observer_id(EARTH_ID)
+        else:
+            set_observer_id(EARTH_ID)
 
     start_parsed = parse_datetime(start_time)
     stop_parsed = parse_datetime(stop_time)
@@ -177,27 +204,33 @@ def run_tracker(
     id_to_name = {m.id: m.name for m in cfg.moons}
     moon_names = [id_to_name.get(tid, str(tid)) for tid in track_moon_ids]
 
-    times_tai: list[float] = []
+    # FORTRAN quirk (tracker3_xxx + rspk_trackmoons): moon geometry is sampled
+    # on an evenly stretched grid from start->stop, while table timestamps use
+    # the original fixed interval grid.
+    sample_dt = (tai2 - tai1) / (ntimes - 1) if ntimes > 1 else 1.0
+    table_times_tai: list[float] = []
     moon_offsets_arcsec: list[list[float]] = [[] for _ in track_moon_ids]
     limb_arcsec: list[float] = []
 
     for i in range(ntimes):
-        tai = tai1 + i * dsec
-        et = tdb_from_tai(tai)
+        sample_tai = tai1 + i * sample_dt
+        table_tai = tai1 + i * dsec
+        et = tdb_from_tai(sample_tai)
         offsets_rad, limb_rad = moon_tracker_offsets(et, track_moon_ids)
-        times_tai.append(tai)
+        table_times_tai.append(table_tai)
         limb_arcsec.append(limb_rad * _RAD_TO_ARCSEC)
         for j, o in enumerate(offsets_rad):
             moon_offsets_arcsec[j].append(o * _RAD_TO_ARCSEC)
 
     # X-axis range: user xrange (arcsec or radii per xscaled) or from limb.
-    if xrange is not None and xrange > 0:
+    explicit_xrange = xrange is not None and xrange > 0
+    if explicit_xrange:
         xrange_val = xrange
     else:
         xrange_val = max(limb_arcsec) * 2.0 if limb_arcsec else 100.0
         xrange_val = max(xrange_val, 10.0)
         xscaled = False
-    if not xscaled:
+    if not xscaled and not explicit_xrange:
         xrange_val = max(xrange_val, 10.0)
 
     # Planet radius (km) for ring drawing - from SPICE to match FORTRAN.
@@ -221,7 +254,6 @@ def run_tracker(
     ring_rads_km = (ring_rads_list + [0.0] * 5)[:5]
     ring_grays = (ring_grays_list + [0.5] * 5)[:5]
 
-    dt = (tai2 - tai1) / (ntimes - 1) if ntimes > 1 else 1.0
     out_name = getattr(output_ps, 'name', None) if output_ps else None
     filename = str(out_name) if out_name else 'tracker.ps'
 
@@ -231,13 +263,11 @@ def run_tracker(
 
     ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, 'DE440')
 
-    # FORTRAN: rcaptions(2) = observatory_name + " (" + sc_trajectory(5:) + ")"
-    # For Earth's center with sc_trajectory=0: "Earth's center ()"
+    # FORTRAN caption text in current CGI behavior does not append empty
+    # parentheses for non-spacecraft observers.
     viewpoint_caption = (viewpoint or 'Earth').strip()
     if not viewpoint_caption or viewpoint_caption.lower() in ('earth', 'observatory'):
         viewpoint_caption = "Earth's center"
-    # Append sc_trajectory in parentheses (FORTRAN always does this for observatory)
-    viewpoint_caption = f'{viewpoint_caption} ()'
 
     ncaptions = 2
     lcaptions = ['Ephemeris:', 'Viewpoint:']
@@ -271,7 +301,7 @@ def run_tracker(
             ntimes=ntimes,
             time1_tai=tai1,
             time2_tai=tai2,
-            dt=dt,
+            dt=sample_dt,
             xrange=xrange_val,
             xscaled=xscaled,
             moon_arcsec=moon_offsets_arcsec,
@@ -307,7 +337,7 @@ def run_tracker(
             header += ' ' + (uname[:9] if len(uname) >= 9 else uname + ' ' * (9 - len(uname)))
         output_txt.write(header + '\n')
         for irec in range(ntimes):
-            tai = times_tai[irec]
+            tai = table_times_tai[irec]
             day, sec = day_sec_from_tai(tai)
             _, _, sec_frac = hms_from_sec(sec)
             if sec_frac >= 30.0:

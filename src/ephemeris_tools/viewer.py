@@ -141,10 +141,11 @@ def _propagated_saturn_f_ring(et: float, cfg: PlanetConfig) -> tuple[float, floa
     obs_pv = observer_state(et)
     state = get_state()
     _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
-    ddays = (et - ref_et - dt) / _SEC_PER_DAY
+    # FORTRAN uses: (obs_time - ref_time - dt) in seconds directly
+    elapsed_sec = et - ref_et - dt
     r = cfg.rings[cfg.f_ring_index]
-    peri_rad = r.peri_rad + FRING_DPERI_DT * ddays * _SEC_PER_DAY
-    node_rad = r.node_rad + FRING_DNODE_DT * ddays * _SEC_PER_DAY
+    peri_rad = r.peri_rad + FRING_DPERI_DT * elapsed_sec
+    node_rad = r.node_rad + FRING_DNODE_DT * elapsed_sec
     return (peri_rad, node_rad)
 
 
@@ -361,6 +362,8 @@ def _write_fov_table(
     id_to_name: dict[int, str],
 ) -> None:
     """Write Field of View Description (J2000) and body/ring geometry tables."""
+    from ephemeris_tools.constants import EARTH_ID
+    from ephemeris_tools.spice.common import get_state
     from ephemeris_tools.spice.geometry import (
         body_lonlat,
         body_phase,
@@ -372,23 +375,43 @@ def _write_fov_table(
 
     cosdec = math.cos(planet_dec)
 
+    # FORTRAN uses arcsec for Earth observer, degrees for spacecraft
+    state = get_state()
+    is_earth_observer = (state.obs_id == EARTH_ID or state.obs_id == 0)
+
     stream.write('\n')
     stream.write('Field of View Description (J2000)\n')
     stream.write('---------------------------------\n')
     stream.write('\n')
-    stream.write(
-        '     Body          RA                 Dec              '
-        '  RA (deg)   Dec (deg)   dRA (")   dDec (")\n'
-    )
+    if is_earth_observer:
+        stream.write(
+            '     Body          RA                 Dec              '
+            '  RA (deg)   Dec (deg)   dRA (")   dDec (")\n'
+        )
+    else:
+        stream.write(
+            '     Body          RA                 Dec              '
+            '  RA (deg)   Dec (deg)   dRA (deg) dDec (deg)\n'
+        )
 
     for body_id in body_ids:
         ra, dec = body_radec(et, body_id)
-        dra_arcsec = (ra - planet_ra) * cosdec * _RAD2ARCSEC
-        ddec_arcsec = (dec - planet_dec) * _RAD2ARCSEC
-        if dra_arcsec < -0.5 * _MAX_ARCSEC:
-            dra_arcsec += _MAX_ARCSEC
-        if dra_arcsec > 0.5 * _MAX_ARCSEC:
-            dra_arcsec -= _MAX_ARCSEC
+        if is_earth_observer:
+            # Use arcsec for Earth observations
+            dra_display = (ra - planet_ra) * cosdec * _RAD2ARCSEC
+            ddec_display = (dec - planet_dec) * _RAD2ARCSEC
+            if dra_display < -0.5 * _MAX_ARCSEC:
+                dra_display += _MAX_ARCSEC
+            if dra_display > 0.5 * _MAX_ARCSEC:
+                dra_display -= _MAX_ARCSEC
+        else:
+            # Use degrees for spacecraft observations
+            dra_display = (ra - planet_ra) * cosdec * _RAD2DEG
+            ddec_display = (dec - planet_dec) * _RAD2DEG
+            if dra_display < -180.0:
+                dra_display += 360.0
+            if dra_display > 180.0:
+                dra_display -= 360.0
         ra_deg = ra * _RAD2DEG
         dec_deg = dec * _RAD2DEG
         name = id_to_name.get(body_id, str(body_id))
@@ -396,7 +419,7 @@ def _write_fov_table(
         dec_str = _dec_dms(dec)
         stream.write(
             f'  {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}  '
-            f'{ra_deg:10.6f} {dec_deg:12.6f} {dra_arcsec:10.4f} {ddec_arcsec:10.4f}\n'
+            f'{ra_deg:10.6f} {dec_deg:12.6f} {dra_display:10.4f} {ddec_display:10.4f}\n'
         )
 
     stream.write('\n')
@@ -677,6 +700,8 @@ def run_viewer(
 
     fov_deg = _fov_deg_from_unit(fov, fov_unit, et=et, cfg=cfg)
     fov_rad = fov_deg * _DEG2RAD
+    # FORTRAN clamps FOV to 90 degrees (π/2 radians) to prevent projection singularities
+    fov_rad = min(fov_rad, math.pi / 2.0)
 
     _, _limb_rad_rad = limb_radius(et)
     planet_ra, planet_dec = body_radec(et, cfg.planet_id)

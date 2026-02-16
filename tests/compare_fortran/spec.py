@@ -399,10 +399,13 @@ class RunSpec:
 
         # Required by getcgivars(): REQUEST_METHOD=GET and QUERY_STRING.
         env['REQUEST_METHOD'] = 'GET'
-        pairs = _query_pairs(p, self.tool)
-        env['QUERY_STRING'] = '&'.join(
-            f'{quote(name, safe="")}{""}={quote(value, safe="")}' for name, value in pairs
-        )
+        if p.get('query_string'):
+            env['QUERY_STRING'] = str(p['query_string'])
+        else:
+            pairs = _query_pairs(p, self.tool)
+            env['QUERY_STRING'] = '&'.join(
+                f'{quote(name, safe="")}{""}={quote(value, safe="")}' for name, value in pairs
+            )
 
         # Variables read via WWW_GetEnv (real env vars, not QUERY_STRING).
         if 'planet' in p:

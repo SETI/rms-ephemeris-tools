@@ -179,6 +179,34 @@ _VIEWER_RING_NAME_MAP: dict[int, dict[str, str]] = {
 }
 
 
+def _parse_observatory_coords(name: str) -> tuple[float, float, float] | None:
+    """Parse ``(lat, lon, alt)`` from a CGI observatory display string.
+
+    Parameters:
+        name: Observatory string, such as
+            ``"Apache Point Observatory (32.780361, -105.820417, 2674.)"``.
+
+    Returns:
+        Tuple ``(lat, lon, alt)`` if a coordinate triplet is present and valid,
+        otherwise ``None``.
+    """
+    left = name.find('(')
+    right = name.find(')', left + 1)
+    if left < 0 or right < 0 or right <= left + 1:
+        return None
+    inner = name[left + 1 : right]
+    parts = [part.strip() for part in inner.split(',')]
+    if len(parts) != 3:
+        return None
+    try:
+        lat = float(parts[0])
+        lon = float(parts[1])
+        alt = float(parts[2])
+    except ValueError:
+        return None
+    return (lat, lon, alt)
+
+
 def parse_planet(value: str) -> int:
     """Parse planet specifier: integer 4-9 or name (mars..pluto).
 
@@ -481,6 +509,10 @@ def parse_column_spec(tokens: list[str]) -> list[int]:
         s = s.strip()
         if not s:
             continue
+        pref = _int_prefix(s)
+        if pref is not None:
+            out.append(pref)
+            continue
         try:
             out.append(int(s))
             continue
@@ -507,6 +539,10 @@ def parse_mooncol_spec(tokens: list[str]) -> list[int]:
     for s in tokens:
         s = s.strip()
         if not s:
+            continue
+        pref = _int_prefix(s)
+        if pref is not None:
+            out.append(pref)
             continue
         try:
             out.append(int(s))
@@ -567,6 +603,10 @@ def parse_ring_spec(planet_num: int, tokens: list[str]) -> list[int]:
     for s in tokens:
         s = s.strip()
         if not s:
+            continue
+        pref = _int_prefix(s)
+        if pref is not None:
+            out.append(pref)
             continue
         try:
             out.append(int(s))
@@ -779,6 +819,33 @@ def _get_keys_env(key: str) -> list[str]:
     return out
 
 
+def _int_prefix(value: str) -> int | None:
+    """Return leading integer prefix from a token, if present."""
+    digits = ''
+    for char in value.strip():
+        if char.isdigit():
+            digits += char
+        else:
+            break
+    if not digits:
+        return None
+    return int(digits)
+
+
+def _normalize_time_unit(value: str) -> str:
+    """Normalize CGI/CLI time-unit strings to sec|min|hour|day."""
+    lowered = value.strip().lower()
+    if lowered.startswith('sec'):
+        return 'sec'
+    if lowered.startswith('min'):
+        return 'min'
+    if lowered.startswith('hour'):
+        return 'hour'
+    if lowered.startswith('day'):
+        return 'day'
+    return 'hour'
+
+
 def ephemeris_params_from_env() -> EphemerisParams | None:
     """Build EphemerisParams from CGI-style environment variables.
 
@@ -810,9 +877,7 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
     except ValueError as e:
         logger.error('Invalid interval %r (must be number): %s; using 1.0', interval_s, e)
         interval = 1.0
-    time_unit = _get_env('time_unit', 'hour')
-    if time_unit.lower()[:3] not in ('sec', 'min', 'hou', 'day'):
-        time_unit = 'hour'
+    time_unit = _normalize_time_unit(_get_env('time_unit', 'hour'))
 
     ephem_s = _get_env('ephem', '0')
     try:
@@ -878,8 +943,10 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
         lon_dir=lon_dir,
         altitude_m=alt,
         sc_trajectory=sc_trajectory,
-        columns=columns if columns else [COL_MJD, COL_YMDHMS, COL_RADEC, COL_PHASE],
-        mooncols=mooncols if mooncols else [MCOL_RADEC, MCOL_OFFSET, MCOL_ORBLON, MCOL_ORBOPEN],
+        # In CGI mode we preserve exactly what the form submitted, so empty
+        # selections stay empty instead of injecting CLI defaults.
+        columns=columns,
+        mooncols=mooncols,
         moon_ids=moon_ids,
     )
 
@@ -954,7 +1021,14 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     moon_ids = parse_moon_spec(planet_num, moon_tokens) if moon_tokens else None
     rings_raw = _get_env('rings')
-    ring_names = [r.strip() for r in rings_raw.split(',') if r.strip()] if rings_raw else None
+    ring_names = None
+    if rings_raw:
+        ring_names = []
+        for comma_part in rings_raw.split(','):
+            for amp_part in comma_part.split('&'):
+                token = amp_part.strip()
+                if token:
+                    ring_names.append(token)
     blank_flag = _get_env('blank', '').lower()
     blank_disks = blank_flag in {'yes', 'y', 'true', '1'}
     ephem_s = _get_env('ephem', '0')
@@ -1002,11 +1076,41 @@ def tracker_params_from_env() -> TrackerParams | None:
         interval = float(interval_s)
     except ValueError:
         interval = 1.0
-    time_unit = _get_env('time_unit', 'hour')
+    time_unit = _normalize_time_unit(_get_env('time_unit', 'hour'))
     viewpoint = _get_env('viewpoint', 'observatory')
     observer = Observer(name="Earth's Center")
     if viewpoint == 'observatory':
-        observer = Observer(name=_get_env('observatory', "Earth's Center"))
+        obs_name = _get_env('observatory', "Earth's Center")
+        coords = _parse_observatory_coords(obs_name)
+        if coords is None:
+            observer = Observer(name=obs_name)
+        else:
+            lat, lon, alt = coords
+            observer = Observer(
+                name=obs_name,
+                latitude_deg=lat,
+                longitude_deg=lon,
+                altitude_m=alt,
+            )
+    elif viewpoint == 'latlon':
+        lat_s = _get_env('latitude')
+        lon_s = _get_env('longitude')
+        alt_s = _get_env('altitude')
+        try:
+            lat = float(lat_s) if lat_s else None
+        except ValueError:
+            lat = None
+        try:
+            lon = float(lon_s) if lon_s else None
+        except ValueError:
+            lon = None
+        try:
+            alt = float(alt_s) if alt_s else None
+        except ValueError:
+            alt = None
+        if lon is not None and _get_env('lon_dir', 'east').lower() == 'west':
+            lon = -lon
+        observer = Observer(latitude_deg=lat, longitude_deg=lon, altitude_m=alt)
     elif viewpoint:
         observer = Observer(name=viewpoint)
     moon_tokens = _get_keys_env('moons')
@@ -1020,7 +1124,8 @@ def tracker_params_from_env() -> TrackerParams | None:
         xrange = float(xrange_s) if xrange_s else None
     except ValueError:
         xrange = None
-    xunit = _get_env('xunit', 'arcsec')
+    xunit_raw = _get_env('xunit', 'arcsec')
+    xunit = 'radii' if 'radii' in xunit_raw.lower() else 'arcsec'
     title = _get_env('title')
     ephem_s = _get_env('ephem', '0')
     ephem_value = ephem_s.split()[0] if ephem_s else '0'

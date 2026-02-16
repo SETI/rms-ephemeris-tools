@@ -192,8 +192,18 @@ def _label_yaxis(
     day1, _ = day_sec_from_tai(tai1)
     dutc_ref = day1
     if mark1_imins > MINS_PER_DAY:
-        y, m, d = ymd_from_day(day1)
-        dutc_ref = day1 - ((d - 1) % (mark1_imins // MINS_PER_DAY))
+        # Keep major ticks evenly spaced across month boundaries by anchoring
+        # one major interval before the next month start, then stepping back.
+        mark1_days = mark1_imins // MINS_PER_DAY
+        scan_day = day1 + 1
+        while True:
+            _y, _m, day_of_month = ymd_from_day(scan_day)
+            if day_of_month == 1:
+                break
+            scan_day += 1
+        dutc_ref = scan_day - mark1_days
+        while dutc_ref > day1:
+            dutc_ref -= mark1_days
     tick_imins = MINS_PER_DAY if mark2_imins > MINS_PER_DAY else mark2_imins
     iticks_per_day = MINS_PER_DAY // tick_imins
     secs_per_tick = 86400.0 / iticks_per_day

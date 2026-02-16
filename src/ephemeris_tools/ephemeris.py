@@ -179,8 +179,12 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     _set_observer_from_params(params)
 
     rec = Record()
-    columns = params.columns or [COL_MJD, COL_YMDHMS, COL_RADEC, COL_PHASE]
-    mooncols = params.mooncols or []
+    columns = list(params.columns)
+    mooncols = list(params.mooncols)
+    # Match CGI/FORTRAN behavior: if either columns or moon columns are explicitly
+    # selected, do not inject default planet columns.
+    if len(columns) == 0 and len(mooncols) == 0:
+        columns = [COL_MJD, COL_YMDHMS, COL_RADEC, COL_PHASE]
     moon_ids = list(params.moon_ids)
     planet_id = PLANET_NUM_TO_ID.get(params.planet_num, 100 * params.planet_num + 99)
 

@@ -8,6 +8,7 @@ from pathlib import Path
 import cspyce
 
 from ephemeris_tools.config import get_spice_path
+from ephemeris_tools.constants import EARTH_ID
 from ephemeris_tools.spice.common import MAXSHIFTS, get_state
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,9 @@ def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
         )
     state.planet_num = planet
     state.planet_id = planet * 100 + 99
+    # Match FORTRAN RSPK_LoadFiles behavior: reset observer to Earth's center.
+    state.obs_id = EARTH_ID
+    state.obs_is_set = False
     state.nshifts = 0
     state.shift_id = [0] * MAXSHIFTS
     state.shift_dt = [0.0] * MAXSHIFTS
@@ -153,7 +157,7 @@ def load_spacecraft(
             line = line.strip()
             if not line or line.startswith('!'):
                 continue
-            parts = line.split()
+            parts = line.split(',')
             if len(parts) < 5:
                 logger.error(
                     'SPICE_spacecraft.txt line %d: expected at least 5 fields '
@@ -164,11 +168,11 @@ def load_spacecraft(
                 )
                 continue
             try:
-                name = parts[0].upper()
+                name = parts[0].strip().strip('"').upper()
                 p = int(parts[1])
                 v = int(parts[2])
                 naif_id = int(parts[3])
-                filename = parts[4]
+                filename = parts[4].strip().strip('"')
             except (ValueError, IndexError) as e:
                 logger.error(
                     'SPICE_spacecraft.txt line %d: bad value '
@@ -188,7 +192,9 @@ def load_spacecraft(
                         loaded = True
                         if set_obs:
                             state.obs_id = naif_id
-                            state.obs_is_set = True
+                            # Match FORTRAN RSPK_SetObsId semantics: this flag is only
+                            # for geodetic Earth observatories, not body observers.
+                            state.obs_is_set = False
                     except Exception as e:
                         logger.warning('Failed to load %s: %s', kpath, e)
     if not loaded:

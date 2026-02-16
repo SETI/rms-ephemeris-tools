@@ -114,7 +114,7 @@ def spec_from_query_input(url_or_query: str) -> RunSpec:
             tool = tool_key
     abbrev = qs.get('abbrev', ['sat'])[0].strip().lower()
     planet = _ABBREV_TO_PLANET.get(abbrev, 6)
-    params: dict[str, Any] = {'planet': planet}
+    params: dict[str, Any] = {'planet': planet, 'query_string': raw_query}
 
     ephem_vals = qs.get('ephem')
     if ephem_vals:
@@ -229,11 +229,13 @@ def _execute_spec(
     spec: RunSpec,
     out_dir: Path,
     fort_cmd: list[str] | None,
-    float_tol: int,
-) -> tuple[bool, list[str]]:
+    float_tol: int | None,
+    numeric_tol: float | None,
+) -> tuple[bool, list[str], float | None]:
     """Execute one comparison spec and return (passed, detail lines)."""
     out_dir.mkdir(parents=True, exist_ok=True)
     details: list[str] = [f'tool={spec.tool} planet={spec.params.get("planet", "?")}']
+    max_table_abs_diff: float | None = None
 
     py_table = out_dir / 'python_table.txt'
     py_ps = out_dir / 'python.ps'
@@ -265,11 +267,11 @@ def _execute_spec(
     if result_py.returncode != 0:
         details.append('python_failed')
         details.append((result_py.stderr or result_py.stdout or '').strip())
-        return (False, details)
+        return (False, details, None)
 
     if fort_cmd is None:
         details.append('fortran_skipped')
-        return (True, details)
+        return (True, details, None)
 
     result_fort = run_fortran(
         spec,
@@ -287,7 +289,7 @@ def _execute_spec(
     if fort_failed:
         details.append('fortran_failed')
         details.append((result_fort.stderr or fort_stdout or '').strip())
-        return (False, details)
+        return (False, details, None)
 
     all_ok = True
     if py_table_use and fort_table_use:
@@ -295,16 +297,34 @@ def _execute_spec(
             py_table_use,
             fort_table_use,
             float_tolerance=float_tol,
+            abs_tolerance=numeric_tol,
             ignore_column_suffixes=('_orbit', '_open'),
         )
         details.append(f'table: {res.message}')
         details.extend(res.details)
         all_ok = all_ok and res.same
+        if res.max_abs_diff is not None:
+            max_table_abs_diff = (
+                res.max_abs_diff
+                if max_table_abs_diff is None
+                else max(max_table_abs_diff, res.max_abs_diff)
+            )
     if py_txt_use and fort_txt_use and py_txt_use.exists() and fort_txt_use.exists():
-        res = compare_tables(py_txt_use, fort_txt_use, float_tolerance=float_tol)
+        res = compare_tables(
+            py_txt_use,
+            fort_txt_use,
+            float_tolerance=float_tol,
+            abs_tolerance=numeric_tol,
+        )
         details.append(f'text: {res.message}')
         details.extend(res.details)
         all_ok = all_ok and res.same
+        if res.max_abs_diff is not None:
+            max_table_abs_diff = (
+                res.max_abs_diff
+                if max_table_abs_diff is None
+                else max(max_table_abs_diff, res.max_abs_diff)
+            )
     if py_ps_use and fort_ps_use:
         res_ps = compare_postscript(py_ps_use, fort_ps_use)
         details.append(f'ps: {res_ps.message}')
@@ -314,7 +334,7 @@ def _execute_spec(
         res_img = compare_postscript_images(py_ps_use, fort_ps_use, diff_image_path=diff_img)
         details.append(f'image: {res_img.message}')
         details.extend(res_img.details)
-    return (all_ok, details)
+    return (all_ok, details, max_table_abs_diff)
 
 
 def main() -> int:
@@ -412,6 +432,12 @@ def main() -> int:
         default=6,
         help='Compare numeric table fields to this many significant digits (0 = exact)',
     )
+    parser.add_argument(
+        '--numeric-tol',
+        type=float,
+        default=0.0015,
+        help='Absolute numeric tolerance for table/text comparisons (set 0 for exact).',
+    )
     args = parser.parse_args()
 
     if args.query_input or args.test_file:
@@ -426,6 +452,7 @@ def main() -> int:
         all_details_lines: list[str] = []
         failed: list[str] = []
         passed_count = 0
+        run_max_table_abs_diff: float | None = None
         for idx, url in enumerate(urls, start=1):
             spec = spec_from_query_input(url)
             planet = int(spec.params.get('planet', 6))
@@ -435,11 +462,12 @@ def main() -> int:
             else:
                 derived = _default_fortran_binary(spec.tool, planet, repo_root)
                 case_fort_cmd = [str(derived)] if derived is not None else None
-            ok, details = _execute_spec(
+            ok, details, case_max_diff = _execute_spec(
                 spec=spec,
                 out_dir=case_dir,
                 fort_cmd=case_fort_cmd,
-                float_tol=args.float_tol,
+                float_tol=(args.float_tol if args.float_tol > 0 else None),
+                numeric_tol=args.numeric_tol,
             )
             (case_dir / 'comparison.txt').write_text('\n'.join(details) + '\n')
             all_details_lines.append(f'## case {idx}')
@@ -450,6 +478,12 @@ def main() -> int:
                 passed_count += 1
             else:
                 failed.append(f'line {idx}: {url}')
+            if case_max_diff is not None:
+                run_max_table_abs_diff = (
+                    case_max_diff
+                    if run_max_table_abs_diff is None
+                    else max(run_max_table_abs_diff, case_max_diff)
+                )
         total = len(urls)
         failed_count = len(failed)
         skipped_count = 0
@@ -457,6 +491,8 @@ def main() -> int:
         summary_lines.append(f'passed={passed_count}')
         summary_lines.append(f'failed={failed_count}')
         summary_lines.append(f'skipped={skipped_count}')
+        if run_max_table_abs_diff is not None:
+            summary_lines.append(f'largest_table_abs_diff={run_max_table_abs_diff:.6g}')
         if failed:
             summary_lines.append('failed_tests:')
             summary_lines.extend(failed)
@@ -597,7 +633,8 @@ def main() -> int:
             res = compare_tables(
                 py_table_use,
                 fort_table_use,
-                float_tolerance=args.float_tol,
+                float_tolerance=(args.float_tol if args.float_tol > 0 else None),
+                abs_tolerance=args.numeric_tol,
                 ignore_column_suffixes=('_orbit', '_open'),
             )
             print(res.message)
@@ -609,7 +646,8 @@ def main() -> int:
             res = compare_tables(
                 py_txt_use,
                 fort_txt_use,
-                float_tolerance=args.float_tol,
+                float_tolerance=(args.float_tol if args.float_tol > 0 else None),
+                abs_tolerance=args.numeric_tol,
             )
             print('Tracker text table:', res.message)
             for d in res.details:

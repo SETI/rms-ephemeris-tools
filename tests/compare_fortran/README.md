@@ -24,6 +24,76 @@ python -m tests.compare_fortran viewer --planet 6 --time "2022-01-01 12:00" --fo
 python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.bin -o /tmp/compare
 ```
 
+## Complete command-line options
+
+`python -m tests.compare_fortran` supports two run modes:
+
+- **Direct mode**: provide a `tool` (`ephemeris`, `tracker`, `viewer`) and CLI args.
+- **Query mode**: provide `--url/--query-string` or `--test-file` with CGI URLs.
+
+### Positional
+
+- `tool` (optional when using query mode): `ephemeris | tracker | viewer`
+
+### Query/batch input
+
+- `--url`, `--query-string`: single CGI URL or raw query string
+- `--test-file`: file containing one CGI URL/query string per line
+
+### Common options
+
+- `--planet`: planet number or name (`4..9`, `mars..pluto`), default `6`
+- `--ephem`: ephemeris version integer, default `0`
+- `--viewpoint`: observer mode/name, default `observatory`
+- `--observatory`: observatory label, default `"Earth's Center"`
+- `--latitude`: observer latitude (float), default `None`
+- `--longitude`: observer longitude (float), default `None`
+- `--lon-dir`: `east | west`, default `east`
+- `--altitude`: observer altitude (float), default `None`
+- `--sc-trajectory`: spacecraft trajectory flag (int), default `0`
+- `--fortran-cmd`: override FORTRAN executable path
+- `-o`, `--output-dir`: output directory
+
+### Ephemeris/tracker time window options
+
+- `--start`: start timestamp (string), default `2022-01-01 00:00`
+- `--stop`: stop timestamp (string), default `2022-01-02 00:00`
+- `--interval`: interval value (float), default `1.0`
+- `--time-unit`: `sec | min | hour | day`, default `hour`
+
+### Ephemeris column options
+
+- `--columns`: column list (space-separated entries)
+- `--mooncols`: moon-column list (space-separated entries)
+
+### Moon/ring selection options
+
+- `--moons`: moon list (space-separated entries)
+- `--rings`: ring list (space-separated entries)
+
+### Viewer options
+
+- `--time`: observation timestamp (viewer only), default `2022-01-01 12:00`
+- `--fov`: field of view (float), default `1.0`
+- `--fov-unit`: `deg | arcmin | arcsec`, default `deg`
+- `--center`: viewer center mode/value, default `body`
+- `--center-body`: viewer center body string, default empty
+
+### Tracker x-axis options
+
+- `--xrange`: x-axis half-range (float), default `None` (or tool default logic)
+- `--xunit`: `arcsec | radii`, default `arcsec`
+- `--title`: title string, default empty
+
+### Comparison tolerance options
+
+- `--float-tol`: significant-digit tolerance for numeric comparisons.
+  - Default: `6`
+  - `0` means exact (disables significant-digit tolerance)
+- `--numeric-tol`: absolute numeric tolerance for table/text comparisons.
+  - Default: `0.0015`
+  - Set `0` for exact numeric comparison
+
 ### Arguments and environment
 
 - **Arguments** to `python -m tests.compare_fortran` are the same logical parameters as the Python CLI (`ephemeris-tools ephemeris ...`) and the FORTRAN CGI (e.g. `start`, `stop`, `NPLANET`). The framework converts them into:
@@ -52,8 +122,15 @@ Comparison runs when a FORTRAN binary is available (auto-detected from `fortran/
 
 ## Comparison rules
 
-- **Tables**: Lines are normalized (strip, collapse whitespace). Optionally, numeric fields are compared to a fixed number of significant digits (`--float-tol 6` by default) to avoid false diffs from formatting.
+- **Tables**:
+  - lines are normalized (strip, collapse whitespace);
+  - FORTRAN overflow markers (`*****`) are treated as uncomparable fields and ignored;
+  - numeric fields can be compared with `--float-tol` (significant digits) and/or
+    `--numeric-tol` (absolute tolerance).
 - **PostScript**: Variable headers such as `%%Creator` and `%%CreationDate` are ignored so only structural and drawing differences are reported.
+
+In `--test-file` batch mode, `summary.txt` includes `largest_table_abs_diff=<value>`
+for the largest numeric table difference seen across the run.
 
 ## FORTRAN setup
 
