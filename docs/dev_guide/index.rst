@@ -15,3 +15,4 @@ Contents
    architecture
    modules
    porting
+   cgi_parameter_reference

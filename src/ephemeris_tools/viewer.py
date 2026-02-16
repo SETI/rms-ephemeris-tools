@@ -16,6 +16,7 @@ from ephemeris_tools.planets import (
 )
 
 if TYPE_CHECKING:
+    from ephemeris_tools.params import ViewerParams
     from ephemeris_tools.planets.base import PlanetConfig, RingSpec
 
 _PLANET_CONFIGS = {
@@ -508,7 +509,13 @@ _FOV_UNIT_MULT_DEG = {
 }
 
 
-def _fov_deg_from_unit(fov: float, fov_unit: str | None) -> float:
+def _fov_deg_from_unit(
+    fov: float,
+    fov_unit: str | None,
+    *,
+    et: float | None = None,
+    cfg: PlanetConfig | None = None,
+) -> float:
     """Convert FOV to degrees using fov_unit (e.g. arcmin -> deg).
 
     Parameters:
@@ -518,22 +525,78 @@ def _fov_deg_from_unit(fov: float, fov_unit: str | None) -> float:
     Returns:
         FOV in degrees.
     """
-    if not fov_unit or 'fov' not in fov_unit.lower():
+    if not fov_unit:
         return fov
     s = fov_unit.lower()
+    if 'radii' in s and et is not None and cfg is not None:
+        from ephemeris_tools.spice.geometry import limb_radius
+
+        _limb_km, limb_rad = limb_radius(et)
+        return fov * (limb_rad * _RAD2DEG)
+    if ('kilometer' in s or s.strip() == 'km') and et is not None:
+        from ephemeris_tools.spice.geometry import planet_ranges
+
+        _sun_dist_km, obs_dist_km = planet_ranges(et)
+        if obs_dist_km > 0:
+            return 2.0 * math.atan((fov / 2.0) / obs_dist_km) * _RAD2DEG
+        return fov
+    if s in ('deg', 'degree', 'degrees'):
+        return fov
+    if s in ('arcmin', 'minutes of arc', 'minute of arc'):
+        return fov / 60.0
+    if s in ('arcsec', 'seconds of arc', 'second of arc'):
+        return fov / 3600.0
+    if s in ('milliradians', 'milliradian', 'mrad'):
+        return fov * (_RAD2DEG / 1000.0)
+    if s in ('microradians', 'microradian', 'urad'):
+        return fov * (_RAD2DEG / 1_000_000.0)
     for key, mult in sorted(_FOV_UNIT_MULT_DEG.items(), key=lambda kv: -len(kv[0])):
         if key in s:
             return fov * mult
     return fov
 
 
+def _viewer_call_kwargs_from_params(params: ViewerParams) -> dict[str, object]:
+    """Convert a ``ViewerParams`` object to legacy ``run_viewer`` keyword args."""
+    center_ra = (
+        params.center.ra_deg
+        if params.center.mode == 'J2000' and params.center.ra_deg is not None
+        else 0.0
+    )
+    center_dec = (
+        params.center.dec_deg if params.center.mode == 'J2000' and params.center.dec_deg else 0.0
+    )
+    viewpoint = params.observer.name if params.observer.name is not None else 'Earth'
+    ring_display = None
+    if params.display is not None and params.display.rings_display:
+        ring_display = params.display.rings_display
+    elif params.ring_names:
+        ring_display = ', '.join(params.ring_names)
+    return {
+        'planet_num': params.planet_num,
+        'time_str': params.time_str,
+        'fov': params.fov_value,
+        'center_ra': center_ra,
+        'center_dec': center_dec,
+        'viewpoint': viewpoint,
+        'ephem_version': params.ephem_version,
+        'moon_ids': params.moon_ids,
+        'blank_disks': params.blank_disks,
+        'ring_selection': params.ring_names,
+        'ring_selection_display': ring_display,
+        'output_ps': params.output_ps,
+        'output_txt': params.output_txt,
+        'fov_unit': params.fov_unit,
+    }
+
+
 def run_viewer(
-    planet_num: int,
-    time_str: str,
-    fov: float,
-    center_ra: float,
-    center_dec: float,
-    viewpoint: str,
+    planet_num: int | ViewerParams,
+    time_str: str = '',
+    fov: float = 1.0,
+    center_ra: float = 0.0,
+    center_dec: float = 0.0,
+    viewpoint: str = 'Earth',
     ephem_version: int = 0,
     moon_ids: list[int] | None = None,
     blank_disks: bool = False,
@@ -570,6 +633,28 @@ def run_viewer(
         ValueError: Unknown planet or invalid time.
         RuntimeError: SPICE load failure.
     """
+    from ephemeris_tools.params import ViewerParams
+
+    if isinstance(planet_num, ViewerParams):
+        kwargs = _viewer_call_kwargs_from_params(planet_num)
+        run_viewer(
+            planet_num=kwargs['planet_num'],  # type: ignore[arg-type]
+            time_str=kwargs['time_str'],  # type: ignore[arg-type]
+            fov=kwargs['fov'],  # type: ignore[arg-type]
+            center_ra=kwargs['center_ra'],  # type: ignore[arg-type]
+            center_dec=kwargs['center_dec'],  # type: ignore[arg-type]
+            viewpoint=kwargs['viewpoint'],  # type: ignore[arg-type]
+            ephem_version=kwargs['ephem_version'],  # type: ignore[arg-type]
+            moon_ids=kwargs['moon_ids'],  # type: ignore[arg-type]
+            blank_disks=kwargs['blank_disks'],  # type: ignore[arg-type]
+            ring_selection=kwargs['ring_selection'],  # type: ignore[arg-type]
+            ring_selection_display=kwargs['ring_selection_display'],  # type: ignore[arg-type]
+            output_ps=kwargs['output_ps'],  # type: ignore[arg-type]
+            output_txt=kwargs['output_txt'],  # type: ignore[arg-type]
+            fov_unit=kwargs['fov_unit'],  # type: ignore[arg-type]
+        )
+        return
+
     cfg = get_planet_config(planet_num)
     if cfg is None:
         raise ValueError(f'Unknown planet number: {planet_num}')
@@ -590,7 +675,7 @@ def run_viewer(
     day, sec = parsed
     et = tdb_from_tai(tai_from_day_sec(day, sec))
 
-    fov_deg = _fov_deg_from_unit(fov, fov_unit)
+    fov_deg = _fov_deg_from_unit(fov, fov_unit, et=et, cfg=cfg)
     fov_rad = fov_deg * _DEG2RAD
 
     _, _limb_rad_rad = limb_radius(et)

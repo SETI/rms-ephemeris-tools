@@ -45,33 +45,101 @@ def get_moon_name_to_index(planet_num: int) -> dict[str, int]:
 
 
 def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
-    """Convert moon tokens to indices or NAIF IDs (CLI/CGI moon selection).
+    """Convert moon tokens to NAIF moon IDs (CLI/CGI moon selection).
 
     Parameters:
         planet_num: Planet number (4-9).
         tokens: List of 1-based indices, NAIF IDs, or case-insensitive names.
 
     Returns:
-        List of 1-based indices (1-99) or NAIF IDs (>=100). Caller converts to
-        full moon body IDs via v if v >= 100 else 100*planet_num+v. Unknown names
-        are skipped (logged).
+        List of NAIF moon IDs. Supports ``classical`` and ``all`` group keywords.
+        Unknown names are skipped (logged).
     """
-    name_to_idx = get_moon_name_to_index(planet_num)
+    cfg = _PLANET_CONFIGS.get(planet_num)
+    if cfg is None:
+        logger.warning('Unknown planet number %r for moon parsing', planet_num)
+        return []
+
+    moon_ids = [moon.id for moon in cfg.moons if moon.id != cfg.planet_id]
+    name_to_id = {
+        moon.name.lower(): moon.id
+        for moon in cfg.moons
+        if moon.id != cfg.planet_id and moon.name.strip()
+    }
+    classical_map: dict[int, list[int]] = {
+        4: [401, 402],  # Mars all
+        5: [501, 502, 503, 504],  # Jupiter classical moons
+        6: [601, 602, 603, 604, 605, 606, 607, 608, 609],  # Saturn S1-S9
+        7: [701, 702, 703, 704, 705],  # Uranus U1-U5
+        8: [801, 802],  # Neptune Triton + Nereid
+        9: [901],  # Pluto Charon
+    }
+
     out: list[int] = []
+    seen: set[int] = set()
+
+    def _append_unique(moon_id: int) -> None:
+        if moon_id in seen:
+            return
+        seen.add(moon_id)
+        out.append(moon_id)
+
+    def _int_prefix(text: str) -> int | None:
+        digits = ''
+        for ch in text:
+            if ch.isdigit():
+                digits += ch
+            else:
+                break
+        if not digits:
+            return None
+        return int(digits)
+
     for s in tokens:
         s = s.strip()
         if not s:
             continue
+        key = s.lower()
+        if key == 'classical':
+            for moon_id in classical_map.get(planet_num, moon_ids):
+                _append_unique(moon_id)
+            continue
+        if key == 'all':
+            for moon_id in moon_ids:
+                _append_unique(moon_id)
+            continue
         try:
-            idx = int(s)
-            if idx >= 1:
-                out.append(idx)
+            num = int(s)
+            if num >= 100:
+                if num in moon_ids:
+                    _append_unique(num)
+                else:
+                    logger.warning('Unknown NAIF moon ID %r for planet %s', num, planet_num)
+            elif num >= 1:
+                moon_id = 100 * planet_num + num
+                if moon_id in moon_ids:
+                    _append_unique(moon_id)
+                else:
+                    logger.warning('Unknown moon index %r for planet %s', num, planet_num)
             continue
         except ValueError:
-            pass
-        key = s.lower()
-        if key in name_to_idx:
-            out.append(name_to_idx[key])
+            pref = _int_prefix(s)
+            if pref is not None:
+                num = pref
+                if num >= 100:
+                    if num in moon_ids:
+                        _append_unique(num)
+                    else:
+                        logger.warning('Unknown NAIF moon ID %r for planet %s', num, planet_num)
+                elif num >= 1:
+                    moon_id = 100 * planet_num + num
+                    if moon_id in moon_ids:
+                        _append_unique(moon_id)
+                    else:
+                        logger.warning('Unknown moon index %r for planet %s', num, planet_num)
+                continue
+        if key in name_to_id:
+            _append_unique(name_to_id[key])
         else:
             logger.warning('Unknown moon name %r for planet %s', s, planet_num)
     return out

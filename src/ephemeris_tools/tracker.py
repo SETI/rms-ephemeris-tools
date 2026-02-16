@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import math
-from typing import TextIO
+from typing import TYPE_CHECKING, TextIO
 
 from ephemeris_tools.spice.common import get_state
+
+if TYPE_CHECKING:
+    from ephemeris_tools.params import TrackerParams
 
 # Radians to arcsec for tracker plot
 _RAD_TO_ARCSEC = 180.0 / math.pi * 3600.0
@@ -42,14 +45,41 @@ def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int
     return flags
 
 
+def _tracker_call_kwargs_from_params(params: TrackerParams) -> dict[str, object]:
+    """Convert a ``TrackerParams`` object to legacy ``run_tracker`` kwargs."""
+    viewpoint = params.observer.name if params.observer.name is not None else 'Earth'
+    xunit = params.xunit.lower()
+    ring_options = None
+    if params.ring_names:
+        from ephemeris_tools.params import parse_ring_spec
+
+        ring_options = parse_ring_spec(params.planet_num, params.ring_names)
+    return {
+        'planet_num': params.planet_num,
+        'start_time': params.start_time,
+        'stop_time': params.stop_time,
+        'interval': params.interval,
+        'time_unit': params.time_unit,
+        'viewpoint': viewpoint,
+        'moon_ids': params.moon_ids,
+        'ephem_version': params.ephem_version,
+        'xrange': params.xrange,
+        'xscaled': 'radii' in xunit,
+        'title': params.title,
+        'ring_options': ring_options,
+        'output_ps': params.output_ps,
+        'output_txt': params.output_txt,
+    }
+
+
 def run_tracker(
-    planet_num: int,
-    start_time: str,
-    stop_time: str,
-    interval: float,
-    time_unit: str,
-    viewpoint: str,
-    moon_ids: list[int],
+    planet_num: int | TrackerParams,
+    start_time: str = '',
+    stop_time: str = '',
+    interval: float = 1.0,
+    time_unit: str = 'hour',
+    viewpoint: str = 'Earth',
+    moon_ids: list[int] | None = None,
     ephem_version: int = 0,
     xrange: float | None = None,
     xscaled: bool = False,
@@ -80,7 +110,32 @@ def run_tracker(
         RuntimeError: SPICE load failure.
     """
     from ephemeris_tools.constants import EARTH_ID
+    from ephemeris_tools.params import TrackerParams
     from ephemeris_tools.spice.geometry import moon_tracker_offsets
+
+    if isinstance(planet_num, TrackerParams):
+        kwargs = _tracker_call_kwargs_from_params(planet_num)
+        run_tracker(
+            planet_num=kwargs['planet_num'],  # type: ignore[arg-type]
+            start_time=kwargs['start_time'],  # type: ignore[arg-type]
+            stop_time=kwargs['stop_time'],  # type: ignore[arg-type]
+            interval=kwargs['interval'],  # type: ignore[arg-type]
+            time_unit=kwargs['time_unit'],  # type: ignore[arg-type]
+            viewpoint=kwargs['viewpoint'],  # type: ignore[arg-type]
+            moon_ids=kwargs['moon_ids'],  # type: ignore[arg-type]
+            ephem_version=kwargs['ephem_version'],  # type: ignore[arg-type]
+            xrange=kwargs['xrange'],  # type: ignore[arg-type]
+            xscaled=kwargs['xscaled'],  # type: ignore[arg-type]
+            title=kwargs['title'],  # type: ignore[arg-type]
+            ring_options=kwargs['ring_options'],  # type: ignore[arg-type]
+            output_ps=kwargs['output_ps'],  # type: ignore[arg-type]
+            output_txt=kwargs['output_txt'],  # type: ignore[arg-type]
+        )
+        return
+
+    if moon_ids is None:
+        moon_ids = []
+
     from ephemeris_tools.spice.load import load_spice_files
     from ephemeris_tools.spice.observer import set_observer_id
     from ephemeris_tools.time_utils import (

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, TextIO
 if TYPE_CHECKING:
     from argparse import Namespace
 
-    from ephemeris_tools.params import EphemerisParams
+    from ephemeris_tools.params import EphemerisParams, TrackerParams, ViewerParams
 
 
 def _w(stream: TextIO, line: str) -> None:
@@ -84,7 +84,7 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
     _w(stream, ' ')
 
 
-def write_input_parameters_tracker(stream: TextIO, args: Namespace) -> None:
+def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerParams) -> None:
     """Write Input Parameters section for tracker (port of tracker3_xxx Summarize).
 
     Parameters:
@@ -95,8 +95,12 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace) -> None:
     _w(stream, '----------------')
     _w(stream, ' ')
 
-    start = (getattr(args, 'start', None) or ' ').strip() or '2025-01-01 00:00'
-    stop = (getattr(args, 'stop', None) or ' ').strip() or '2025-01-02 00:00'
+    start = (
+        getattr(args, 'start', None) or getattr(args, 'start_time', None) or ' '
+    ).strip() or '2025-01-01 00:00'
+    stop = (
+        getattr(args, 'stop', None) or getattr(args, 'stop_time', None) or ' '
+    ).strip() or '2025-01-02 00:00'
     _w(stream, f'     Start time: {start}')
     _w(stream, f'      Stop time: {stop}')
 
@@ -108,7 +112,17 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace) -> None:
 
     # Viewpoint
     viewpoint = (getattr(args, 'viewpoint', None) or ' ').strip()
-    if viewpoint == 'latlon':
+    observer_obj = getattr(args, 'observer', None)
+    if observer_obj is not None:
+        if observer_obj.name:
+            _w(stream, f'      Viewpoint: {observer_obj.name}')
+        elif observer_obj.latitude_deg is not None or observer_obj.longitude_deg is not None:
+            _w(stream, f'      Viewpoint: Lat = {observer_obj.latitude_deg} (deg)')
+            _w(stream, f'                 Lon = {observer_obj.longitude_deg} (deg east)')
+            _w(stream, f'                 Alt = {observer_obj.altitude_m} (m)')
+        else:
+            _w(stream, "      Viewpoint: Earth's Center")
+    elif viewpoint == 'latlon':
         lat = getattr(args, 'latitude', None)
         _w(stream, f'      Viewpoint: Lat = {lat} (deg)')
         lon = getattr(args, 'longitude', None)
@@ -164,7 +178,7 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace) -> None:
 _PLANET_NAMES = {4: 'Mars', 5: 'Jupiter', 6: 'Saturn', 7: 'Uranus', 8: 'Neptune', 9: 'Pluto'}
 
 
-def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
+def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams) -> None:
     """Write Input Parameters section for viewer (port of viewer3_* Summarize).
 
     Parameters:
@@ -176,18 +190,23 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     _w(stream, ' ')
 
     # Observation time (no leading spaces on label)
-    time_str = (getattr(args, 'time', None) or ' ').strip() or '2025-01-01 12:00'
+    time_str = (
+        getattr(args, 'time', None) or getattr(args, 'time_str', None) or ' '
+    ).strip() or '2025-01-01 12:00'
     _w(stream, f'Observation time: {time_str}')
 
     # Ephemeris (display string from form, or numeric version)
-    ephem_display = getattr(args, 'ephem_display', None)
+    display = getattr(args, 'display', None)
+    ephem_display = getattr(display, 'ephem_display', None) or getattr(args, 'ephem_display', None)
     if ephem_display and str(ephem_display).strip():
         _w(stream, f'       Ephemeris: {ephem_display.strip()}')
     else:
         _w(stream, f'       Ephemeris: {getattr(args, "ephem", 0)}')
 
     # Field of view (omit leading zero for values < 1, e.g. .005 not 0.005)
-    fov = getattr(args, 'fov', 1.0)
+    fov = getattr(args, 'fov', None)
+    if fov is None:
+        fov = getattr(args, 'fov_value', 1.0)
     fov_unit = getattr(args, 'fov_unit', 'deg')
     fov_s = str(fov)
     if fov_s.startswith('0.') and len(fov_s) > 2:
@@ -195,15 +214,23 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     _w(stream, f'   Field of view: {fov_s} ({fov_unit})')
 
     # Diagram center
+    center_obj = getattr(args, 'center', None)
     center_ra = getattr(args, 'center_ra', 0.0)
     center_dec = getattr(args, 'center_dec', 0.0)
-    center = (getattr(args, 'center', None) or 'body').strip().lower()
-    center_body = (getattr(args, 'center_body', None) or ' ').strip()
+    center_mode = getattr(center_obj, 'mode', None) or getattr(args, 'center', None) or 'body'
+    center = center_mode.strip().lower()
+    center_body = (
+        getattr(center_obj, 'body_name', None) or getattr(args, 'center_body', None) or ' '
+    ).strip()
     if not center_body:
         center_body = _PLANET_NAMES.get(getattr(args, 'planet', 6), 'Saturn')
     if center == 'ansa':
-        center_ansa = (getattr(args, 'center_ansa', None) or 'A Ring').strip()
-        center_ew = (getattr(args, 'center_ew', None) or 'east').strip()
+        center_ansa = (
+            getattr(center_obj, 'ansa_name', None) or getattr(args, 'center_ansa', None) or 'A Ring'
+        ).strip()
+        center_ew = (
+            getattr(center_obj, 'ansa_ew', None) or getattr(args, 'center_ew', None) or 'east'
+        ).strip()
         _w(stream, f'  Diagram center: {center_ansa} {center_ew} ansa')
     elif center == 'j2000' or (center_ra != 0.0 or center_dec != 0.0):
         ra_type = (getattr(args, 'center_ra_type', None) or 'hours').strip()
@@ -217,7 +244,17 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
 
     # Viewpoint
     viewpoint = (getattr(args, 'viewpoint', None) or ' ').strip()
-    if viewpoint == 'latlon':
+    observer_obj = getattr(args, 'observer', None)
+    if observer_obj is not None:
+        if observer_obj.name:
+            _w(stream, f'       Viewpoint: {observer_obj.name}')
+        elif observer_obj.latitude_deg is not None or observer_obj.longitude_deg is not None:
+            _w(stream, f'       Viewpoint: Lat = {observer_obj.latitude_deg} (deg)')
+            _w(stream, f'                    Lon = {observer_obj.longitude_deg} (deg east)')
+            _w(stream, f'                    Alt = {observer_obj.altitude_m} (m)')
+        else:
+            _w(stream, "       Viewpoint: Earth's Center")
+    elif viewpoint == 'latlon':
         lat = getattr(args, 'latitude', None)
         _w(stream, f'       Viewpoint: Lat = {lat} (deg)')
         lon = getattr(args, 'longitude', None)
@@ -234,13 +271,14 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     else:
         _w(stream, "       Viewpoint: Earth's Center")
 
-    # Moon selection (strip leading "NNN " from display, e.g. "802 Triton & Nereid" -> "Triton & Nereid")
-    moons_display = getattr(args, 'moons_display', None)
+    # Moon selection: strip leading "NNN " from display strings.
+    # Example: "802 Triton & Nereid" -> "Triton & Nereid".
+    moons_display = getattr(display, 'moons_display', None) or getattr(args, 'moons_display', None)
     if moons_display and str(moons_display).strip():
         parts = moons_display.strip().split(None, 1)
         moon_str = parts[1] if len(parts) == 2 and parts[0].isdigit() else moons_display.strip()
     else:
-        moons = getattr(args, 'moons', None) or []
+        moons = getattr(args, 'moons', None) or getattr(args, 'moon_ids', None) or []
         moon_str = ' '.join(str(m) for m in moons).strip() if moons else ' '
     _w(stream, f'    Moon selection: {moon_str}')
     moremoons = getattr(args, 'moremoons', None)
@@ -248,11 +286,11 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
         _w(stream, f'                  {moremoons}')
 
     # Ring selection (display string from form to preserve commas, or joined)
-    rings_display = getattr(args, 'rings_display', None)
+    rings_display = getattr(display, 'rings_display', None) or getattr(args, 'rings_display', None)
     if rings_display and str(rings_display).strip():
         ring_str = rings_display.strip()
     else:
-        rings = getattr(args, 'rings', None) or []
+        rings = getattr(args, 'rings', None) or getattr(args, 'ring_names', None) or []
         ring_str = ', '.join(str(r) for r in rings).strip() if rings else ' '
     _w(stream, f'  Ring selection: {ring_str}')
 
@@ -296,7 +334,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     _w(stream, f'     Moon labels: {labels}')
 
     # Moon enlargement
-    moonpts = (getattr(args, 'moonpts', None) or '0').strip()
+    moonpts = str(getattr(args, 'moonpts', None) or '0').strip()
     _w(stream, f'Moon enlargement: {moonpts} (points)')
 
     # Blank disks
@@ -304,7 +342,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     _w(stream, f'     Blank disks: {blank}')
 
     # Arc weight (Neptune)
-    arcpts = (getattr(args, 'arcpts', None) or '').strip()
+    arcpts = str(getattr(args, 'arcpts', None) or '').strip()
     _w(stream, f'      Arc weight: {arcpts or " "} (points)')
 
     # Prime meridians
