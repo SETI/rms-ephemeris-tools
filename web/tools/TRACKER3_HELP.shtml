@@ -1,0 +1,432 @@
+<!--#set var="UPDATED"  value="August 20, 2023"  -->
+<!DOCTYPE html>
+<html lang="en">
+<!--#include file="STYLES.html"-->
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Contents of the tracker help document">
+    <title><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Moon Tracker Help</title>
+</head>
+<body>
+    <div class="container" role="main">
+        <h1><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Moon Tracker Help</h1>
+        <div class="help-description">
+            <p>
+                This form enables you to generate a diagram showing the
+                east-west motion of the inner satellites of <!--#echo var="PLANET"-->
+                across the planet's disk.
+                The distance of each selected moon from the planet's axis is plotted in
+                units of either
+                <!--#if expr="v('PREFIX') != ''"-->
+                arcsec
+                <!--#else-->
+                degrees
+                <!--#endif-->
+                or planetary radii. Positive values correspond to bodies on the "morning" side
+                of the planet (moving toward the observer) and negative values by the "evening"
+                side. In the diagram, the planetary limbs are indicated by a dark
+                gray stripe down the middle.
+                <!--#if expr="v('PLANET') != 'Mars' && v('PLANET') != 'Pluto'"-->
+                Optionally, the locations of the rings can be added as bands
+                in lighter gray.
+                <!--#endif-->
+                Time increases downward on
+                the plot.
+            </p>
+            <p>
+                The Moon Tracker tool also allows you to download an ASCII table containing the
+                numeric values that went into the diagram. The file contains a single header
+                line followed by the numbers. Columns are as follows:
+                <ul class="list-unstyled">
+                    <li>Modified Julian Date (UTC)</li>
+                    <li>Year</li>
+                    <li>Month</li>
+                    <li>Day</li>
+                    <li>Hour</li>
+                    <li>Minute</li>
+                    <li>Projected equatorial radius of planet (arcsec)</li>
+                    <li>Distance of first moon from planet's axis (arcsec)</li>
+                    <li>Distance of second moon from planet's axis (arcsec)</li>
+                    <li>etc.</li>
+                </ul>
+            </p>
+        </div>
+        <div class="help-change-history">
+            <h2>Change History</h2>
+            <ul class="noindent">
+                <!--#if expr="v('PLANET') == 'Mars'"-->
+                <li>
+                    <strong>2.6</strong> (January 4, 2016):
+                    Ported to new server. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.7</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.8</strong> (June 20, 2021):
+                    Ephemeris updates.
+                </li>
+                <!--#elif expr="v('PLANET') == 'Jupiter'"-->
+                <li class="py-3">
+                    <strong>1.0</strong> (January 28, 1997):
+                    Original Jupiter Moon Tracker on line.
+                </li>
+                <li>
+                    <strong>1.1</strong> (February 11, 1997):
+                    Added a new ephemeris option ("Pre-RPX #2").
+                </li>
+                <li>
+                    <strong>2.0</strong> (January 12, 1999):
+                    Revised user interface. Revised method of plotting Gossamer Ring(s).
+                    Added a new ephemeris option ("Post-Galileo").
+                </li>
+                <li>
+                    <strong>2.1</strong> (January 31, 2002):
+                    Added a new ephemeris option ("Post-Galileo #2"). Also expanded the
+                    ephemeris time limits for the small satellites.
+                </li>
+                <li>
+                    <strong>2.2</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.5</strong> (January 23, 2013):
+                    Renumbered for consistency across all the Moon Tracker tools.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.6</strong> (January 4, 2016):
+                    Ported to new server.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.7</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.8</strong> (June 20, 2021):
+                    Ephemeris updates.
+                </li>
+                <!--#elif expr="v('PLANET') == 'Saturn'"-->
+                 <!--#if expr="v('PREFIX') != 'Cassini/'"-->
+                <li>
+                    <strong>1.0</strong> (March 14, 1995):
+                    Original Saturn Moon Tracker
+                    for 1995-6 ring plane crossing observations.
+                </li>
+                <li>
+                    <strong>1.1</strong> (December 11, 1995):
+                    Revised to use a better ephemeris based on a few 1995 observations.
+                </li>
+                <li>
+                    <strong>1.2</strong> (January 28, 1997):
+                    New interface, allowing for a choice of ephemerides, greater control
+                    over the figure contents and more informative figure captions.
+                </li>
+                <li>
+                    <strong>2.0</strong> (January 12, 1999):
+                    Revised user interface.
+                    Expanded ephemeris time limits and added a new ephemeris option
+                    ("New Prometheus fit").
+                </li>
+                <li>
+                    <strong>2.1</strong> (January 31, 2002):
+                    Added a new ephemeris option
+                    ("Prometheus fit 2002").
+                </li>
+                <li>
+                    <strong>2.2</strong> (January 10, 2003):
+                    Added Phoebe.
+                </li>
+                <li>
+                    <strong>2.3</strong> (August 8, 2008):
+                    Added Cassini-discovered moons and the latest ephemeris options.
+                </li>
+                <li>
+                    <strong>2.4</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.5</strong> (January 23, 2013):
+                    Anthe and Aegaeon added.
+                    Renumbered for consistency across all the Moon Tracker tools.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.6</strong> (January 4, 2016):
+                    Ported to new server.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.7</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.8</strong> (June 20, 2021):
+                    Ephemeris updates.
+                </li>
+                <!--#else-->
+                <li>
+                    <strong>1.0</strong> (July 21, 2001):
+                    Original Cassini/Saturn Moon Tracker, based on the Earth-based
+                    <a href="tracker2_sat.html">Saturn Moon Tracker</a>.<br/>
+                    <strong>1.1</strong> (January 2, 2002):
+                    Updated for the official Cassini tour as of 1 December 2002.<br/>
+                    <strong>1.2</strong> (January 9, 2003):
+                    Phoebe added as a satellite choice. An option added for second accuracy
+                    in time tags.<br/>
+                    <strong>1.3</strong> (August 30, 2007):
+                    Added Cassini-discovered moons and the latest ephemeris options. Also added
+                    the tour for the Cassini extended mission.
+                </li>
+                <li>
+                    <strong>1.4</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.5</strong> (January 23, 2013):
+                    Anthe and Aegaeon added.
+                    Renumbered for consistency across all the Moon Tracker tools.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.6</strong> (January 4, 2016):
+                    Ported to new server.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.7</strong> (October 14, 2020):
+                    Ephemeris updates, including the final Cassini tour reconstruction.
+                </li>
+                <li>
+                    <strong>2.8</strong> (June 20, 2021):
+                    Ephemeris updates.
+                </li>
+                <!--#endif-->
+
+                <!--#elif expr="v('PLANET') == 'Uranus'"-->
+                <li>
+                    <strong>1.0</strong> (February 3, 1997):
+                    Original Uranus moon tracker on line.
+                </li>
+                <li>
+                     <strong>1.1</strong> (February 8, 1997):
+                     Older ephemerides URA027 and URA032 added, making it possible to
+                     generate diagrams for a longer range of times.
+                </li>
+                <li>
+                     <strong>2.0</strong> (January 12, 1999):
+                     Revised user interface.
+                     Added two new ephemeris options.
+                </li>
+                <li>
+                    <strong>2.1</strong> (August 24, 2006):
+                    Added Perdita, Mab and Cupid.
+                </li>
+                <li>
+                    <strong>2.3</strong> (November 9, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use. Version number modified for consistency
+                    with the other Uranus tools.
+                </li>
+                <li>
+                    <strong>2.5</strong> (January 23, 2013):
+                    Renumbered for consistency across all the Moon Tracker tools.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.6</strong> (January 4, 2016):
+                    Ported to new server.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.7</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.8</strong> (June 20, 2021):
+                    Ephemeris updates.
+                </li>
+                <!--#elif expr="v('PLANET') == 'Neptune'"-->
+                <li>
+                    <strong>1.0</strong> (February 3, 1997):
+                    Original Neptune Moon Tracker on line.
+                </li>
+                <li>
+                    <strong>2.0</strong> (January 12, 1999):
+                    Revised user interface.
+                    Extended ephemeris time limits.
+                </li>
+                <li>
+                    <strong>2.1</strong> (February 1, 1999):
+                    Added new ephemeris option.
+                </li>
+                <li>
+                    <strong>2.2</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.5</strong> (January 23, 2013):
+                    Renumbered for consistency across all the Moon Tracker tools.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.6 beta</strong> (January 4, 2016):
+                    Ported to new server.
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.7</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.8</strong> (June 20, 2021):
+                    Ephemeris updates.
+                </li>
+
+                <!--#elif expr="v('PLANET') == 'Pluto'"-->
+                <!--#endif-->
+                <li class="pt-2">
+                    <div id="VERSION3">
+                    <strong>3.0</strong> (August 2, 2022):
+                    <!--#if expr="v('PLANET') != 'Pluto'"-->
+                    Major new features:
+                    <ul>
+                        <li>JWST, HST, and Earth-based observatories are now supported.</li>
+                        <li>Moon Tracker requests can now be bookmarked.</li>
+                        <li>the new Output option lets you jump directly to the table,
+                            bypassing the web page.</li>
+                    </ul>
+                    <!--#else-->
+                    The Moon Tracker has been newly expanded to support the Pluto system.
+                    <!--#endif-->
+                </li>
+            </ul>
+        </div>
+        <div class="help-detailed pb-2">
+            <div id="TIME">
+                <h2>Time Limits</h2>
+                The start and stop times (UTC) of the table can be entered in a variety
+                of formats. For example, the following all parse to 0:01:02 UTC on July
+                4, 1976:
+                <ul>
+                    <li><tt>1976-JUL-04 00:01:02.00</tt></li>
+                    <li><tt>July 4, 1976 12:01:02 am</tt></li>
+                    <li><tt>12:01:02 am July 4, 1976</tt></li>
+                    <li><tt>1976-07-04T00:01:02Z</tt> (<em>ISO format</em>)</li>
+                    <li><tt>MJD 42963.00071759259</tt></li>
+                    <li><tt>JD 2442963.50071759259</tt></li>
+                </ul>
+                If you want the gory details of how times are interpreted, click
+                <a href="time_formats.shtml">here</a>.
+                <p>
+                    <strong>Interval</strong>:
+                    Enter the time interval to be used for the tabulation as a number in the box,
+                    and select the time unit from the choices provided. Start times and intervals
+                    are rounded to the nearest minute.
+                </p>
+            </div>
+
+            <!--#if expr="v('PREFIX') == ''"-->
+            <div id="VIEWPOINT">
+                <h2>Viewpoint</h2>
+                <p>
+                    You may specify the point of view of the diagram. By default, the point
+                    of view is the center of the Earth.
+                </p>
+
+                <p>
+                    <strong>Observatory:</strong>
+                    You may select from any viewpoint on the list.
+                    <ul>
+                        <li><strong>Earth's center</strong></li>
+                        <li><strong>JWST:</strong> Valid for 2021-Dec-25 to approximately two years after the present day.</li>
+                        <li><strong>HST:</strong> Valid for 1990-Apr-25 to approximately two months after the present day.</li>
+                        <li><strong>Named observatories:</strong>
+                            After each observatory's name, you will see listed its latitude and east
+                            longitude in degrees, followed by its altitude in meters. Note that
+                            only very rarely will a diagram change significantly based on the
+                            particular location of an Earth-based observatory.
+                        </li>
+                    </ul>
+                </p>
+                <p>
+                    <strong>Latitude & Longitude:</strong>
+                    If your desired observatory or location is not on the observatory list,
+                    you can enter its latitude, longitude and altitude in the three boxes
+                    provided. Latitudes and longitudes can each be specified by up to
+                    three values, interpreted as degrees, minutes and seconds. Longitudes
+                    can be specified either east or west.
+                </p>
+                <p>
+                    If you wish to have an observatory added to the standard list, or to
+                    refine the coordinates of a listed observatory, email the necessary
+                    information to
+                    <a href="mailto:pds-admin@seti.org">pds-admin@seti.org</a>.
+                </p>
+            </div>
+            <!--#endif-->
+
+            <div id="MOONS">
+                <h2>Moon Selection</h2>
+                Click on the box to the left of each moon that you wish to include in the
+                diagram and in the tabulation.
+            </div>
+
+            <!--#if expr="v('PLANET') != 'Mars' && v('PLANET') != 'Pluto'"-->
+            <div id="RINGS">
+                <h2>Ring Selection</h2>
+                 Click on the box to the left of each ring that you wish to include in
+                 the diagram. Rings appear as gray vertical stripes on the plot. For
+                 plotting purposes, the rings are shown extending all the way down to
+                 the planet.
+                 <!--#if expr="v('PLANET') == 'JUPITER'"-->
+                 For the "Gossamer Rings" option, two faint rings are shown
+                 bounded radially by the mean orbits of Amalthea and Thebe.
+                 <!--#elif expr="v('PLANET') == 'SATURN'"-->
+                 The E Ring is plotted between 3 and 5 Saturnian radii, although it
+                 actually extends outward much further.
+                 <!--#endif-->
+             </div>
+             <!--#endif-->
+
+            <div id="OPTIONS">
+                <h2>Plot Options</h2>
+                <p>
+                    <strong>Scale</strong>:
+                    Enter the numeric range and units of the horizontal axis. The value
+                    you enter is actually half the width of the diagram; for example, if you
+                    enter 10 planetary radii, then the axis will run from -10 to 10. Zero
+                    always falls at the middle of the plot.
+                </p>
+                <p>
+                    <strong>Title</strong>:
+                    Enter a title for the plot in this box. It will appear centered above
+                    the diagram.
+                </p>
+            </div>
+
+            <div id="OUTPUT">
+                <h2>Output</h2>
+                By default, when you click on "Submit", you are directed to
+                a web page that lists the details of the request, a small preview of the
+                diagram produced, and options to view or download that diagram as PDF,
+                JPEG, Postscript, or as an ASCII table. Optionally, you can choose to
+                bypass the web page and
+                go directly to any one of these four formats.
+            </div>
+        </div>
+
+        <hr/>
+    </div>
+    <!--#include file="FOOTER.shtml"-->
+</body>
+</html>

@@ -1,0 +1,19 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!--#set var="PREFIX" value="New Horizons/" -->
+<!--#set var="PLANET" value="Pluto"         -->
+<!--#set var="ABBREV" value="plunh"         -->
+
+<!--#if expr="0 eq 1"-->
+<head><title>New Horizons/Pluto Ephemeris Generator CONFIGURATION ERROR</title></head>
+<body style="font-family:arial;">
+<h1 style="color:red;"><b>New Horizons/Pluto Ephemeris Generator CONFIGURATION ERROR</h1>
+<p>
+Please report this error to the RMS website administrator,
+<a href="mailto:pds-admin@seti.org">pds-admin@seti.org</a>.
+</p>
+</body>
+</html>
+<!--#endif-->
+
+<!--#include file="EPHEM3_FORM.shtml"-->
+

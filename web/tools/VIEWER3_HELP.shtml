@@ -1,0 +1,795 @@
+<!--#set var="UPDATED"  value="August 20, 2023"  -->
+<!--#include file="STYLES.html"-->
+
+<!DOCTYPE html>
+<html lang="en">
+<!--#include file="STYLES.html"-->
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Contents of the viewer help document">
+    <title><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Viewer Help</title>
+</head>
+<body>
+    <div class="container" role="main">
+
+        <h1><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Viewer Help</h1>
+
+        <div class="help-description">
+            <p>
+                This form enables you to generate a diagram showing the appearance of
+                the <!--#echo var="PLANET"--> system at a specified time.
+                All bodies are rendered with terminators and shadows as appropriate. Selected
+                background stars can also be included.
+            </p>
+            <p>
+                In the diagram, <!--#echo var="PLANET"--> and the moons are modeled as triaxial ellipsoids,
+                and are drawn with latitude and longitude contours at 15 degree intervals. Illuminated
+                regions are indicated with black lines; unilluminated regions and terminators are shown
+                as light gray. Penumbral shadows are not indicated.
+                Optionally, the 0 and 180 degree meridians can be shown with a heavier line.
+            </p>
+
+            <!--#if expr="v('PLANET') == 'Mars'"-->
+            Optionally, the hypothetical rings of Mars are also shown. Their
+            appearances are based on the model of
+            <p class="indent">
+                <a href="https://doi.org/10.1006/icar.1997.5753" alt="Krivov, A. V., and D. P. Hamilton 1997" target="_blank">
+                Krivov, A. V., and D. P. Hamilton 1997. Martian dust belts: Waiting for
+                discovery. <em>Icarus</em><strong>128</strong>, 335-353.</a>
+            </p>
+            <p>
+                In this model, each of Mars' moons generates a cloud of dust. The
+                Phobos ring is modeled as equatorial but 350 km thick and shifted toward
+                the Sun by one Martian radius. The Deimos ring is 5300 km thick and
+                shifted away from the Sun by two Martian radii. It is also tilted out
+                of the equatorial plane toward the ecliptic by 15 degrees. See the above
+                reference for the explanations of these surprising properties.
+            </p>
+            <p>
+                Each ring is shown by a pair of curves, one indicating each of its
+                vertical limits. The rings are shown in black if illuminated and in
+                gray if not or if the opposite side is illuminated. The Phobos ring is
+                shown by solid lines; the Deimos ring by dashed lines.
+            </p>
+            <p>
+                <!--#elif expr="v('PLANET') == 'Jupiter'"-->
+
+                Optionally, the main and gossamer rings are also drawn. The rings are
+                are shown in black if illuminated and in gray if not or if the opposite
+                side is illuminated. The main ring is shown by its inner and outer
+                boundaries; the gossamer ring is shown by separate Amalthea and Thebe
+                rings, each indicated by a pair of dashed lines at the ring's upper and
+                lower vertical limits.
+
+                <!--#elif expr="v('PLANET') == 'Saturn'"-->
+
+                The following ring boundaries are drawn: A Ring outer edge; A Ring inner
+                edge; B Ring outer edge, B/C Ring boundary; C Ring inner edge. The
+                rings are shown in black if illuminated and in gray if not. Optionally,
+                the E, F and G Rings can be drawn as dashed lines.
+
+                <!--#elif expr="v('PLANET') == 'Uranus'"-->
+
+                A selection of the rings is also drawn. The rings are
+                shown in black if illuminated and in gray if not or if the opposite side
+                is illuminated. The epsilon ring is shown by its inner and outer boundaries;
+                other rings are shown as single lines. The lambda ring is plotted as a dashed
+                line if selected. All rings have their correct inclinations and eccentricities,
+                based on the models of French et al. (in <em>Uranus</em>, Bergstralh, Miner and
+                Matthews, Eds., University of Arizona Press, 1984, pp. 327-409).
+                However, the higher-order modes of the gamma, delta and lambda rings are not
+                shown.
+
+                <!--#elif expr="v('PLANET') == 'Neptune'"-->
+
+                A selection of the rings is also drawn. The rings are shown as single
+                lines in black if illuminated and in gray if shadowed or if the opposite
+                side is illuminated. The Galle and Arago Rings are plotted as dashed
+                lines if selected. All rings are assumed circular and coplanar. The
+                Adams Ring arcs are highlighted with heavier line segments. The user
+                may select between the three models for their motion.
+                The locations and spacings of the arcs are as tabulated by
+                <a href="https://doi.org/10.1126/science.253.5023.995" alt="Porco" target="_blank">Porco
+                (<em>Science</em><strong>253</strong>, 995-1001, 1991)</a>.
+
+                <!--#elif expr="v('PLANET') == 'Pluto'"-->
+
+                You can decide which orbits to include in the diagram. They are shown
+                as dashed lines.
+
+                <!--#endif-->
+            </p>
+            <p>
+                The diagram is oriented with J2000 declination increasing upward and
+                with right ascension increasing to the left. The frame has
+                uniformly-spaced tick marks along each axis. The declination axis is
+                labeled in degrees, minutes and seconds; the right ascension axis is
+                labeled in hours, minutes and seconds.
+            </p>
+            <p>
+                Each diagram includes a caption that summarizes the key parameters
+                used to generate it.
+            </p>
+            <!--#if expr="v('PLANET') != 'Pluto' and v('PLANET') != 'Mars'"-->
+            <p>
+                <strong>Limitations</strong>.
+                The outer irregular satellites of <!--#echo var="PLANET"--> are not shown.
+            </p>
+            <!--#endif-->
+        </div>
+        <div class="help-change-history">
+            <h2>Change History</h2>
+            <ul class="noindent">
+                <!--#if expr="v('PLANET') == 'Mars'"-->
+                </li>
+                    <strong>2.0</strong> (November 9, 1999):
+                    Original Mars viewer on line.
+                    (The version number was chosen for consistency with other tools.)
+                </li>
+                <li>
+                    <strong>2.1</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.8</strong> (January 23, 2013):
+                    Renumbered for consistency among all Planet Viewer tools. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.9</strong> (January 4, 2016):
+                    Ported to new server. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.10</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+                <!--#elif expr="v('PLANET') == 'Jupiter'"-->
+                <li>
+                    <strong>1.0</strong> (January 28, 1997):
+                    Original Jupiter viewer on line.
+                </li>
+                <li>
+                    <strong>1.1</strong> (February 6, 1997):
+                    Additional information at the bottom of the "results" page includes the
+                    sub-solar and sub-Earth longitude.
+                </li>
+                <li>
+                    <strong>1.2</strong> (February 11, 1997):
+                    Added a new ephemeris option ("Pre-RPX #2").
+                </li>
+                <li class="py-3">
+                    <strong>2.0</strong> (February 1, 1999):
+                    <ul>
+                        <li>Added a new ephemeris option ("Post-Galileo").</li>
+                        <li>Added a viewpoint option including both Voyagers, the Galileo Orbiter
+                            and parallax corrections for Earth-based observatories.</li>
+                        <li>Added alternative units (Jupiter radii, kilometers, and instrument
+                            fields of view) to the field of view options.</li>
+                        <li>Revised the diagrams to show the Gossamer Ring as separate Amalthea and
+                            Thebe rings, with the vertical extent of each ring indicated.</li>
+                        <li>Added background star options.</li>
+                        <li>Added an option to suppress latitude and longitude lines, producing
+                            diagrams that are suitable as drawing blanks for amateur observers.</li>
+                        <li>Added distances and light travel time to output table.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>2.1</strong> (December 20, 1999):
+                    Added an Io torus option.
+                </li>
+                <li>
+                    <strong>2.2</strong> (December 6, 2000):
+                    Added a Cassini viewpoint and various Cassini instrument fields of view.
+                    Also extended the Galileo orbiter ephemeris to September 2003.
+                </li>
+                <li class="py-3">
+                    <strong>2.3</strong> (January 31, 2002):
+                    <ul>
+                        <li>Added new ephemeris option ("Post-Galileo #2"). Extended ephemeris time
+                            limits for small satellites. Added star name option for diagram center.</li>
+                        <li>Added hour/degree options for right ascensions.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>2.4</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.8</strong> (January 23, 2013):
+                    Renumbered for consistency among all Planet Viewer tools. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.9</strong> (January 4, 2016):
+                    Ported to new server. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.10</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+
+                <!--#elif expr="v('PLANET') == 'Saturn'"-->
+                <li>
+                    <strong>RPX Viewer 1.0</strong> (January 17, 1995):
+                    Original Saturn viewer for 1995-6 ring plane crossing observations.
+                </li>
+                <li>
+                    <strong>1.1</strong> (December 11, 1995):
+                    Revised to use a better ephemeris based on a few 1995 observations.
+                </li>
+                <li>
+                    <strong>Saturn Viewer 1.0</strong> (January 28, 1997):
+                    New interface, allowing for a choice of ephemerides, greater control
+                    over the figure contents and more informative figure captions.
+                </li>
+                <li>
+                    <strong>1.1</strong> (February 6, 1997):
+                    Additional information at the bottom of the "results" page includes the
+                    subsolar and sub-Earth longitude.
+                </li>
+                <li class="py-3">
+                    <strong>2.0</strong> (February 1, 1999):
+                    <ul>
+                        <li>Expanded ephemeris time limits and added a new ephemeris option.</li>
+                        <li>Added a viewpoint option including Voyager 1, Voyager 2, and parallax
+                            corrections for Earth-based observatories.</li>
+                        <li>Added alternative units (Saturn radii, kilometers, and the Voyager
+                            camera fields of view) to the field of view options.</li>
+                        <li>Added background star options.</li>
+                        <li>Added an option to suppress latitude and longitude lines, producing
+                            diagrams that are suitable as drawing blanks for amateur observers.</li>
+                        <li>Added distances and light travel time to output table.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>2.1</strong> (December 6, 2000):
+                    Added the Cassini Orbiter viewpoint to support mission planning.
+                </li>
+                <li>
+                    <strong>2.2</strong> (July 21, 2001):
+                    Updated the Cassini Orbiter tour.
+                </li>
+                <li class="py-3">
+                    <strong>2.3</strong> (January 31, 2002):
+                    <ul>
+                        <li>Added new ephemeris option ("Prometheus 2002").</li>
+                        <li>Added star name option for diagram center.</li>
+                        <li>Added hour/degree options for right ascensions.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>2.4</strong> (January 10, 2003):
+                    Added Phoebe.
+                </li>
+                <li>
+                    <strong>2.5</strong> (July 14, 2003):
+                    Added pericenter markers for F Ring. Updated F Ring orbital elements.
+                </li>
+                <li>
+                    <strong>2.6</strong> (August 30, 2007):
+                    Added Cassini-discovered moons and the latest ephemeris options.
+                </li>
+                <li>
+                    <strong>2.7</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.8</strong> (January 23, 2013):
+                    Anthe and Aegaeon added. Renumbered for consistency among all Planet Viewer
+                    tools. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.9</strong> (January 4, 2016):
+                    Ported to new server. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.10</strong> (October 14, 2020):
+                    Ephemeris updates, including the final Cassini tour reconstruction.
+                </li>
+
+                <!--#elif expr="v('PLANET') == 'Uranus'"-->
+                <li>
+                    <strong>1.0</strong> (February 4, 1997):
+                    Original Uranus viewer on line.
+                </li>
+                <li>
+                    <strong>1.1</strong> (February 8, 1997):
+                    Additional information at the bottom of the "results" page includes the
+                    subsolar and sub-Earth longitudes. Also, older ephemerides URA027 and
+                    URA032 have been added, making it possible to generate diagrams over a
+                    much longer range of dates. Finally, new options make it possible to
+                    mark the ring pericenters on the diagram.
+                </li>
+                <li class="py-3">
+                    <strong>2.0</strong> (February 1, 1999):
+                    <ul>
+                        <li>Added two new ephemeris options.</li>
+                        <li>Added a viewpoint option including Voyager 2 and parallax
+                            corrections for Earth-based observatories.</li>
+                        <li>Added alternative units (Uranus radii, kilometers, and the Voyager
+                                camera fields of view) to the field of view options.</li>
+                        <li>Added background star options.</li>
+                        <li>Added an option to suppress latitude and longitude lines, producing
+                            diagrams that are suitable as drawing blanks for amateur observers.</li>
+                        <li>Added distances and light travel time to output table.</li>
+                    </ul>
+                </li>
+                <li class="py-3">
+                    <strong>2.1</strong> (January 31, 2002):
+                    <ul>
+                        <li>Added star name option for diagram center.</li>
+                        <li>Added hour/degree options for right ascensions.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>2.2</strong> (August 24, 2006):
+                    Added Perdita, Mab and Cupid.
+                </li>
+                <li>
+                    <strong>2.3</strong> (November 9, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.8</strong> (January 23, 2013):
+                    Renumbered for consistency among all Planet Viewer tools. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.9</strong> (January 4, 2016):
+                    Ported to new server. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.10</strong> (October 14, 2020):
+                    Ephemeris updates.
+                </li>
+                <!--#elif expr="v('PLANET') == 'Neptune'"-->
+                <li>
+                    <strong>1.0</strong> (February 8, 1997):
+                    Original Neptune viewer on line.
+                </li>
+                <li>
+                    <strong>1.0a</strong> (August 5, 1997):
+                    Bug fixed that prevented Larissa and Proteus from being displayed.
+                </li>
+                <li class="py-3">
+                    <strong>2.0</strong> (February 1, 1999):
+                    <ul>
+                        <li>Extended ephemeris time limits and added new option.</li>
+                        <li>Added a viewpoint option including Voyager 2 and parallax
+                            corrections for Earth-based observatories.</li>
+                        <li>Added alternative units (Neptune radii, kilometers, and the Voyager
+                            camera fields of view) to the field of view options.</li>
+                        <li>Added background star options.</li>
+                        <li>Added an option to suppress latitude and longitude lines, producing
+                            diagrams that are suitable as drawing blanks for amateur observers.</li>
+                        <li>Added distances and light travel time to output table.</li>
+                    </ul>
+                </li>
+                <li class="py-3">
+                    <strong>2.1</strong> (January 31, 2002):
+                    <ul>
+                        <li>Added star name option for diagram center.</li>
+                        <li>Added hour/degree options for right ascensions.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>2.2</strong> (December 1, 2009):
+                    Updated the default ephemerides. To reduce confusion, we have removed
+                    the choice about what ephemeris to use.
+                </li>
+                <li>
+                    <strong>2.8</strong> (January 23, 2013):
+                    Renumbered for consistency among all Planet Viewer tools. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.9</strong> (January 4, 2016):
+                    Ported to new server. Ephemeris updates.
+                </li>
+                <li>
+                    <strong>2.10</strong> (October 14, 2020):
+                    Ephemeris updates; updated name for "Hippocamp".
+                </li>
+                <!--#elif expr="v('PLANET') == 'Pluto'"-->
+                <li>
+                    <strong>2.8</strong> (January 28, 2014):
+                    Our new tool was released.
+                </li>
+                <li>
+                  <strong>2.10</strong> (October 14, 2020):
+                  Ephemeris updates.
+                </li>
+                <!--#endif-->
+            </ul>
+
+            <div id="VERSION3"><strong>3.0</strong> (July 5, 2021): Major new features:</div>
+            <ul>
+                <li>the returned web page now lists the sub-observer and sub-solar
+                    longitudes and latitudes for each the planet and each moon.</li>
+                <li>the diagram page identifies the sub-observer longitude and
+                    latitude, as well as the phase angle, of the planet or selected moon.</li>
+                <li>there is now an option to highlight the prime meridian on the planet
+                  and moons.</li>
+                <li>Viewer requests can now be bookmarked.</li>
+                <li>the new Output option lets you jump directly to a PDF or JPEG diagram,
+                    bypassing the web page.</li>
+                <!--#if expr="v('PLANET') == 'Jupiter'"-->
+                <li>the Juno mission is now supported.</li>
+                <!--#endif-->
+                <!--#if expr="v('PLANET') == 'Pluto'"-->
+                <li>the rotation rates of Pluto and Charon, and the sizes of Pluto's small moons,
+                        have been updated based on recent results from the New Horizons team.</li>
+                <!--#endif-->
+                <li>ephemerides have been updated.</li>
+                <li>the form now uses a clean, new style sheet.</li>
+                    <li>bug fix: if selected, the anti-solar direction is now more accurate.</li>
+            </ul>
+
+            <strong>3.1</strong> (August 2, 2022):
+            <ul>
+                <li>the JWST and HST viewpoints have been added.</li>
+                <li>ephemeris updates.</li>
+            </ul>
+        </div>
+        <div class="help-detailed">
+            <div id="TIME">
+                <h2>Observation Time</h2>
+                The observation time (UTC) can be entered in a variety of formats.
+                For example, the following all parse to 0:01:02 UTC on July 4, 1976:
+                <ul>
+                    <li><tt>1976-JUL-04 00:01:02.00</tt></li>
+                    <li><tt>July 4, 1976 12:01:02 am</tt></li>
+                    <li><tt>12:01:02 am July 4, 1976</tt></li>
+                    <li><tt>1976-07-04T00:01:02Z</tt> (<em>ISO format</em>)</li>
+                    <li><tt>MJD 42963.00071759259</tt></li>
+                    <li><tt>JD 2442963.50071759259</tt></li>
+                </ul>
+                If you want the gory details of how times are interpreted, click
+                <a href="time_formats.shtml">here</a>.
+            </div>
+            <div id="FOV">
+                <h2>Field of View</h2>
+                Enter the field of view of the drawing to be generated and select the
+                appropriate units. Units can be seconds of arc (the default), milliradians,
+                microradians, <!--#echo var="PLANET"--> radii,
+                kilometers (projected at the distance to <!--#echo var="PLANET"-->) or the
+                fields of view of certain spacecraft cameras.
+
+                <!--#if expr="v('PLANET') == 'Neptune'"-->
+                <p id="ARCS">
+                    <strong>Arc motion model:</strong>
+                    You may also select between the three competing models for the motion of
+                    the Adams Ring arcs. The first two were described by Nicholson et al. (<em>Icarus</em>
+                    <strong>113</strong>, 295-330, 1995). The third (default) appears to be more
+                    consistent with recent Earth-based detections.
+                </p>
+                <!--#endif-->
+            </div>
+
+            <div id="CENTER">
+                <h2>Diagram Center</h2>
+                <p>
+                    Four different methods of specifying the diagram center are supported.
+                    Click on the box to the left of the option you wish to use.
+                </p>
+                <p>
+                    <strong>Body:</strong> The diagram will be centered on the location of the
+                    selected body.
+                </p>
+                <p>
+                    <strong>Ring or orbit ansa</strong>: The diagram will be centered on the ansa of the
+                    selected ring or orbit. Specify the east or west ansa using the second box.
+                    Note that east is toward the left in the diagram.
+                </p>
+                <p>
+                    <strong>J2000 RA and dec:</strong> The diagram will be centered on the specified
+                    pair of right ascension and declination coordinates. The first box is
+                    for the RA and the second box is for the dec. You may also specify
+                    whether the RA is in units of hours or degrees. Enter up to three
+                    values in each box, separated by spaces; these values are interpreted as
+                    degrees/hours, minutes and seconds, respectively. Any or all values can
+                    have fractional parts.
+                </p>
+                <p>
+                    <strong>Star name:</strong> Enter the name of a star as it appears in the current
+                    <a href="starlist_<!--#echo var='ABBREV'-->.txt" target="_blank">list</a>.
+                    The name must match exactly.
+                </p>
+            </div>
+
+            <!--#if expr="v('PREFIX') == ''"-->
+            <div id="VIEWPOINT">
+                <h2>Viewpoint</h2>
+                <p>
+                    You may specify the point of view of the diagram. By default, the point
+                    of view is the center of the Earth.
+                </p>
+
+                <p>
+                    <strong>Observatory:</strong>
+                    You may select from any viewpoint on the list.
+                    <ul>
+                        <li><strong>Earth's center</strong></li>
+                        <!--#if expr="v('PLANET') == 'Jupiter'"-->
+                        <li><strong>Voyager 1:</strong> Valid for the period 1979-Feb-06 to 1979-Apr-09.</li>
+                        <li><strong>Voyager 2:</strong> Valid for the period 1979-Jun-25 to 1979-Aug-29.</li>
+                        <li><strong>Galileo Orbiter:</strong> Valid for the period 1995-Jul-01 to 2003-Sep-21.</li>
+                        <li><strong>Cassini:</strong> Valid for times surrounding the Cassini flyby of Jupiter on 2000-Dec-30.</li>
+                        <li><strong>New Horizons:</strong> Valid for times surrounding the New Horizons flyby of Jupiter on 2007-Feb-28.</li>
+                        <li><strong>Juno:</strong> Valid for 2016-Aug-15 to 2025-Oct-20.</li>
+                        <!--#elif expr="v('PLANET') == 'Saturn'"-->
+                        <li><strong>Voyager 1:</strong> Valid for the period 1980-Aug-23 to 1981-Jan-01.</li>
+                        <li><strong>Voyager 2:</strong> Valid for the period 1981-Jun-01 to 1981-Oct-22.</li>
+                        <li><strong>Cassini:</strong> Valid for the period 2000-Nov-09 to 2017-Sep-15.</li>
+                        <!--#elif expr="v('PLANET') == 'Uranus'"-->
+                        <li><strong>Voyager 2:</strong> Valid for the period 1985-Nov-04 to 1986-Feb-25.</li>
+                        <!--#elif expr="v('PLANET') == 'Neptune'"-->
+                        <li><strong>Voyager 2:</strong> Valid for the period 1989-Jun-03 to 1989-Oct-03.</li>
+                        <!--#elif expr="v('PLANET') == 'Pluto'"-->
+                        <li><strong>New Horizons:</strong> Valid for times surrounding the New Horizons flyby of on 2015-Jul-14.</li>
+                        <!--#endif-->
+                        <li><strong>JWST:</strong> Valid for 2021-Dec-25 to approximately two years after the present day.</li>
+                        <li><strong>HST:</strong> Valid for 1990-Apr-25 to approximately two months after the present day.</li>
+                        <li><strong>Named observatories:</strong>
+                            After each observatory's name, you will see listed its latitude and east
+                            longitude in degrees, followed by its altitude in meters. Note that
+                            only very rarely will a diagram change significantly based on the
+                            particular location of an Earth-based observatory.
+                        </li>
+                    </ul>
+                </p>
+                <p>
+                    <strong>Latitude & Longitude:</strong>
+                    If your desired observatory or location is not on the observatory list,
+                    you can enter its latitude, longitude and altitude in the three boxes
+                    provided. Latitudes and longitudes can each be specified by up to
+                    three values, interpreted as degrees, minutes and seconds. Longitudes
+                    can be specified either east or west.
+                </p>
+                <p>
+                    If you wish to have an observatory added to the standard list, or to
+                    refine the coordinates of a listed observatory, email the necessary
+                    information to
+                    <a href="mailto:pds-admin@seti.org">pds-admin@seti.org</a>.
+                </p>
+            </div>
+            <!--#endif-->
+
+            <!--#if expr="v('PLANET') != 'Mars'"-->
+            <div id="MOONS">
+                <h2>Moon Selection</h2>
+                <p>
+                    You can decide which moons to include in the diagram.
+
+                    <!--#if expr="v('PLANET') == 'Jupiter'"-->
+                      At minimum,
+                      the Galilean satellites Io, Europa, Ganymede and Callisto are included.
+
+                    <!--#elif expr="v('PLANET') == 'Saturn'"-->
+                      At minimum,
+                      the moons Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Hyperion,
+                      Iapetus and Phoebe are included.
+
+                    <!--#elif expr="v('PLANET') == 'Uranus'"-->
+                      At minimum,
+                      Miranda, Ariel, Umbriel, Titania and Oberon are included.
+
+                    <!--#elif expr="v('PLANET') == 'Neptune'"-->
+                      At minimum, Triton and Nereid are included.
+
+                    <!--#elif expr="v('PLANET') == 'Pluto'"-->
+                      Charon will always be included.
+
+                    <!--#endif-->
+
+                    Use the boxes to the left of the list to choose the smallest set of
+                    moons to include.
+                    Note that, whatever your choice, the moons appearing
+                    above it in the list will also be shown.
+                </p>
+            </div>
+            <!--#endif-->
+
+            <div id="RINGS">
+                <!--#if expr="v('PLANET') == 'Pluto'"-->
+                <h2>Orbit Selection</h2>
+
+                <!--#else-->
+                <h2>Ring Selection</h2>
+
+                <!--#endif-->
+
+                <!--#if expr="v('PLANET') == 'Mars'"-->
+                <p>
+                    You can decide whether to include the hypothetical Martian rings in the
+                    diagram. Click on the box to the left to select your option. If
+                    selected, both rings are indicated by pairs of dashed lines above and below
+                    the ring plane to indicate these rings' physical thickness. The Phobos
+                    ring is shown with a solid line and the Deimos ring is shown with a
+                    dashed line.
+                </p>
+                <p>
+                    See <a href="#MODELS">above</a> for a discussion of the models used for each ring.
+                </p>
+                <!--#elif expr="v('PLANET') == 'Jupiter'"-->
+                <p>
+                    You can decide which ring to include in the diagram, if any. Click
+                    on the box to the left to show the main ring or the gossamer rings. The
+                    gossamer rings are indicated by pairs of dashed lines above and below
+                    the ring plane to indicate these rings' physical thickness.
+                </p>
+                <p>
+                    Optionally, you can include a rendering of the <strong>Io torus</strong> by
+                    checking the associated box. If selected, the torus is shown as a
+                    dashed line. In the adjacent text boxes you can enter the desired
+                    inclination and radius; default values correspond to the centrifugal
+                    equator at Io's orbit. An inclination of zero corresponds to the
+                    equatorial plane and an inclination of 9.6 degrees corresponds to the
+                    magnetic equator.
+
+                <!--#elif expr="v('PLANET') == 'Saturn'"-->
+                    You can decide which ring to include in the diagram. At minimum,
+                    the A, B and C Ring boundaries are shown. Click on the box to the left
+                    to show the F Ring, the E Ring core and the G Ring. For each selection,
+                    the rings appearing above it on the list will also be included. If
+                    selected, the E, F and G Rings are plotted as dashed lines to
+                    distinguish them from their brighter counterparts. The F Ring is
+                    plotted with accurate eccentricity and inclination, using the model of
+                    <a href="https://doi.org/10.1006/icar.2002.6791" alt="Bosh et al." target="_blank">
+                        Bosh et al. (<cite>Icarus</cite> <strong>157</strong>, 57-75, 2002)</a>.
+
+                <!--#elif expr="v('PLANET') == 'Uranus'"-->
+                    You can decide which rings to include in the diagram. Click
+                    on the box to the left to show the main rings (alpha, beta, eta, gamma,
+                    delta and epsilon), the smaller inner rings (6, 5 and 4), and the faint
+                    Lambda Ring. Note that, whatever your choice, the rings appearing
+                    above it in the list will also be shown.
+
+                <!--#elif expr="v('PLANET') == 'Neptune'"-->
+                    You can decide which rings to include in the diagram. The Adams
+                    and LeVerrier Rings are always shown. Click on the box to the left to
+                    show the Arago and Galle Rings. Note that, whatever your choice, the
+                    rings appearing above it in the list will also be shown.
+
+                <!--#elif expr="v('PLANET') == 'Pluto'"-->
+                    You can decide which orbits to include in the diagram. They are shown
+                    as dashed lines.
+
+                <!--#endif-->
+                </p>
+            </div>
+
+            <div id="STARS">
+                <h2>Background Objects</h2>
+                <p>
+                    You have several independent options for including background objects in the
+                    diagrams. These options make it possible to render diagrams around the
+                    times of stellar or spacecraft occultations. Objects are marked by
+                    pluses and are labeled by name if the
+                    <a href="#LABELS" rel="noopener">Moon & Star Labels</a> option is activated.
+                </p>
+                <p>
+                    <strong>Standard stars:</strong>
+                    Check the box to include any of a standard list of stars that happen to
+                    fall inside the field of view of the diagram. The Neptune Viewer does not
+                    access a star catalog; instead, it only plots stars from a finite list.
+                    To view the current star list, click
+                    <a href="starlist_<!--#echo var='ABBREV'-->.txt" alt="starlist" target="_blank">here</a>.
+                    This list is updated periodically at the request of the users; if you
+                    would like to have a star added to the list, email the necessary
+                    information to
+                    <a href="mailto:pds-admin@seti.org">pds-admin@seti.org</a>.
+                </p>
+                <p>
+                    <strong>Additional star:</strong>
+                    In addition to or instead of the standard stars, you can specify one
+                    additional star to be included in the diagram. Check the box to the
+                    left and enter the star's RA, dec, and name in the three boxes. You
+                    may also specify whether the RA is in units of hours or degrees. Enter
+                    up to three values in the RA and dec boxes, separated by spaces; the
+                    values are interpreted as hours/degrees, minutes and seconds,
+                    respectively. Any or all values can have fractional parts.
+                </p>
+                <p>
+                    <strong>Other bodies:</strong>
+                    <p>
+                        Check each box to mark the location of the specified body or spacecraft
+                        in the diagram.
+                    </p>
+                </p>
+            </div>
+
+            <div id="DIAGRAM">
+                <div id="TITLE">
+                    <h2>Title</h2>
+                    Enter a title for the plot in this box. It will appear centered above
+                    the diagram.
+                </div>
+
+                <div id="LABELS">
+                    <h2>Moon and Star Labels</h2>
+                    Optionally, the diagram will be generated with the name of each moon and
+                    star written above and to the right of its center. You may select the
+                    size of these labels in points, where a point is 1/72 inches.
+                </div>
+
+                <div id="ENLARGE">
+                    <h2>Moon Enlargement</h2>
+                    The diagram is rendered to scale, which means that some of the smallest
+                    moons may be very hard to see. You may enter a minimum
+                    plotted size for moons in this box. If a nonzero value is used, the
+                    smallest moons will be easier to see. The size is in units of points,
+                    equal to 1/72 inches. A value of ~4 may be appropriate.
+                </div>
+
+                <!--#if expr="v('PREFIX') == ''"-->
+                <div id="BLANK">
+                    <h2>Blank Disks</h2>
+                    If you select this option, all latitude and longitude lines will be
+                    suppressed in the diagram. This produces a diagram that is suitable for
+                    amateur observers to use as a drawing blank.
+                    This option is not available for spacecraft-specific viewers.
+                </div>
+                <!--#endif-->
+
+                <!--#if expr="v('PLANET') == 'Saturn'"-->
+                <div id="OPACITY">
+                    <h2>Ring Plot Type</h2>
+                    You have three options for how Saturn's A, B, and C rings are plotted.
+                    In the "Transparent" option, the ring boundaries are drawn but
+                    everything behind the rings is shown normally. In this case, the rings
+                    do not cast shadows. In the "Opaque" option, the rings are opaque
+                    from the A Ring's outer edge all the way down to the planet. The rings
+                    do cast shadows and objects behind them are invisible (including objects
+                    that would normally be visible interior to the C Ring). In the
+                    "Semi-transparent" option, objects behind the rings are subdued in gray
+                    but are still visible. The rings do cast shadows.
+                    This option generates the most realistic view but, because of
+                    limitations of the toolkit used to generate the diagram, generates a
+                    Postscript file up to twice as large as with the other options.
+                </div>
+                <!--#endif-->
+
+                <!--#if expr="v('PLANET') == 'Saturn' or v('PLANET') == 'Uranus'"-->
+                <div id="PERIS">
+                    <h2>Pericenter Markers</h2>
+                    You have the option of placing a dot at the location of the pericenter
+                    of each eccentric ring in the diagram. Select whether you want to mark
+                    no rings, just the Epsilon Ring, or all eccentric rings. Also enter the
+                    size of the dot, in units of points (= 1/72 inches).
+                </div>
+                <!--#endif-->
+
+                <!--#if expr="v('PLANET') == 'Neptune'"-->
+                <div id="ARCPTS">
+                    <h2>Arc Weight</h2>
+                    Enter the width of the line segments to use to highlight the ring arcs,
+                    in units of points (= 1/72 inches).
+                </div>
+                <!--#endif-->
+
+                <div id="MERIDIANS">
+                    <h2>Highlight Prime Meridians</h2>
+                    If you select this option, then the 0 and 180 degree meridians will be
+                    shown with a heavier weight.
+                </div>
+
+                <div id="OUTPUT">
+                    <h2>Output</h2>
+                    By default, when you click on "Generate diagram", you are directed to
+                    a web page that lists the details of the request, a small preview of the
+                    diagram produced, and options to view or download that diagram as PDF,
+                    JPEG, or Postscript. Optionally, you can choose to bypass the web page and
+                    go directly to the diagram in one of the three formats.
+                </div>
+            </div>
+
+            <hr/>
+        </div>
+    </div>
+<!--#include file="FOOTER.shtml"-->
+</body>
+</html>

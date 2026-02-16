@@ -1,0 +1,245 @@
+<!--#set var="PLANET"   value="Pluto"           -->
+<!--#set var="VERSION"  value="3.1"             -->
+<!--#set var="YMD"      value="2022-08-03"      -->
+<!--#set var="UPDATED"  value="August 20, 2023"  -->
+<!--#set var="TOOL"     value="viewer3"         -->
+<!DOCTYPE html>
+<html lang="en">
+<!--#include file="STYLES.html"-->
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="These forms enable you to generate a diagram showing the appearance of a planetary system at a specified time. Bodies and rings are rendered with terminators and shadows as appropriate">
+    <title><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Viewer <!--#echo var="VERSION"--></title>
+</head>
+<body>
+    <div class="container form" role="main">
+        <h1><!--#echo var="PREFIX"--><!--#echo var="PLANET"--> Viewer <!--#echo var="VERSION"--></h1>
+
+        <form method="PUT" action="/cgi-bin/tools/viewer3_xxx.sh">
+
+            <input type="hidden" name="abbrev" value="<!--#echo var='ABBREV'-->"/>
+            <input type="hidden" name="version" value="<!--#echo var='VERSION'-->"/>
+
+            <div class="release-info">
+                <strong><!--#echo var="YMD"--></strong>: Release <!--#echo var="VERSION"-->
+                with support for <strong>JWST</strong>. See the
+                <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml" target="_blank">help</a>
+                page for more information.
+            </div>
+
+            <!--#include file="EPHEMERIS_INFO.shtml"-->
+
+            <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#TIME" target="_blank">Observation Time</a></h2>
+            <div class="indent">
+                <input type="text" name="time" size="30" maxlength="50" placeholder="Time format: yyyy-mm-dd hh:mm:ss" autocomplete="on" aria-label="observation time"/>
+                <strong>(Required)</strong>
+            </div>
+
+            <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#FOV" target="_blank">Field of View:</a></h2>
+            <div class="indent">
+                <input type="text" name="fov" size="12" maxlength="50" autocomplete="on" aria-label="field of view"/>
+                <select name="fov_unit" autocomplete="on" aria-label="field of view unit">
+                     <option> seconds of arc
+                     <option> degrees
+                     <option> milliradians
+                     <option> microradians
+                     <option> Pluto radii (1153 km)
+                     <option selected> Pluto-Charon separations (19,571 km)
+                     <option> kilometers
+                     <option> LORRI FOVs
+                </select>
+                <strong>(Required)</strong>
+              </div>
+
+              <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#CENTER" target="_blank">Diagram center:</a></h2>
+              <ul class="input-block">
+                  <li>
+                      <label><input type="radio" name="center" value="body" checked  autocomplete="on"/> Body:</label>
+                      <select name="center_body" autocomplete="on" aria-label="select body">
+                          <option> Barycenter
+                          <option selected> Pluto
+                          <option> Charon (P1)
+                          <option> Nix (P2)
+                          <option> Hydra (P3)
+                          <option> Kerberos (P4)
+                          <option> Styx (P5)
+                      </select>
+                  </li>
+                  <li>
+                      <label><input type="radio" name="center" value="ansa"  autocomplete="on"/> Ring ansa:</label>
+                      <select name="center_ansa" autocomplete="on" aria-label="select ring ansa">
+                          <option>          Styx
+                          <option>          Nix
+                          <option>          Kerberos
+                          <option selected> Hydra
+                      </select>
+                      <select name="center_ew" autocomplete="on" aria-label="select ring ansa direction">
+                          <option selected> east
+                          <option>          west
+                      </select>
+                  </li>
+                  <li>
+                      <label><input type="radio" name="center" value="J2000"  autocomplete="on"/>J2000 RA and Dec:</label>
+                      <input type="text" name="center_ra" size="12" maxlength="50"  autocomplete="on" aria-label="J2000 RA and Dec"/>
+                      <select name="center_ra_type" autocomplete="on" aria-label="select diagram center RA type">
+                        <option selected> hours
+                        <option>          degrees
+                      </select>
+                      <input type="text" name="center_dec" size="12" maxlength="50"  autocomplete="on" aria-label="degrees"/> degrees
+                  </li>
+                  <li>
+                      <label><input type="radio" name="center" value="star"  autocomplete="on"/> Star name:</label>
+                      <input type="text" name="center_star" size="12" maxlength="50"  autocomplete="on" aria-label="star name"/>
+                      (Click
+                      <a href="starlist_plu.txt">here</a> for the current list.)
+                  </li>
+              </ul>
+
+            <!--#if expr="v('PREFIX') == 'New Horizons/'"-->
+              <input type="hidden" name="viewpoint" value="observatory"/>
+              <input type="hidden" name="observatory" value="New Horizons"/>
+            <!--#else-->
+            <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#VIEWPOINT" target="_blank">Viewpoint:</a></h2>
+            <ul class="input-block">
+                <li>
+                    <input type="radio" name="viewpoint" value="observatory" checked autocomplete="on" aria-label="viewpoint select observatory"/> Observatory:
+                    <select name="observatory" autocomplete="on" aria-label="viewpoint observatory">
+                      <option selected> Earth's center
+                      <option> New Horizons
+                      <option> HST
+                      <option> JWST
+                    <!--#include file="OBSERVATORIES.html"-->
+                    </select>
+                </li>
+                <li>
+                    <input type="radio" name="viewpoint" value="latlon" autocomplete="on" aria-label="viewpoint select lat lon"/>
+                    Lat: <input type="text" name="latitude"  size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint latitude"/>
+                    Lon: <input type="text" name="longitude" size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint longitude"/>
+                    <select name="lon_dir" autocomplete="on" aria-label="viewpoint longitude direction">
+                      <option selected> east
+                      <option> west
+                    </select>
+                    Alt: <input type="text" name="altitude" size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint altitude"/> (m)
+                </li>
+            </ul>
+            <!--#endif-->
+
+            <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#MOONS" target="_blank">Moon Selection:</a></h2>
+            <ul class="input-block">
+                <li>
+                    <input type="radio" name="moons" value="901 Charon (P1)" autocomplete="on" aria-label="moon selection Charon (P1)"/> Charon (P1)
+                </li>
+                <li>
+                    <input type="radio" name="moons" value="903 Charon, Nix, Hydra (P1-P3)" autocomplete="on" aria-label="moon selection plus Nix & Hydra (P1-P3)"/> ...plus Nix & Hydra (P1-P3)
+                </li>
+                <li>
+                    <input type="radio" name="moons" value="905 All moons (P1-P5)" checked autocomplete="on" aria-label="moon selection plus Kerberos & Styx (P1-P5)"/> ...plus Kerberos & Styx (P1-P5)
+                </li>
+            </ul>
+
+            <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#RINGS" target="_blank" autocomplete="on" aria-label="orbit selection none">Orbit Selection:</a></h2>
+            <ul class="input-block">
+                <li>
+                    <label><input type="radio" name="rings" value="None" checked autocomplete="on"/> No orbits</label>
+                </li>
+                <li>
+                    <label><input type="radio" name="rings" value="Charon" autocomplete="on"/> Charon (P1)</label>
+                </li>
+                <li>
+                    <label><input type="radio" name="rings" value="Charon, Nix, Hydra" autocomplete="on"/> ...plus Nix & Hydra (P1-P3)</label>
+                </li>
+                <li>
+                    <label><input type="radio" name="rings" value="Charon, Styx, Nix, Kerberos, Hydra"/> ...plus Kerberos & Styx (P1-P5)</label>
+                </li>
+                <li>
+                    <label><input type="radio" name="rings" value="Nix, Hydra" autocomplete="on"/> Nix & Hydra (P2,P3)</label>
+                </li>
+                <li>
+                    <label><input type="radio" name="rings" value="Styx, Nix, Kerberos, Hydra" autocomplete="on"/> ...plus Kerberos & Styx (P2-P5)</label>
+                </li>
+            </ul>
+
+            <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#STARS" target="_blank">Background Objects:</a></h2>
+            <ul class="input-block">
+                <li>
+                    <label><input type="checkbox" name="standard" value="Yes"  autocomplete="on"/> Standard stars</label>
+                    (Click
+                    <a href="starlist_plu.txt">here</a> for the current list.)</label>
+                </li>
+                <li class="pb-1">
+                    <label><input type="checkbox" name="additional" value="Yes"  autocomplete="on"/> Additional star:</label>
+                    RA = <input type="text" name="extra_ra" size="12" maxlength="50"  autocomplete="on" aria-label="RA ="/>
+                    <select name="extra_ra_type" autocomplete="on" aria-label="select additional star RA type">
+                        <option selected> hours
+                        <option> degrees
+                    </select>
+                    Dec = <input type="text" name="extra_dec"  size="12" maxlength="50"  autocomplete="on" aria-label="Dec ="/>
+                    Label = <input type="text" name="extra_name" size="12" maxlength="50"  autocomplete="on" aria-label="Label ="/>
+                </li>
+                <li>
+                    Other bodies:&nbsp;&nbsp;
+                    <label><input type="checkbox" name="other" value="Barycenter" autocomplete="on"/> Barycenter</label>
+                    <label><input type="checkbox" name="other" value="Sun" autocomplete="on"/> Sun</label>
+
+                    <label><input type="checkbox" name="other" value="Anti-Sun" autocomplete="on"/> Anti-Sun</label>
+                    <label><input type="checkbox" name="other" value="Earth" autocomplete="on"/> Earth</label>
+                    <!--#if expr="v('PREFIX') == ''"-->
+                    <label><input type="checkbox" name="other" value="New Horizons" autocomplete="on"/> New Horizons</label>
+                    <!--#endif-->
+                </li>
+            </ul>
+
+            <h2><a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#DIAGRAM" target="_blank">Diagram Options:</a></h2>
+            <ul class="input-block">
+                <li>
+                    <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#TITLE" target="_blank">Plot Title:</a>
+                        <input type="text" name="title" size="40" maxlength="60" value=""  autocomplete="on" aria-label="plot title"/>
+                </li>
+                <li>
+                    <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#LABELS" target="_blank">Moon & Star Labels:</a>
+                      <select name="labels" autocomplete="on" aria-label="moon and star labels"/>
+                        <option>          None
+                        <option selected> Small (6 points)
+                        <option>          Medium (9 points)
+                        <option>          Large (12 points)
+                    </select>
+                </li>
+                <li class="pb-1">
+                    <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#ENLARGE" target="_blank">Moon Enlargement:</a>
+                        <input type="text" name="moonpts" size="5" maxlength="50" value="0"  autocomplete="on" aria-label="moon enlargement in points"/> (points)
+                </li>
+                <!--#if expr="v('PREFIX') == ''"-->
+                <li class="pb-1">
+                    <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#BLANK" target="_blank">Blank disks:</a>&nbsp;&nbsp;
+                    <input type="radio" name="blank" value="Yes"  autocomplete="on" aria-label="blank disks yes"/> Yes
+                    <input type="radio" name="blank" value="No" checked  autocomplete="on" aria-label="blank disks no"/> No
+                </li>
+                <!--#endif-->
+                <li class="pb-1">
+                    <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#MERIDIANS" target="_blank">Highlight prime meridians:</a>&nbsp;&nbsp;
+                    <input type="radio" name="meridians" value="Yes" checked  autocomplete="on" aria-label="highlight prime meridians yes"/> Yes
+                    <input type="radio" name="meridians" value="No"  autocomplete="on" aria-label="highlight prime meridians no"/> No
+                </li>
+                <li>
+                    <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#OUTPUT" target="_blank">Output to:</a>&nbsp;&nbsp;
+                    <label><input type="radio" name="output" value="HTML" checked  autocomplete="on"/> Webpage & diagrams&nbsp;&nbsp;&nbsp;</label>
+                    <label><input type="radio" name="output" value="PDF"  autocomplete="on"/> PDF only&nbsp;&nbsp;&nbsp;</label>
+                    <label><input type="radio" name="output" value="JPEG"  autocomplete="on"/> JPEG only&nbsp;&nbsp;&nbsp;</label>
+                    <label><input type="radio" name="output" value="PS"  autocomplete="on"/> Postscript only</label>
+                </li>
+            </ul>
+
+            <div class="form-buttons">
+                <input type="submit" name="submit" value="Render diagram"/>
+                <input type="reset" name="reset" value="Reset form"/>
+            </div>
+        </form>
+
+        <hr/>
+    </div>
+    <!--#include file="FOOTER.shtml"-->
+</body>
+</html>

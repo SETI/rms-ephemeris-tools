@@ -1,0 +1,93 @@
+<!--#if expr="v('PLANET') == 'Mars'"-->
+
+  <div class="pb-3">
+      <input type="hidden" name="ephem" value="000 MAR097 + DE440">
+      The current ephemeris selection is <strong>MAR097 + DE440</strong>, 1600 to 2600.
+  </div>
+
+<!--#elif expr="v('PLANET') == 'Jupiter'"-->
+
+  <div class="pb-1">
+  <!--#if expr="v('PREFIX') == 'New Horizons/'"-->
+    <input type="hidden" name="ephem" value="000 JUP344 + JUP365 + DE440">
+    The current ephemeris selection is <strong>JUP344 + JUP365 + DE440</strong>.
+  <!--#else-->
+    <input type="hidden" name="ephem" value="000 JUP365 + DE440">
+    The current ephemeris selection is <strong>JUP365 + DE440</strong>.
+  <!--#endif-->
+  </div>
+
+  <div>
+      <!--#if expr="v('PREFIX') == 'Cassini/'"-->
+        Works for times surrounding the Cassini flyby of Jupiter on December 30, 2000.
+      <!--#elif expr="v('PREFIX') == 'New Horizons/'"-->
+        Works for times surrounding the New Horizons flyby of Jupiter on February 28, 2007.
+      <!--#elif expr="v('PREFIX') == 'Juno/'"-->
+        Works for the Juno mission, 2016-Aug-15 to 2025-Oct-20.
+      <!--#elif expr="v('PREFIX') == 'JUICE/'"-->
+        Works for the JUICE mission, using planning ephemeris
+        "juice_mat_crema_5_0b23_1_20230405_20351005_v01.bsp", 2023-Apr-05 to 2035-Oct-05.
+      <!--#elif expr="v('PREFIX') == 'Europa Clipper/'"-->
+        Works for the Europa Clipper mission, using planning ephemeris
+        "21F31_MEGA_L241010_A300411_LP01_V4_postLaunch_scpse.bsp", 2024-Dec-20 to 2034-Sep-03.
+      <!--#else-->
+      <ul>
+        <li>Galilean satellites & Amalthea, 1600 to 2600.</li>
+        <li>Adrastea, Metis, & Thebe, 1900 to 2100.</li>
+      </ul>
+      <!--#endif-->
+</div>
+
+<!--#elif expr="v('PLANET') == 'Saturn'"-->
+
+  <div>
+      <input type="hidden" name="ephem" value="000 SAT415 + SAT441 + DE440">
+      The current ephemeris selection is <strong>SAT415 + SAT441 + DE440</strong>.
+  </div>
+  <div>
+      <!--#if expr="v('PREFIX') == 'Cassini/'"-->
+        Works for the Cassini tour of the Saturn system, 2004-Jan-01 to 2017-Sep-15.
+      <!--#else-->
+        <ul>
+          <li>Classical satellites plus Helene, 1550 to 2650. </li>
+          <li>Smaller satellites, 1950 to 2050. </li>
+        </ul>
+      <!--#endif-->
+  </div>
+
+<!--#elif expr="v('PLANET') == 'Uranus'"-->
+
+  <div>
+      <input type="hidden" name="ephem" value="000 URA111 + URA115 + DE440"/>
+      The current ephemeris selection is <strong>URA111 + URA115 + DE440</strong>.
+      <ul>
+          <li>Classical satellites, 1600 to 2600.</li>
+          <li>Small inner satellites, 1980 to 2060.</li>
+      </ul>
+  </div>
+
+<!--#elif expr="v('PLANET') == 'Neptune'"-->
+
+  <div>
+      <input type="hidden" name="ephem" value="000 NEP095 + NEP097 + NEP101 + DE440"/>
+      The current ephemeris selection is <strong>NEP095 + NEP097 + NEP101 + DE440</strong>.
+      <ul>
+          <li>Triton & Nereid, 1600 to 2600.</li>
+          <li>Small inner satellites, 1900 to 2050.</li>
+      </ul>
+  </div>
+
+<!--#elif expr="v('PLANET') == 'Pluto'"-->
+
+  <div>
+      <input type="hidden" name="ephem" value="000 PLU058 + DE440"/>
+      <!--#if expr="v('PREFIX') == 'New Horizons/'"-->
+        The current ephemeris selection is <strong>PLU058 + DE440</strong>.
+        </div><div>
+        Works for times surrounding the New Horizons flyby of Pluto on July 15, 2015.
+      <!--#else-->
+        The current ephemeris selection is <strong>PLU058 + DE440</strong>, 1600-2600.
+      <!--#endif-->
+  </div>
+
+<!--#endif-->

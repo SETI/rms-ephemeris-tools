@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm[toml]"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rms-ephemeris-tools"
+dynamic = ["version"]
+description = "Ephemeris generator, moon tracker, and planet viewer tools"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "cspyce>=2.3.0",
+    "numpy>=2.0",
+    "rms-julian>=2.0"
+]
+license = {text = "Apache-2.0"}
+maintainers = [
+  {name = "Robert S. French", email = "rfrench@seti.org"}
+]
+keywords = ["ephemeris", "SPICE", "planetary", "astronomy"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Astronomy",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Utilities",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX :: Linux"
+]
+
+[project.urls]
+Homepage = "https://github.com/SETI/rms-ephemeris-tools"
+Documentation = "https://rms-ephemeris-tools.readthedocs.io/en/latest"
+Repository = "https://github.com/SETI/rms-ephemeris-tools"
+Source = "https://github.com/SETI/rms-ephemeris-tools"
+Issues = "https://github.com/SETI/rms-ephemeris-tools/issues"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
+
+[tool.setuptools]
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"ephemeris_tools" = ["py.typed"]
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+write_to = "src/ephemeris_tools/_version.py"
+
+[project.optional-dependencies]
+dev = [
+  "coverage>=7.0",
+  "mypy>=1.0",
+  "myst-parser",
+  "pillow>=12.1.1",
+  "pymarkdownlnt>=0.9.35",
+  "pytest>=7.0",
+  "pytest-cov>=4.0",
+  "pytest-profiling>=1.8.1",
+  "pytest-xdist",
+  "ruff>=0.8",
+  "sphinx>=7",
+  "sphinxcontrib-mermaid",
+  "sphinx-rtd-theme"
+]
+
+[project.scripts]
+ephemeris-tools = "ephemeris_tools.cli.main:main"
+
+# Tool configuration
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise NotImplementedError",
+]
+
+[tool.mypy]
+strict = true
+disallow_subclassing_any = false
+mypy_path = "stubs"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+# Explicit rule set (recommended for library projects). Categories:
+# E, W = pycodestyle errors/warnings; F = Pyflakes; I = isort; UP = pyupgrade;
+# B = bugbear; SIM = simplify; C4 = comprehensions; A = builtins (no shadowing);
+# N = pep8-naming; PT = pytest-style; RUF = Ruff-specific (e.g. unused noqa).
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "A", "N", "PT", "RUF"]
+# PT011 - pytest.raises is too broad.
+# SIM105 - Use contextlib.suppress for suppressions.
+# SIM108 - Use ternary operator for simple if/else.
+extend-ignore = ["PT011", "SIM105", "SIM108"]
+
+[tool.pymarkdown.plugins.md013]
+# Line length (disable so README/CONTRIBUTING can use longer lines).
+enabled = false
+
+[tool.pymarkdown.plugins.md033]
+# Inline HTML (e.g. <br>) allowed in Markdown.
+enabled = false
