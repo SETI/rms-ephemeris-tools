@@ -120,10 +120,15 @@ else
     cli_args+=( --viewpoint observatory --observatory "$observatory" )
 fi
 
-# Ephemeris version
+# Ephemeris version (numeric for SPICE; full string for Input Parameters display)
 ephem_raw="$(cgi_get ephem "0")"
 ephem_num="$(extract_id "$ephem_raw")"
 cli_args+=( --ephem "$ephem_num" )
+# Strip leading "NNN " for display (e.g. "000 NEP095 + ..." -> "NEP095 + ...")
+ephem_display="${ephem_raw#* }"
+if [[ -n "$ephem_display" ]]; then
+    cli_args+=( --ephem-display "$ephem_display" )
+fi
 
 # Moon selection — viewer form uses radio buttons with values like
 # "653 All inner moons (S1-S18,S32-S35,S49,S53)" or checkbox values
@@ -133,6 +138,8 @@ cli_args+=( --ephem "$ephem_num" )
 #   Other planets: checkboxes "001 Io (J1)" etc. → pass individual IDs
 moons_raw="$(cgi_get moons "")"
 if [[ -n "$moons_raw" ]]; then
+    # Pass raw value for Input Parameters display (e.g. "802 Triton & Nereid")
+    cli_args+=( --moons-display "$moons_raw" )
     # Multi-valued moons (checkboxes)
     moons_list=()
     while IFS= read -r val; do
@@ -149,6 +156,8 @@ fi
 # Pass raw to the viewer CLI which resolves names/codes.
 rings_raw="$(cgi_get rings "")"
 if [[ -n "$rings_raw" ]]; then
+    # Pass raw value for Input Parameters display (e.g. "LeVerrier, Arago, Adams")
+    cli_args+=( --rings-display "$rings_raw" )
     # Split comma-separated ring values into separate tokens
     IFS=',' read -ra ring_tokens <<< "$rings_raw"
     ring_args=()
@@ -211,6 +220,12 @@ if [[ -n "$peripts" ]]; then cli_args+=( --peripts "$peripts" ); fi
 
 meridians="$(cgi_get meridians "")"
 if [[ -n "$meridians" ]]; then cli_args+=( --meridians "$meridians" ); fi
+
+# Arc model and arc weight (Neptune)
+arcmodel="$(cgi_get arcmodel "")"
+if [[ -n "$arcmodel" ]]; then cli_args+=( --arcmodel "$arcmodel" ); fi
+arcpts="$(cgi_get arcpts "")"
+if [[ -n "$arcpts" ]]; then cli_args+=( --arcpts "$arcpts" ); fi
 
 # Output files
 cli_args+=( -o "$PS_FILE" )

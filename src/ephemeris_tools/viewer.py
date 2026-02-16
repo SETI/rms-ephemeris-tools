@@ -503,6 +503,8 @@ _FOV_UNIT_MULT_DEG = {
     'vims 12x12': 6e-3,
     'uvis slit': 59e-3,
     'lorri': 0.2907,
+    'voyager iss narrow': 0.424,
+    'voyager iss wide': 3.2,
 }
 
 

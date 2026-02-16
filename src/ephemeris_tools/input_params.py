@@ -175,17 +175,24 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     _w(stream, '----------------')
     _w(stream, ' ')
 
-    # Observation time
+    # Observation time (no leading spaces on label)
     time_str = (getattr(args, 'time', None) or ' ').strip() or '2025-01-01 12:00'
-    _w(stream, f'  Observation time: {time_str}')
+    _w(stream, f'Observation time: {time_str}')
 
-    # Ephemeris
-    _w(stream, f'         Ephemeris: {getattr(args, "ephem", 0)}')
+    # Ephemeris (display string from form, or numeric version)
+    ephem_display = getattr(args, 'ephem_display', None)
+    if ephem_display and str(ephem_display).strip():
+        _w(stream, f'       Ephemeris: {ephem_display.strip()}')
+    else:
+        _w(stream, f'       Ephemeris: {getattr(args, "ephem", 0)}')
 
-    # Field of view
+    # Field of view (omit leading zero for values < 1, e.g. .005 not 0.005)
     fov = getattr(args, 'fov', 1.0)
     fov_unit = getattr(args, 'fov_unit', 'deg')
-    _w(stream, f'     Field of view: {fov} ({fov_unit})')
+    fov_s = str(fov)
+    if fov_s.startswith('0.') and len(fov_s) > 2:
+        fov_s = '.' + fov_s[2:]  # keep fractional part as-is, e.g. 0.005 -> .005
+    _w(stream, f'   Field of view: {fov_s} ({fov_unit})')
 
     # Diagram center
     center_ra = getattr(args, 'center_ra', 0.0)
@@ -197,22 +204,22 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     if center == 'ansa':
         center_ansa = (getattr(args, 'center_ansa', None) or 'A Ring').strip()
         center_ew = (getattr(args, 'center_ew', None) or 'east').strip()
-        _w(stream, f'    Diagram center: {center_ansa} {center_ew} ansa')
+        _w(stream, f'  Diagram center: {center_ansa} {center_ew} ansa')
     elif center == 'j2000' or (center_ra != 0.0 or center_dec != 0.0):
         ra_type = (getattr(args, 'center_ra_type', None) or 'hours').strip()
-        _w(stream, f'    Diagram center: RA  = {center_ra} {ra_type}')
+        _w(stream, f'  Diagram center: RA  = {center_ra} {ra_type}')
         _w(stream, f'                    Dec = {center_dec}')
     elif center == 'star':
         center_star = (getattr(args, 'center_star', None) or ' ').strip()
-        _w(stream, f'    Diagram center: Star = {center_star}')
+        _w(stream, f'  Diagram center: Star = {center_star}')
     else:
-        _w(stream, f'    Diagram center: {center_body}')
+        _w(stream, f'  Diagram center: {center_body}')
 
     # Viewpoint
     viewpoint = (getattr(args, 'viewpoint', None) or ' ').strip()
     if viewpoint == 'latlon':
         lat = getattr(args, 'latitude', None)
-        _w(stream, f'         Viewpoint: Lat = {lat} (deg)')
+        _w(stream, f'       Viewpoint: Lat = {lat} (deg)')
         lon = getattr(args, 'longitude', None)
         lon_dir = getattr(args, 'lon_dir', 'east')
         _w(stream, f'                    Lon = {lon} (deg {lon_dir})')
@@ -223,38 +230,47 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
         sc = getattr(args, 'sc_trajectory', 0)
         if sc:
             obs = f'{obs} ({sc})'
-        _w(stream, f'         Viewpoint: {obs}')
+        _w(stream, f'       Viewpoint: {obs}')
     else:
-        _w(stream, "         Viewpoint: Earth's Center")
+        _w(stream, "       Viewpoint: Earth's Center")
 
-    # Moon selection
-    moons = getattr(args, 'moons', None) or []
-    moon_str = ' '.join(str(m) for m in moons).strip() if moons else ' '
+    # Moon selection (strip leading "NNN " from display, e.g. "802 Triton & Nereid" -> "Triton & Nereid")
+    moons_display = getattr(args, 'moons_display', None)
+    if moons_display and str(moons_display).strip():
+        parts = moons_display.strip().split(None, 1)
+        moon_str = parts[1] if len(parts) == 2 and parts[0].isdigit() else moons_display.strip()
+    else:
+        moons = getattr(args, 'moons', None) or []
+        moon_str = ' '.join(str(m) for m in moons).strip() if moons else ' '
     _w(stream, f'    Moon selection: {moon_str}')
     moremoons = getattr(args, 'moremoons', None)
     if moremoons:
-        _w(stream, f'                    {moremoons}')
+        _w(stream, f'                  {moremoons}')
 
-    # Ring selection
-    rings = getattr(args, 'rings', None) or []
-    ring_str = ' '.join(str(r) for r in rings).strip() if rings else ' '
-    _w(stream, f'    Ring selection: {ring_str}')
+    # Ring selection (display string from form to preserve commas, or joined)
+    rings_display = getattr(args, 'rings_display', None)
+    if rings_display and str(rings_display).strip():
+        ring_str = rings_display.strip()
+    else:
+        rings = getattr(args, 'rings', None) or []
+        ring_str = ', '.join(str(r) for r in rings).strip() if rings else ' '
+    _w(stream, f'  Ring selection: {ring_str}')
 
     # Arc model (Neptune; printed for all, blank if N/A)
-    arcmodel = (getattr(args, 'arcmodel', None) or ' ').strip()
+    arcmodel = (getattr(args, 'arcmodel', None) or '').strip()
     _w(stream, f'       Arc model: {arcmodel}')
 
     # Standard stars
     standard = (getattr(args, 'standard', None) or 'No').strip()
-    _w(stream, f'    Standard stars: {standard}')
+    _w(stream, f'  Standard stars: {standard}')
 
     # Additional star
     additional = getattr(args, 'additional', None)
     if not additional:
-        _w(stream, '   Additional star: No')
+        _w(stream, ' Additional star: No')
     else:
         extra_name = (getattr(args, 'extra_name', None) or ' ').strip()
-        _w(stream, f'   Additional star: {extra_name}')
+        _w(stream, f' Additional star: {extra_name}')
         extra_ra = (getattr(args, 'extra_ra', None) or ' ').strip()
         extra_ra_type = (getattr(args, 'extra_ra_type', None) or 'hours').strip()
         _w(stream, f'                    RA  = {extra_ra} {extra_ra_type}')
@@ -264,45 +280,35 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace) -> None:
     # Other bodies
     other = getattr(args, 'other', None) or []
     if not other:
-        _w(stream, '      Other bodies: None')
+        _w(stream, '    Other bodies: None')
     else:
         other_list = other if isinstance(other, (list, tuple)) else [other]
         for i, o in enumerate(other_list):
-            prefix = '      Other bodies: ' if i == 0 else '                    '
+            prefix = '    Other bodies: ' if i == 0 else '                  '
             _w(stream, f'{prefix}{o}')
 
     # Title
     title = (getattr(args, 'title', None) or ' ').strip() or ' '
-    _w(stream, f'             Title: "{title}"')
+    _w(stream, f'           Title: "{title}"')
 
     # Moon labels
     labels = (getattr(args, 'labels', None) or 'Small (6 points)').strip()
-    _w(stream, f'       Moon labels: {labels}')
+    _w(stream, f'     Moon labels: {labels}')
 
     # Moon enlargement
     moonpts = (getattr(args, 'moonpts', None) or '0').strip()
-    _w(stream, f'  Moon enlargement: {moonpts} (points)')
+    _w(stream, f'Moon enlargement: {moonpts} (points)')
 
     # Blank disks
     blank = (getattr(args, 'blank', None) or 'No').strip()
-    _w(stream, f'       Blank disks: {blank}')
-
-    # Ring plot type
-    opacity = (getattr(args, 'opacity', None) or 'Transparent').strip()
-    _w(stream, f'    Ring plot type: {opacity}')
-
-    # Pericenter markers
-    peris = (getattr(args, 'peris', None) or 'None').strip()
-    _w(stream, f'Pericenter markers: {peris}')
-    peripts = (getattr(args, 'peripts', None) or '4').strip()
-    _w(stream, f'       Marker size: {peripts} (points)')
+    _w(stream, f'     Blank disks: {blank}')
 
     # Arc weight (Neptune)
-    arcpts = (getattr(args, 'arcpts', None) or ' ').strip()
-    _w(stream, f'      Arc weight: {arcpts} (points)')
+    arcpts = (getattr(args, 'arcpts', None) or '').strip()
+    _w(stream, f'      Arc weight: {arcpts or " "} (points)')
 
     # Prime meridians
     meridians = (getattr(args, 'meridians', None) or 'Yes').strip()
-    _w(stream, f'   Prime meridians: {meridians}')
+    _w(stream, f' Prime meridians: {meridians}')
 
     _w(stream, ' ')

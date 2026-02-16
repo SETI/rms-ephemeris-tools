@@ -307,8 +307,7 @@ def main() -> int:
         '--fov-unit',
         type=str,
         default='deg',
-        choices=['deg', 'arcmin', 'arcsec'],
-        help='env: fov_unit',
+        help='FOV unit: deg, arcmin, arcsec, or instrument name (e.g. Voyager ISS narrow angle FOVs); env: fov_unit',
     )
     view_parser.add_argument(
         '--center',
@@ -374,6 +373,24 @@ def main() -> int:
     )
     view_parser.add_argument(
         '--rings', type=str, nargs='*', default=None, help='Ring option codes or names; env: rings'
+    )
+    view_parser.add_argument(
+        '--ephem-display',
+        type=str,
+        default=None,
+        help='Ephemeris string for Input Parameters (e.g. NEP095 + DE440); env: ephem_display',
+    )
+    view_parser.add_argument(
+        '--moons-display',
+        type=str,
+        default=None,
+        help='Moon selection string for Input Parameters (e.g. 802 Triton & Nereid); env: moons_display',
+    )
+    view_parser.add_argument(
+        '--rings-display',
+        type=str,
+        default=None,
+        help='Ring selection string for Input Parameters (e.g. LeVerrier, Arago); env: rings_display',
     )
     view_parser.add_argument(
         '--standard', type=str, default=None, help='Standard stars; env: standard'
