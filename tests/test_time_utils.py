@@ -28,3 +28,25 @@ def test_ensure_leapsecs_sets_spice_ut_model(monkeypatch) -> None:
     assert calls[0][0] == 'set_ut_model'
     assert calls[0][1] == ('SPICE',)
 
+
+def test_parse_datetime_accepts_iso_z_suffix() -> None:
+    """ISO-8601 trailing Z parses as UTC like the same timestamp without Z."""
+
+    with_z = time_utils.parse_datetime('2022-08-18T00:01:47Z')
+    without_z = time_utils.parse_datetime('2022-08-18T00:01:47')
+
+    assert with_z is not None
+    assert without_z is not None
+    assert with_z == without_z
+
+
+def test_parse_datetime_accepts_year_hms_form() -> None:
+    """FORTRAN-style 'YYYY HH:MM:SS' parses as Jan 1 at the given time."""
+
+    compact = time_utils.parse_datetime('1700 01:01:01')
+    explicit = time_utils.parse_datetime('1700-01-01 01:01:01')
+
+    assert compact is not None
+    assert explicit is not None
+    assert compact == explicit
+

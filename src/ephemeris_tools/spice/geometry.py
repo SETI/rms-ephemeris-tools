@@ -233,11 +233,6 @@ def body_latlon(et: float, body_id: int) -> tuple[float, float, float, float]:
     if subsol_long < 0:
         subsol_long += TWOPI
     subsol_long = TWOPI - subsol_long
-    if state.planet_num == 7:
-        if subobs_long > 0:
-            subobs_long = TWOPI - subobs_long
-        if subsol_long > 0:
-            subsol_long = TWOPI - subsol_long
     return (subobs_lat, subsol_lat, subobs_long, subsol_long)
 
 
