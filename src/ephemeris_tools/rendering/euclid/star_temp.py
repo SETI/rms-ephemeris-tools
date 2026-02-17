@@ -54,8 +54,11 @@ def eustar(
     left, right, bottom, top = espl07()
     hspan = abs(view_state.view[1] - view_state.view[0])
     vspan = abs(view_state.view[3] - view_state.view[2])
-    dx_proj_scale = fntscl * hspan * abs(right - left) / abs(view_state._ux)
-    dy_proj_scale = fntscl * vspan * abs(top - bottom) / abs(view_state._uy)
+    # ESSTAR maps glyph coordinates over a viewport-scaled box centered on the
+    # target point. The segment font is defined over a full-width range, so the
+    # viewport half-size factor is required for FORTRAN-equivalent glyph size.
+    dx_proj_scale = 0.5 * fntscl * hspan * abs(right - left) / abs(view_state._ux)
+    dy_proj_scale = 0.5 * fntscl * vspan * abs(top - bottom) / abs(view_state._uy)
     for i in range(min(fntsiz, len(font))):
         (fx1, fy1), (fx2, fy2) = font[i]
         proj_x1 = center_proj_x + (fx1 * dx_proj_scale)

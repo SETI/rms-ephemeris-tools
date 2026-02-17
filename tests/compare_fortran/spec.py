@@ -377,6 +377,10 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         pairs.append(('peris', str(p.get('peris', 'None'))))
         pairs.append(('peripts', str(p.get('peripts', '4'))))
         pairs.append(('meridians', str(p.get('meridians', 'No'))))
+        if 'arcmodel' in p and p['arcmodel'] is not None and str(p['arcmodel']).strip() != '':
+            pairs.append(('arcmodel', str(p['arcmodel'])))
+        if 'arcpts' in p and p['arcpts'] is not None:
+            pairs.append(('arcpts', str(p['arcpts'])))
         if 'additional' in p:
             pairs.append(('additional', str(p['additional'])))
         if 'extra_ra' in p:
@@ -547,12 +551,18 @@ class RunSpec:
                 args.extend(['--moonpts', str(p['moonpts'])])
             if 'blank' in p and p['blank'] is not None:
                 args.extend(['--blank', str(p['blank'])])
+            if 'opacity' in p and p['opacity'] is not None:
+                args.extend(['--opacity', str(p['opacity'])])
             if 'peris' in p and p['peris'] is not None:
                 args.extend(['--peris', str(p['peris'])])
             if 'peripts' in p and p['peripts'] is not None:
                 args.extend(['--peripts', str(p['peripts'])])
             if 'meridians' in p and p['meridians'] is not None:
                 args.extend(['--meridians', str(p['meridians'])])
+            if 'arcmodel' in p and p['arcmodel'] is not None and str(p['arcmodel']).strip() != '':
+                args.extend(['--arcmodel', str(p['arcmodel'])])
+            if 'arcpts' in p and p['arcpts'] is not None:
+                args.extend(['--arcpts', str(p['arcpts'])])
             if 'title' in p:
                 args.extend(['--title', str(p['title'])])
         if self.tool == 'tracker' and 'rings' in p and p['rings']:

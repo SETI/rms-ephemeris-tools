@@ -90,7 +90,9 @@ LOOP_DLON = 0.01
 _MINSTEPS = 3.0
 _TICKSIZE1 = 0.05
 _TICKSIZE2 = 0.02
+# 1-based FORTRAN tables; index 0 is an unused sentinel for parity.
 _STEP1 = (
+    0.0,
     0.001,
     0.002,
     0.005,
@@ -116,7 +118,7 @@ _STEP1 = (
     36000.0,
     72000.0,
 )
-_SUBSTEPS = (5, 4, 5, 5, 4, 5, 5, 4, 5, 5, 4, 5, 5, 5, 6, 6, 4, 5, 5, 6, 6, 4, 5, 5, 6)
+_SUBSTEPS = (0, 5, 4, 5, 5, 4, 5, 5, 4, 5, 5, 4, 5, 5, 6, 6, 4, 5, 5, 6, 6, 4, 5, 5, 6)
 _NCHOICES = 24
 _MAXSECS = 86400.0
 
@@ -199,7 +201,9 @@ def _rspk_write_label(
     # FORTRAN parity: bottom-axis labels can land exactly on millisecond
     # half-boundaries due to binary rounding. A tiny positive bias reproduces
     # FORTRAN's label choice for RA ticks without affecting visible precision.
-    if offset in {'B', 'L'}:
+    # Keep this bias only for bottom-axis labels; left-axis labels in FORTRAN
+    # do not use it and otherwise drift by 0.001 in several cases.
+    if offset == 'B':
         ims = _fortran_nint(fsecs * 1000.0 + 1.0e-9)
     else:
         ims = _fortran_nint(fsecs * 1000.0)
@@ -216,6 +220,10 @@ def _rspk_write_label(
     elif offset == 'L' and ims == 0:
         # FORTRAN also omits fractional part for whole-second left labels.
         s = f'{ideg:3d} {imin:02d} {isec:02d}'
+    elif offset in ('B', 'L'):
+        # Match FORTRAN's trailing-zero suppression for non-integer labels
+        # (e.g., 40.100 -> 40.1, 33.900 -> 33.9).
+        s = s.rstrip('0 ').rstrip('.')
     elif offset not in ('B', 'L'):
         s = s.rstrip('0 ').rstrip('.')
     s = s.lstrip()
@@ -249,12 +257,8 @@ def _rspk_annotate(
         view_state: Escher view state.
         escher_state: Escher output state.
     """
-    # camera_los = transpose(cmatrix) * los
-    cam = [
-        cmatrix[0][0] * los[0] + cmatrix[1][0] * los[1] + cmatrix[2][0] * los[2],
-        cmatrix[0][1] * los[0] + cmatrix[1][1] * los[1] + cmatrix[2][1] * los[2],
-        cmatrix[0][2] * los[0] + cmatrix[1][2] * los[1] + cmatrix[2][2] * los[2],
-    ]
+    # Match FORTRAN MTXV behavior for camera transform.
+    cam = list(cspyce.mtxv(cmatrix, los))
     if cam[2] <= 0.0:
         return
     x = -cam[0] / cam[2]
@@ -293,8 +297,8 @@ def _rspk_labels2(
     # RA ticks
     spr = dpr * 3600.0 / 15.0
     sdelta = delta_ra * spr
-    i = _NCHOICES - 1
-    while i >= 1:
+    i = _NCHOICES
+    while i >= 2:
         if 2.0 * sdelta >= _MINSTEPS * _fortran_data_real(_STEP1[i]):
             break
         i -= 1
@@ -321,13 +325,13 @@ def _rspk_labels2(
     # Dec ticks
     spr = dpr * 3600.0
     sdelta = delta * spr
-    i = _NCHOICES - 1
-    while i >= 1:
-        if 2.0 * sdelta >= _MINSTEPS * _STEP1[i]:
+    i = _NCHOICES
+    while i >= 2:
+        if 2.0 * sdelta >= _MINSTEPS * _fortran_data_real(_STEP1[i]):
             break
         i -= 1
     nsubs = _SUBSTEPS[i]
-    ds = _STEP1[i] / nsubs
+    ds = _fortran_data_real(_STEP1[i]) / nsubs
     dec_sec = dec * spr
     k1 = _fortran_nint((dec_sec - sdelta) / ds + 0.5)
     k2 = _fortran_nint((dec_sec + sdelta) / ds - 0.5)
@@ -419,8 +423,13 @@ def _rspk_draw_bodies(
             eubody(ibody, 0, 0, 1, 0, 0, 0, euclid_state, view_state, escher_state)
 
         # Draw body with minimum size line width
+        # Match FORTRAN ESFLAG logic: detect whether this body produced any
+        # rendered segments and clear the label name when it did not.
+        escher_state.drawn = False
         eslwid(body_diampts - bpts, escher_state)
         eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, view_state, escher_state)
+        if update_names and bvis and not escher_state.drawn and bi < len(body_names):
+            body_names[bi] = ' '
 
     eslwid(0.0, escher_state)
 

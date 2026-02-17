@@ -1007,7 +1007,13 @@ def viewer_params_from_env() -> ViewerParams | None:
     try:
         fov_value = float(fov_s)
     except ValueError:
-        fov_value = 1.0
+        # FORTRAN list-directed READ treats comma as a value separator, so
+        # strings like "557,000" parse as 557. Emulate that behavior.
+        head = fov_s.split(',', 1)[0].strip()
+        try:
+            fov_value = float(head)
+        except ValueError:
+            fov_value = 1.0
     fov_unit = _get_env('fov_unit', 'degrees')
 
     center_mode = _get_env('center', 'body')
@@ -1099,6 +1105,19 @@ def viewer_params_from_env() -> ViewerParams | None:
     blank_disks = blank_flag in {'yes', 'y', 'true', '1'}
     meridians_flag = _get_env('meridians', '').lower()
     meridians = meridians_flag in {'yes', 'y', 'true', '1'}
+    opacity = _get_env('opacity', 'Transparent') or 'Transparent'
+    peris = _get_env('peris', 'None') or 'None'
+    peripts_s = _get_env('peripts', '4')
+    try:
+        peripts = float(peripts_s)
+    except ValueError:
+        peripts = 4.0
+    arcmodel = _get_env('arcmodel') or None
+    arcpts_s = _get_env('arcpts', '4')
+    try:
+        arcpts = float(arcpts_s)
+    except ValueError:
+        arcpts = 4.0
     other_bodies = _get_keys_env('other')
     labels = _get_env('labels', 'Small (6 points)')
     moonpts_s = _get_env('moonpts', '0')
@@ -1154,9 +1173,14 @@ def viewer_params_from_env() -> ViewerParams | None:
         moon_ids=moon_ids,
         ring_names=ring_names,
         blank_disks=blank_disks,
+        opacity=opacity,
         labels=labels,
         moonpts=moonpts,
+        peris=peris,
+        peripts=peripts,
         meridians=meridians,
+        arcmodel=arcmodel,
+        arcpts=arcpts,
         torus=_get_env('torus', '').strip().lower() in {'yes', 'y', 'true', '1'},
         torus_inc=float(_get_env('torus_inc', '6.8') or '6.8'),
         torus_rad=float(_get_env('torus_rad', '422000') or '422000'),

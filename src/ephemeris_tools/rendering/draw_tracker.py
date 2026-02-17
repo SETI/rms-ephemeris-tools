@@ -7,6 +7,12 @@ from collections.abc import Callable
 from datetime import date, datetime
 from typing import TextIO
 
+from ephemeris_tools.time_utils import (
+    day_sec_from_tai,
+    tai_from_day_sec,
+    ymd_from_day,
+)
+
 # FORTRAN planet_names(4:8) - no Pluto in original; we add 9 for compatibility
 PLANET_NAMES = {
     4: 'Mars',
@@ -192,18 +198,9 @@ def _label_yaxis(
     day1, _ = day_sec_from_tai(tai1)
     dutc_ref = day1
     if mark1_imins > MINS_PER_DAY:
-        # Keep major ticks evenly spaced across month boundaries by anchoring
-        # one major interval before the next month start, then stepping back.
+        # Align multi-day major ticks to an absolute day cadence.
         mark1_days = mark1_imins // MINS_PER_DAY
-        scan_day = day1 + 1
-        while True:
-            _y, _m, day_of_month = ymd_from_day(scan_day)
-            if day_of_month == 1:
-                break
-            scan_day += 1
-        dutc_ref = scan_day - mark1_days
-        while dutc_ref > day1:
-            dutc_ref -= mark1_days
+        dutc_ref = dutc_ref - (dutc_ref % mark1_days)
     tick_imins = MINS_PER_DAY if mark2_imins > MINS_PER_DAY else mark2_imins
     iticks_per_day = MINS_PER_DAY // tick_imins
     secs_per_tick = 86400.0 / iticks_per_day
@@ -308,12 +305,6 @@ def draw_moon_tracks(
         filename: Output filename (for PostScript comments).
         use_doy_format: True for YYYY-DDD HHh on y-axis (spacecraft).
     """
-    from ephemeris_tools.time_utils import (
-        day_sec_from_tai,
-        tai_from_day_sec,
-        ymd_from_day,
-    )
-
     nmoons = len(moon_names)
     planetstr = PLANET_NAMES.get(planet_num, 'Planet')
     i1 = max(filename.rfind('/'), filename.rfind(']'), filename.rfind(':')) + 1
