@@ -288,6 +288,42 @@ def _parse_ra_token_degrees(token: str) -> float:
     return float(raw)
 
 
+def _parse_sexagesimal_to_degrees(text: str, *, is_ra_hours: bool) -> float:
+    """Parse decimal or sexagesimal angle string into degrees.
+
+    Parameters:
+        text: Angle text, e.g. ``"19 22 10.4687"`` or ``"-21 58 49.020"``.
+        is_ra_hours: If True, interpret the first component as hours and convert
+            to degrees by multiplying by 15.
+
+    Returns:
+        Angle in degrees.
+
+    Raises:
+        ValueError: If the text cannot be parsed.
+    """
+    raw = text.strip()
+    if raw == '':
+        raise ValueError('Empty angle string')
+    try:
+        value = float(raw)
+        return value * 15.0 if is_ra_hours else value
+    except ValueError:
+        pass
+    parts = [p for p in raw.replace(':', ' ').split() if p]
+    if len(parts) == 0:
+        raise ValueError(f'Invalid angle {text!r}')
+    sign = -1.0 if parts[0].startswith('-') else 1.0
+    first = abs(float(parts[0]))
+    minutes = float(parts[1]) if len(parts) >= 2 else 0.0
+    seconds = float(parts[2]) if len(parts) >= 3 else 0.0
+    value = first + minutes / 60.0 + seconds / 3600.0
+    value *= sign
+    if is_ra_hours:
+        value *= 15.0
+    return value
+
+
 def parse_center(planet_num: int, tokens: list[str]) -> ViewerCenter:
     """Parse CLI ``--center`` tokens into a structured viewer center definition.
 
@@ -635,6 +671,7 @@ class Observer:
         name: Named observer, observatory, or spacecraft identifier.
         latitude_deg: Observer latitude in degrees.
         longitude_deg: Observer longitude in degrees; east-positive.
+        lon_dir: Original longitude direction token from CGI/CLI (east/west).
         altitude_m: Observer altitude in meters.
         sc_trajectory: Optional spacecraft trajectory selector.
     """
@@ -642,6 +679,7 @@ class Observer:
     name: str | None = None
     latitude_deg: float | None = None
     longitude_deg: float | None = None
+    lon_dir: str = 'east'
     altitude_m: float | None = None
     sc_trajectory: int = 0
 
@@ -692,11 +730,13 @@ class ViewerDisplayInfo:
         ephem_display: Ephemeris display string.
         moons_display: Moon selection display string.
         rings_display: Ring selection display string.
+        viewpoint_display: Raw lat/lon/alt caption string from CGI, if present.
     """
 
     ephem_display: str | None = None
     moons_display: str | None = None
     rings_display: str | None = None
+    viewpoint_display: str | None = None
 
 
 @dataclass
@@ -972,12 +1012,20 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     center_mode = _get_env('center', 'body')
     if center_mode == 'J2000':
+        ra_type = _get_env('center_ra_type', 'hours').strip().lower()
+        is_ra_hours = not ra_type.startswith('d')
         try:
-            ra_deg = float(_get_env('center_ra', '0'))
+            ra_deg = _parse_sexagesimal_to_degrees(
+                _get_env('center_ra', '0'),
+                is_ra_hours=is_ra_hours,
+            )
         except ValueError:
             ra_deg = 0.0
         try:
-            dec_deg = float(_get_env('center_dec', '0'))
+            dec_deg = _parse_sexagesimal_to_degrees(
+                _get_env('center_dec', '0'),
+                is_ra_hours=False,
+            )
         except ValueError:
             dec_deg = 0.0
         center = ViewerCenter(mode='J2000', ra_deg=ra_deg, dec_deg=dec_deg)
@@ -994,10 +1042,12 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     viewpoint = _get_env('viewpoint', 'observatory')
     observer = Observer(name="Earth's Center")
+    viewpoint_display: str | None = None
     if viewpoint == 'latlon':
         lat_s = _get_env('latitude')
         lon_s = _get_env('longitude')
         alt_s = _get_env('altitude')
+        lon_dir = _get_env('lon_dir', 'east')
         try:
             lat = float(lat_s) if lat_s else None
         except ValueError:
@@ -1006,13 +1056,29 @@ def viewer_params_from_env() -> ViewerParams | None:
             lon = float(lon_s) if lon_s else None
         except ValueError:
             lon = None
+        if lon is not None and lon_dir.lower() == 'west':
+            lon = -lon
         try:
             alt = float(alt_s) if alt_s else None
         except ValueError:
             alt = None
-        observer = Observer(latitude_deg=lat, longitude_deg=lon, altitude_m=alt)
+        observer = Observer(latitude_deg=lat, longitude_deg=lon, lon_dir=lon_dir, altitude_m=alt)
+        if lat_s and lon_s and alt_s:
+            # FORTRAN captions preserve original CGI precision for lat/lon/alt text.
+            viewpoint_display = f'({lat_s}, {lon_s} {lon_dir}, {alt_s})'
     elif viewpoint == 'observatory':
-        observer = Observer(name=_get_env('observatory', "Earth's Center"))
+        obs_name = _get_env('observatory', "Earth's Center")
+        coords = _parse_observatory_coords(obs_name)
+        if coords is None:
+            observer = Observer(name=obs_name)
+        else:
+            lat, lon, alt = coords
+            observer = Observer(
+                name=obs_name,
+                latitude_deg=lat,
+                longitude_deg=lon,
+                altitude_m=alt,
+            )
     elif viewpoint:
         observer = Observer(name=viewpoint)
 
@@ -1031,6 +1097,39 @@ def viewer_params_from_env() -> ViewerParams | None:
                     ring_names.append(token)
     blank_flag = _get_env('blank', '').lower()
     blank_disks = blank_flag in {'yes', 'y', 'true', '1'}
+    meridians_flag = _get_env('meridians', '').lower()
+    meridians = meridians_flag in {'yes', 'y', 'true', '1'}
+    other_bodies = _get_keys_env('other')
+    labels = _get_env('labels', 'Small (6 points)')
+    moonpts_s = _get_env('moonpts', '0')
+    try:
+        moonpts = float(moonpts_s)
+    except ValueError:
+        moonpts = 0.0
+    title = _get_env('title')
+    additional_flag = _get_env('additional', '').lower()
+    show_standard_stars = additional_flag in {'yes', 'y', 'true', '1'}
+    extra_star: ExtraStar | None = None
+    if show_standard_stars:
+        extra_ra_s = _get_env('extra_ra', '')
+        extra_dec_s = _get_env('extra_dec', '')
+        extra_ra_type = _get_env('extra_ra_type', 'hours').strip().lower()
+        is_extra_ra_hours = not extra_ra_type.startswith('d')
+        if extra_ra_s.strip() and extra_dec_s.strip():
+            try:
+                extra_star = ExtraStar(
+                    name=_get_env('extra_name', ''),
+                    ra_deg=_parse_sexagesimal_to_degrees(
+                        extra_ra_s,
+                        is_ra_hours=is_extra_ra_hours,
+                    ),
+                    dec_deg=_parse_sexagesimal_to_degrees(
+                        extra_dec_s,
+                        is_ra_hours=False,
+                    ),
+                )
+            except ValueError:
+                extra_star = None
     ephem_s = _get_env('ephem', '0')
     ephem_value = ephem_s.split()[0] if ephem_s else '0'
     try:
@@ -1042,6 +1141,7 @@ def viewer_params_from_env() -> ViewerParams | None:
         ephem_display=_get_env('ephem') or None,
         moons_display=_get_env('moons') or None,
         rings_display=_get_env('rings') or None,
+        viewpoint_display=viewpoint_display,
     )
     return ViewerParams(
         planet_num=planet_num,
@@ -1054,6 +1154,16 @@ def viewer_params_from_env() -> ViewerParams | None:
         moon_ids=moon_ids,
         ring_names=ring_names,
         blank_disks=blank_disks,
+        labels=labels,
+        moonpts=moonpts,
+        meridians=meridians,
+        torus=_get_env('torus', '').strip().lower() in {'yes', 'y', 'true', '1'},
+        torus_inc=float(_get_env('torus_inc', '6.8') or '6.8'),
+        torus_rad=float(_get_env('torus_rad', '422000') or '422000'),
+        other_bodies=other_bodies if other_bodies else None,
+        show_standard_stars=show_standard_stars,
+        extra_star=extra_star,
+        title=title,
         display=display,
     )
 

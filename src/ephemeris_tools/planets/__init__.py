@@ -74,6 +74,90 @@ def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
         8: [801, 802],  # Neptune Triton + Nereid
         9: [901],  # Pluto Charon
     }
+    cgi_group_map: dict[int, dict[int, list[int]]] = {
+        # Viewer CGI group codes from the FORTRAN form.
+        4: {402: [401, 402]},
+        5: {
+            504: [501, 502, 503, 504],
+            505: [501, 502, 503, 504, 505],
+            516: [501, 502, 503, 504, 505, 514, 515, 516],
+        },
+        6: {
+            609: [601, 602, 603, 604, 605, 606, 607, 608, 609],
+            618: [
+                601,
+                602,
+                603,
+                604,
+                605,
+                606,
+                607,
+                608,
+                609,
+                610,
+                611,
+                612,
+                613,
+                614,
+                615,
+                616,
+                617,
+                618,
+            ],
+            653: [
+                601,
+                602,
+                603,
+                604,
+                605,
+                606,
+                607,
+                608,
+                609,
+                610,
+                611,
+                612,
+                613,
+                614,
+                615,
+                616,
+                617,
+                618,
+                632,
+                633,
+                634,
+                635,
+                649,
+                653,
+            ],
+        },
+        7: {
+            705: [701, 702, 703, 704, 705],
+            715: [701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715],
+            727: [
+                701,
+                702,
+                703,
+                704,
+                705,
+                706,
+                707,
+                708,
+                709,
+                710,
+                711,
+                712,
+                713,
+                714,
+                715,
+                725,
+                726,
+                727,
+            ],
+        },
+        8: {802: [801, 802], 814: [801, 802, 803, 804, 805, 806, 807, 808, 814]},
+        9: {901: [901], 903: [901, 902, 903], 905: [901, 902, 903, 904, 905]},
+    }
 
     out: list[int] = []
     seen: set[int] = set()
@@ -126,6 +210,11 @@ def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
             pref = _int_prefix(s)
             if pref is not None:
                 num = pref
+                trailing_text = s[len(str(pref)) :].strip() != ''
+                if trailing_text and num in cgi_group_map.get(planet_num, {}):
+                    for moon_id in cgi_group_map[planet_num][num]:
+                        _append_unique(moon_id)
+                    continue
                 if num >= 100:
                     if num in moon_ids:
                         _append_unique(num)

@@ -59,6 +59,9 @@ def ring_opening(et: float) -> RingGeometry:
     axis_z = [0.0, 0.0, 1.0]
     ascnode = cspyce.vcrss(axis_z, pole)
     pole_rot = cspyce.twovec(pole, 3, ascnode, 1)
+    # Match FORTRAN RSPK_RingOpen quirk:
+    # "This fixes a bug in TWOVEC(): rotmat(3,1)=pole(1)".
+    pole_rot[2][0] = pole[0]
     obs_dp = [
         obs_pv[0] - planet_pv[0],
         obs_pv[1] - planet_pv[1],
@@ -111,15 +114,16 @@ def ring_radec(et: float, radius_km: float, lon_rad: float) -> tuple[float, floa
     pole = [bodmat_rot[2][0], bodmat_rot[2][1], bodmat_rot[2][2]]
     if state.planet_num == 7:
         pole = [-pole[0], -pole[1], -pole[2]]
-    axis_z = [0.0, 0.0, 1.0]
-    ascnode = cspyce.vcrss(axis_z, pole)
-    pole_rot = cspyce.twovec(ascnode, 1, pole, 3)
+    # Match FORTRAN RSPK_RingRaDec exactly:
+    # TWOVEC(pole,3,planet_dpv,1) defines J2000->planet frame and MTXV maps
+    # from that planet frame back into J2000.
+    pole_rot = cspyce.twovec(pole, 3, planet_dpv[:3], 1)
     vec_in = [
         -radius_km * math.cos(lon_rad),
         -radius_km * math.sin(lon_rad),
         0.0,
     ]
-    vec_j2000 = cspyce.mxv(pole_rot, vec_in)
+    vec_j2000 = cspyce.mtxv(pole_rot, vec_in)
     ring_dp = [
         planet_dpv[0] + vec_j2000[0],
         planet_dpv[1] + vec_j2000[1],

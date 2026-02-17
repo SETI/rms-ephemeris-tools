@@ -6,7 +6,8 @@ from io import StringIO
 
 import pytest
 
-from ephemeris_tools.rendering.draw_view import draw_planetary_view
+from ephemeris_tools.rendering.draw_view import _rspk_write_label, draw_planetary_view
+from ephemeris_tools.rendering.escher import EscherState
 
 
 def test_draw_planetary_view_produces_diagram_not_stub() -> None:
@@ -57,3 +58,35 @@ def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
     assert '/L {lineto} def' in s or 'lineto' in s
     assert 'stroke' in s or 'S\n' in s
     assert '%%Creator:' in s
+
+
+def test_rspk_write_label_negative_left_has_no_space_after_minus() -> None:
+    """Negative declination labels should be like '-11 20 31.9', not '- 11 ...'."""
+    out = StringIO()
+    state = EscherState()
+    state.outuni = out
+    _rspk_write_label(-11.0 * 3600.0, 'L', state)
+    s = out.getvalue()
+    assert '(-11' in s
+    assert '(- 11' not in s
+
+
+def test_rspk_write_label_bottom_omits_fraction_when_whole_second() -> None:
+    """Bottom-axis labels should omit trailing .000 for whole-second values."""
+    out = StringIO()
+    state = EscherState()
+    state.outuni = out
+    _rspk_write_label(3.0 * 3600.0 + 44.0 * 60.0, 'B', state)
+    s = out.getvalue()
+    assert '(3 44 00) LabelBelow' in s
+    assert '(3 44 00.000) LabelBelow' not in s
+
+
+def test_rspk_write_label_left_keeps_millisecond_precision() -> None:
+    """Left-axis labels keep 3 decimal places like FORTRAN."""
+    out = StringIO()
+    state = EscherState()
+    state.outuni = out
+    _rspk_write_label(-(21 * 3600 + 58 * 60 + 49.001), 'L', state)
+    s = out.getvalue()
+    assert '(-21 58 49.001) LabelLeft' in s

@@ -69,3 +69,9 @@ def test_parse_moons_mixed_tokens_deduplicates() -> None:
     """Mixed tokens return unique IDs in first-seen order."""
     moons = parse_moon_spec(8, ['classical', 'triton', '802', 'nereid'])
     assert moons == [801, 802]
+
+
+def test_parse_moons_accepts_cgi_group_code_with_label_mars() -> None:
+    """Mars CGI group tokens map to both moons, not NAIF-402 only."""
+    moons = parse_moon_spec(4, ['402 Phobos, Deimos (M1-M2)'])
+    assert moons == [401, 402]

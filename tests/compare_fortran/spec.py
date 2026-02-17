@@ -331,10 +331,18 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
                 planet_num = int(p.get('planet', 6))
                 cb = PLANET_NAMES.get(planet_num, 'Saturn')
             pairs.append(('center_body', cb))
+        if 'center_ansa' in p:
+            pairs.append(('center_ansa', str(p['center_ansa'])))
+        if 'center_ew' in p:
+            pairs.append(('center_ew', str(p['center_ew'])))
         if 'center_ra' in p:
             pairs.append(('center_ra', str(p['center_ra'])))
+        if 'center_ra_type' in p:
+            pairs.append(('center_ra_type', str(p['center_ra_type'])))
         if 'center_dec' in p:
             pairs.append(('center_dec', str(p['center_dec'])))
+        if 'center_star' in p:
+            pairs.append(('center_star', str(p['center_star'])))
 
         # Rings: FORTRAN expects form value strings (e.g. "Nine major rings"), not option codes.
         planet_num = int(p.get('planet', 6))
@@ -354,6 +362,12 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
             pairs.append(('rings', rings_str))
         else:
             pairs.append(('rings', VIEWER_DEFAULT_RINGS.get(planet_num, 'None')))
+        if 'torus' in p and p['torus'] is not None:
+            pairs.append(('torus', str(p['torus'])))
+        if 'torus_inc' in p and p['torus_inc'] is not None:
+            pairs.append(('torus_inc', str(p['torus_inc'])))
+        if 'torus_rad' in p and p['torus_rad'] is not None:
+            pairs.append(('torus_rad', str(p['torus_rad'])))
 
         # Required params that crash FORTRAN if missing (sent by CGI form)
         pairs.append(('labels', str(p.get('labels', 'Small (6 points)'))))
@@ -363,6 +377,18 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         pairs.append(('peris', str(p.get('peris', 'None'))))
         pairs.append(('peripts', str(p.get('peripts', '4'))))
         pairs.append(('meridians', str(p.get('meridians', 'No'))))
+        if 'additional' in p:
+            pairs.append(('additional', str(p['additional'])))
+        if 'extra_ra' in p:
+            pairs.append(('extra_ra', str(p['extra_ra'])))
+        if 'extra_ra_type' in p:
+            pairs.append(('extra_ra_type', str(p['extra_ra_type'])))
+        if 'extra_dec' in p:
+            pairs.append(('extra_dec', str(p['extra_dec'])))
+        if 'extra_name' in p:
+            pairs.append(('extra_name', str(p['extra_name'])))
+        for other in p.get('other') or []:
+            pairs.append(('other', str(other)))
 
         if 'title' in p:
             pairs.append(('title', str(p['title'])))
@@ -479,11 +505,54 @@ class RunSpec:
                 args.extend(['--center', str(p['center'])])
             if 'center_body' in p:
                 args.extend(['--center-body', str(p['center_body'])])
+            if 'center_ansa' in p and p['center_ansa']:
+                args.extend(['--center-ansa', str(p['center_ansa'])])
+            if 'center_ew' in p and p['center_ew']:
+                args.extend(['--center-ew', str(p['center_ew'])])
+            if 'center_ra' in p and p['center_ra'] not in (None, ''):
+                args.extend(['--center-ra', str(p['center_ra'])])
+            if 'center_ra_type' in p and p['center_ra_type']:
+                args.extend(['--center-ra-type', str(p['center_ra_type'])])
+            if 'center_dec' in p and p['center_dec'] not in (None, ''):
+                args.extend(['--center-dec', str(p['center_dec'])])
+            if 'center_star' in p and p['center_star']:
+                args.extend(['--center-star', str(p['center_star'])])
             if p.get('rings'):
                 args.append('--rings')
                 args.extend(
                     str(r) for r in (p['rings'] if isinstance(p['rings'], list) else [p['rings']])
                 )
+            if 'torus' in p and p['torus'] is not None:
+                args.extend(['--torus', str(p['torus'])])
+            if 'torus_inc' in p and p['torus_inc'] is not None:
+                args.extend(['--torus-inc', str(p['torus_inc'])])
+            if 'torus_rad' in p and p['torus_rad'] is not None:
+                args.extend(['--torus-rad', str(p['torus_rad'])])
+            if 'additional' in p and p['additional'] is not None:
+                args.extend(['--additional', str(p['additional'])])
+            if 'extra_name' in p and p['extra_name'] is not None:
+                args.extend(['--extra-name', str(p['extra_name'])])
+            if 'extra_ra' in p and p['extra_ra'] is not None:
+                args.extend(['--extra-ra', str(p['extra_ra'])])
+            if 'extra_ra_type' in p and p['extra_ra_type'] is not None:
+                args.extend(['--extra-ra-type', str(p['extra_ra_type'])])
+            if 'extra_dec' in p and p['extra_dec'] is not None:
+                args.extend(['--extra-dec', str(p['extra_dec'])])
+            if 'other' in p and p['other']:
+                args.append('--other')
+                args.extend(str(o) for o in p['other'])
+            if 'labels' in p and p['labels'] is not None:
+                args.extend(['--labels', str(p['labels'])])
+            if 'moonpts' in p and p['moonpts'] is not None:
+                args.extend(['--moonpts', str(p['moonpts'])])
+            if 'blank' in p and p['blank'] is not None:
+                args.extend(['--blank', str(p['blank'])])
+            if 'peris' in p and p['peris'] is not None:
+                args.extend(['--peris', str(p['peris'])])
+            if 'peripts' in p and p['peripts'] is not None:
+                args.extend(['--peripts', str(p['peripts'])])
+            if 'meridians' in p and p['meridians'] is not None:
+                args.extend(['--meridians', str(p['meridians'])])
             if 'title' in p:
                 args.extend(['--title', str(p['title'])])
         if self.tool == 'tracker' and 'rings' in p and p['rings']:

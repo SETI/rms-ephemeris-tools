@@ -17,6 +17,7 @@ rspk_drawview.f exactly:
 from __future__ import annotations
 
 import math
+import struct
 import time as _time
 from typing import TextIO
 
@@ -125,6 +126,16 @@ TWOPI = 2.0 * math.pi
 DPR = 180.0 / math.pi
 
 
+def _fortran_nint(value: float) -> int:
+    """Return FORTRAN-compatible nearest integer (ties away from zero)."""
+    return int(value + 0.5) if value >= 0.0 else int(value - 0.5)
+
+
+def _fortran_data_real(value: float) -> float:
+    """Round-trip through IEEE float32 like FORTRAN DATA real literal parsing."""
+    return struct.unpack('!f', struct.pack('!f', value))[0]
+
+
 # ---------------------------------------------------------------------------
 # Helper functions (ports of FORTRAN internal subroutines)
 # ---------------------------------------------------------------------------
@@ -185,7 +196,13 @@ def _rspk_write_label(
             secs1 += _MAXSECS
     fsign = 1.0 if secs1 >= 0 else -1.0
     fsecs = abs(secs1)
-    ims = round(fsecs * 1000.0)
+    # FORTRAN parity: bottom-axis labels can land exactly on millisecond
+    # half-boundaries due to binary rounding. A tiny positive bias reproduces
+    # FORTRAN's label choice for RA ticks without affecting visible precision.
+    if offset in {'B', 'L'}:
+        ims = _fortran_nint(fsecs * 1000.0 + 1.0e-9)
+    else:
+        ims = _fortran_nint(fsecs * 1000.0)
     isec = ims // 1000
     ims = ims - 1000 * isec
     imin = isec // 60
@@ -193,9 +210,15 @@ def _rspk_write_label(
     ideg = imin // 60
     imin = imin - 60 * ideg
     s = f'{ideg:3d} {imin:02d} {isec:02d}.{ims:03d}'
-    s = s.rstrip('0 ').rstrip('.')
-    if s.startswith('   '):
-        s = s.lstrip()
+    if offset == 'B' and ims == 0:
+        # FORTRAN omits fractional part for whole-second bottom labels.
+        s = f'{ideg:3d} {imin:02d} {isec:02d}'
+    elif offset == 'L' and ims == 0:
+        # FORTRAN also omits fractional part for whole-second left labels.
+        s = f'{ideg:3d} {imin:02d} {isec:02d}'
+    elif offset not in ('B', 'L'):
+        s = s.rstrip('0 ').rstrip('.')
+    s = s.lstrip()
     if fsign < 0:
         s = '-' + s
     esmove(escher_state)
@@ -262,7 +285,7 @@ def _rspk_labels2(
         escher_state: Escher output state.
     """
     dpr = DPR
-    _, ra, dec = _recrad((cmatrix[0][2], cmatrix[1][2], cmatrix[2][2]))
+    _rng, ra, dec = cspyce.recrad((cmatrix[0][2], cmatrix[1][2], cmatrix[2][2]))
     delta_ra = delta / math.cos(dec) if abs(math.cos(dec)) > 1e-12 else delta
     dtick1 = _TICKSIZE1 * delta
     dtick2 = _TICKSIZE2 * delta
@@ -272,32 +295,22 @@ def _rspk_labels2(
     sdelta = delta_ra * spr
     i = _NCHOICES - 1
     while i >= 1:
-        if 2.0 * sdelta >= _MINSTEPS * _STEP1[i]:
+        if 2.0 * sdelta >= _MINSTEPS * _fortran_data_real(_STEP1[i]):
             break
         i -= 1
     nsubs = _SUBSTEPS[i]
-    ds = _STEP1[i] / nsubs
+    ds = _fortran_data_real(_STEP1[i]) / nsubs
     ra_sec = ra * spr
-    k1 = round((ra_sec - sdelta) / ds + 0.5)
-    k2 = round((ra_sec + sdelta) / ds - 0.5)
+    k1 = _fortran_nint((ra_sec - sdelta) / ds + 0.5)
+    k2 = _fortran_nint((ra_sec + sdelta) / ds - 0.5)
     for k in range(k1, k2 + 1):
         s = k * ds
         length = dtick2
         ismajor = (k % nsubs) == 0
         if ismajor:
             length = dtick1
-        j2000_los = _radrec(1.0, s / spr, dec)
-        cam = [
-            cmatrix[0][0] * j2000_los[0]
-            + cmatrix[1][0] * j2000_los[1]
-            + cmatrix[2][0] * j2000_los[2],
-            cmatrix[0][1] * j2000_los[0]
-            + cmatrix[1][1] * j2000_los[1]
-            + cmatrix[2][1] * j2000_los[2],
-            cmatrix[0][2] * j2000_los[0]
-            + cmatrix[1][2] * j2000_los[1]
-            + cmatrix[2][2] * j2000_los[2],
-        ]
+        j2000_los = cspyce.radrec(1.0, s / spr, dec)
+        cam = list(cspyce.mtxv(cmatrix, j2000_los))
         x = -cam[0] / cam[2]
         if abs(x) <= delta:
             eutemp([x], [delta - length], [x], [delta], 1, ltype, view_state, escher_state)
@@ -316,26 +329,16 @@ def _rspk_labels2(
     nsubs = _SUBSTEPS[i]
     ds = _STEP1[i] / nsubs
     dec_sec = dec * spr
-    k1 = round((dec_sec - sdelta) / ds + 0.5)
-    k2 = round((dec_sec + sdelta) / ds - 0.5)
+    k1 = _fortran_nint((dec_sec - sdelta) / ds + 0.5)
+    k2 = _fortran_nint((dec_sec + sdelta) / ds - 0.5)
     for k in range(k1, k2 + 1):
         s = k * ds
         length = dtick2
         ismajor = (k % nsubs) == 0
         if ismajor:
             length = dtick1
-        j2000_los = _radrec(1.0, ra, s / spr)
-        cam = [
-            cmatrix[0][0] * j2000_los[0]
-            + cmatrix[1][0] * j2000_los[1]
-            + cmatrix[2][0] * j2000_los[2],
-            cmatrix[0][1] * j2000_los[0]
-            + cmatrix[1][1] * j2000_los[1]
-            + cmatrix[2][1] * j2000_los[2],
-            cmatrix[0][2] * j2000_los[0]
-            + cmatrix[1][2] * j2000_los[1]
-            + cmatrix[2][2] * j2000_los[2],
-        ]
+        j2000_los = cspyce.radrec(1.0, ra, s / spr)
+        cam = list(cspyce.mtxv(cmatrix, j2000_los))
         y = -cam[1] / cam[2]
         if abs(y) <= delta:
             eutemp([-delta + length], [y], [-delta], [y], 1, ltype, view_state, escher_state)
@@ -406,10 +409,17 @@ def _rspk_draw_bodies(
         if bvis and bname.strip():
             eswrit(f'%Draw {bname.strip()}...', escher_state)
 
-        # Draw body with minimum size line width
         bpts = body_pts[bi] if bi < len(body_pts) else 0.0
-        width = max(0.0, body_diampts - bpts)
-        eslwid(width, escher_state)
+
+        # FORTRAN draws prime and anti-meridian for moons only when:
+        # isvis, prime_pts>0, body_diampts==0, and body_pts > body_diampts*8.
+        if bvis and prime_pts > 0.0 and body_diampts == 0.0 and bpts > body_diampts * 8.0:
+            eslwid(prime_pts, escher_state)
+            eubody(ibody, 1, 0, 1, bl1, bl2, 0, euclid_state, view_state, escher_state)
+            eubody(ibody, 0, 0, 1, 0, 0, 0, euclid_state, view_state, escher_state)
+
+        # Draw body with minimum size line width
+        eslwid(body_diampts - bpts, escher_state)
         eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, view_state, escher_state)
 
     eslwid(0.0, escher_state)
@@ -511,34 +521,15 @@ def camera_matrix(center_ra_rad: float, center_dec_rad: float) -> list[list[floa
     Returns:
         3x3 row-major matrix (list of 3 rows); columns are camera x, y, z axes.
     """
-    cos_d = math.cos(center_dec_rad)
-    sin_d = math.sin(center_dec_rad)
-    cos_r = math.cos(center_ra_rad)
-    sin_r = math.sin(center_ra_rad)
-
-    # col3 = pointing direction
-    col3 = [cos_d * cos_r, cos_d * sin_r, sin_d]
-
-    # col2 = perpendicular projection of J2000 z-axis
-    # temp = [0,0,1] - (dot([0,0,1], col3)) * col3
-    # = [-col3[2]*col3[0], -col3[2]*col3[1], 1-col3[2]^2]
-    temp = [
-        0.0 - col3[0] * col3[2],
-        0.0 - col3[1] * col3[2],
-        1.0 - col3[2] * col3[2],
-    ]
+    # Use SPICE vector primitives directly to match FORTRAN RADREC/VPERP/VHAT/VCRSS.
+    col3 = list(cspyce.radrec(1.0, center_ra_rad, center_dec_rad))
+    temp = list(cspyce.vperp((0.0, 0.0, 1.0), col3))
     n2 = math.sqrt(temp[0] * temp[0] + temp[1] * temp[1] + temp[2] * temp[2])
     if n2 < 1e-12:
         col2 = [1.0, 0.0, 0.0]
     else:
-        col2 = [temp[0] / n2, temp[1] / n2, temp[2] / n2]
-
-    # col1 = col2 x col3
-    col1 = [
-        col2[1] * col3[2] - col2[2] * col3[1],
-        col2[2] * col3[0] - col2[0] * col3[2],
-        col2[0] * col3[1] - col2[1] * col3[0],
-    ]
+        col2 = list(cspyce.vhat(temp))
+    col1 = list(cspyce.vcrss(col2, col3))
 
     # FORTRAN stores as cmatrix(3,3) column-major:
     # cmatrix(:,1) = col1, cmatrix(:,2) = col2, cmatrix(:,3) = col3
@@ -814,7 +805,7 @@ def draw_planetary_view(
     if ncaptions > 0:
         eswrit('gsave unscale', escher_state)
         # FORTRAN: write(tempstr, '(i4)') nint(align_loc) + 72 → 4-char integer
-        align_int = round(align_loc) + 72
+        align_int = _fortran_nint(align_loc) + 72
         eswrit(f'{align_int:4d} 162 translate', escher_state)
         eswrit('0 TextHeight 0.4 mul translate', escher_state)
         for i in range(ncaptions):

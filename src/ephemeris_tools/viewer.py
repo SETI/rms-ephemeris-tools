@@ -36,6 +36,32 @@ _MAX_ARCSEC = 360.0 * 3600.0
 _SEC_PER_DAY = 86400.0
 
 
+def _fortran_nint(value: float) -> int:
+    """Return FORTRAN-compatible nearest integer (ties away from zero)."""
+    return int(value + 0.5) if value >= 0.0 else int(value - 0.5)
+
+
+def _fortran_fixed(value: float, decimals: int) -> str:
+    """Format a float with FORTRAN tie-away rounding and fixed decimals."""
+    scale = 10**decimals
+    rounded = _fortran_nint(value * scale) / scale
+    return f'{rounded:.{decimals}f}'
+
+
+def _label_points_from_selection(labels: str | None) -> float:
+    """Convert CGI label size selection to point size."""
+    if labels is None:
+        return 0.0
+    s = labels.strip().lower()
+    if 'small' in s:
+        return 6.0
+    if 'medium' in s:
+        return 9.0
+    if 'large' in s:
+        return 12.0
+    return 0.0
+
+
 def _propagated_uranus_rings(et: float, cfg: PlanetConfig) -> tuple[list[float], list[float]]:
     """Propagate Uranus ring elements to et (viewer3_*.f ring propagation).
 
@@ -209,10 +235,72 @@ def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[flo
     return offsets
 
 
+def _compute_mars_deimos_ring_node(et: float) -> float | None:
+    """Compute Mars Deimos ring node longitude in radians.
+
+    This mirrors the FORTRAN `viewer3_mar.f` logic used for `ring_nodes(3:4)`,
+    where node longitude is measured relative to the equator ascending node.
+    """
+    import cspyce
+
+    from ephemeris_tools.spice.bodmat import bodmat
+    from ephemeris_tools.spice.common import get_state
+    from ephemeris_tools.spice.observer import observer_state
+
+    state = get_state()
+    if state.planet_num != 4:
+        return None
+
+    obs_pv = observer_state(et)
+    planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
+    planet_time = et - dt
+    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    rotmat = bodmat(state.planet_id, planet_time)
+
+    # FORTRAN uses the third row of BODMAT as equator pole in J2000.
+    eq_pole = [rotmat[2][0], rotmat[2][1], rotmat[2][2]]
+    j2000_pole = [0.0, 0.0, 1.0]
+
+    def _cross(a: list[float], b: list[float]) -> list[float]:
+        return [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        ]
+
+    # Equator ascending node in body frame -> reference longitude.
+    ascnode_eq = _cross(j2000_pole, eq_pole)
+    tempvec = cspyce.mxv(rotmat, ascnode_eq)
+    reflon = math.atan2(tempvec[1], tempvec[0])
+
+    # Orbit-plane ascending node in body frame -> Deimos ring node longitude.
+    orbit_pole = _cross(list(planet_pv[:3]), list(planet_pv[3:6]))
+    ascnode_orbit = _cross(orbit_pole, eq_pole)
+    tempvec = cspyce.mxv(rotmat, ascnode_orbit)
+    nodelon = math.atan2(tempvec[1], tempvec[0])
+
+    return nodelon - reflon
+
+
 # Uranus viewer form option 71 = "Alpha, Beta, Eta, Gamma, Delta, Epsilon" (six major rings).
 _URANUS_OPTION_71_NAMES: frozenset[str] = frozenset(
     {'Alpha', 'Beta', 'Eta', 'Gamma', 'Delta', 'Epsilon'}
 )
+
+_NEPTUNE_RING_NAME_TO_INDEX: dict[str, int] = {
+    'galle': 0,
+    'leverrier': 1,
+    'arago': 2,
+    'adams': 3,
+}
+
+_PLUTO_RING_NAME_TO_INDEX: dict[str, int] = {
+    'charon': 0,
+    'nix': 1,
+    'hydra': 2,
+    'kerberos': 3,
+    'styx': 4,
+}
 
 
 def _resolve_viewer_ring_flags(
@@ -241,6 +329,12 @@ def _resolve_viewer_ring_flags(
     if n == 0:
         return []
     flags = [False] * n
+    if planet_num == 7:
+        # FORTRAN viewer3_ura.f initializes baseline Uranus ring flags before
+        # parsing user-selected ring groups.
+        for i in (3, 4, 5, 6, 7, 9, 10):
+            if i < n:
+                flags[i] = True
 
     # Split tokens into numeric group codes and individual ring names
     codes: list[int] = []
@@ -257,12 +351,16 @@ def _resolve_viewer_ring_flags(
     # Apply numeric group codes (FORTRAN form compatibility)
     for opt in codes:
         if planet_num == 5:
-            # Jupiter: 51=Main (ring 0), 52=Gossamer (rings 1,2)
-            if opt == 51 and n > 0:
-                flags[0] = True
-            elif opt == 52 and n >= 3:
-                flags[1] = True
-                flags[2] = True
+            # Jupiter (viewer3_jup.f):
+            # 51 Main -> ring flags 1,2 ; 52 Gossamer -> ring flags 3,4,5,6.
+            if opt == 51:
+                for i in (0, 1):
+                    if i < n:
+                        flags[i] = True
+            elif opt == 52:
+                for i in (2, 3, 4, 5):
+                    if i < n:
+                        flags[i] = True
         elif planet_num == 6:
             # Saturn: 61=Main (0), 62=G+E (1,2), 63=outer (3,4)
             if opt == 61 and n > 0:
@@ -284,6 +382,63 @@ def _resolve_viewer_ring_flags(
 
     # Apply individual ring names (case-insensitive match against config)
     if names:
+        if planet_num == 7:
+            # Match FORTRAN viewer3_ura.f group semantics exactly.
+            if 'nine major rings' in names:
+                for i in (0, 1, 2):
+                    if i < n:
+                        flags[i] = True
+            if 'all inner rings' in names:
+                for i in (0, 1, 2, 8):
+                    if i < n:
+                        flags[i] = True
+            if 'all rings' in names:
+                for i in (0, 1, 2, 8, 11, 12, 13, 14, 15, 16):
+                    if i < n:
+                        flags[i] = True
+        elif 'all rings' in names:
+            for i in range(n):
+                flags[i] = True
+        if planet_num == 6:
+            # FORTRAN viewer3_sat.f keeps A/B/C rings enabled.
+            if {'a', 'b', 'c'} & names:
+                for i in range(min(5, n)):
+                    flags[i] = True
+            # Saturn optional groups: F (6), G (7/8), E (9), FORTRAN 1-based.
+            if 'f' in names and n > 5:
+                flags[5] = True
+            if 'g' in names:
+                if n > 6:
+                    flags[6] = True
+                if n > 7:
+                    flags[7] = True
+            if 'e' in names and n > 8:
+                flags[8] = True
+        if planet_num == 8:
+            for name, idx in _NEPTUNE_RING_NAME_TO_INDEX.items():
+                if name in names and idx < n:
+                    flags[idx] = True
+        if planet_num == 5:
+            if any('main' in name for name in names):
+                for i in (0, 1):
+                    if i < n:
+                        flags[i] = True
+            if any('gossamer' in name for name in names):
+                for i in (2, 3, 4, 5):
+                    if i < n:
+                        flags[i] = True
+        if planet_num == 9:
+            for name, idx in _PLUTO_RING_NAME_TO_INDEX.items():
+                if name in names and idx < n:
+                    flags[idx] = True
+        if planet_num == 4:
+            # Mars ring selections are moon names mapped to ring-pair indices.
+            if 'phobos' in names and n >= 2:
+                flags[0] = True
+                flags[1] = True
+            if 'deimos' in names and n >= 4:
+                flags[2] = True
+                flags[3] = True
         for i, r in enumerate(rings):
             ring_name = getattr(r, 'name', None)
             if ring_name and ring_name.lower() in names:
@@ -520,15 +675,17 @@ def _write_fov_table(
 
 # FOV unit multipliers (deg) when fov is scale factor. FORTRAN viewer3_*.f fov_unit parsing.
 _FOV_UNIT_MULT_DEG = {
-    'galileo': 8.1e-3,
-    'galileo ssi': 8.1e-3,
-    'cassini': 6.1e-3,
-    'vims 64x64': 32e-3,
-    'vims 12x12': 6e-3,
-    'uvis slit': 59e-3,
+    'galileo': 8.1e-3 * _RAD2DEG,
+    'galileo ssi': 8.1e-3 * _RAD2DEG,
+    'cassini iss wide': 61.2e-3 * _RAD2DEG,
+    'cassini iss narrow': 6.1e-3 * _RAD2DEG,
+    'cassini': 6.1e-3 * _RAD2DEG,
+    'vims 64x64': 32e-3 * _RAD2DEG,
+    'vims 12x12': 6e-3 * _RAD2DEG,
+    'uvis slit': 59e-3 * _RAD2DEG,
     'lorri': 0.2907,
-    'voyager iss narrow': 0.424,
-    'voyager iss wide': 3.2,
+    'voyager iss narrow': 7.292e-3 * _RAD2DEG,
+    'voyager iss wide': 5.463e-2 * _RAD2DEG,
 }
 
 
@@ -552,16 +709,18 @@ def _fov_deg_from_unit(
         return fov
     s = fov_unit.lower()
     if 'radii' in s and et is not None and cfg is not None:
-        from ephemeris_tools.spice.geometry import limb_radius
+        from ephemeris_tools.spice.geometry import planet_ranges
 
-        _limb_km, limb_rad = limb_radius(et)
-        return fov * (limb_rad * _RAD2DEG)
+        _sun_dist_km, obs_dist_km = planet_ranges(et)
+        if obs_dist_km > 0:
+            return fov * math.asin(cfg.equatorial_radius_km / obs_dist_km) * _RAD2DEG
+        return fov
     if ('kilometer' in s or s.strip() == 'km') and et is not None:
         from ephemeris_tools.spice.geometry import planet_ranges
 
         _sun_dist_km, obs_dist_km = planet_ranges(et)
         if obs_dist_km > 0:
-            return 2.0 * math.atan((fov / 2.0) / obs_dist_km) * _RAD2DEG
+            return fov * math.asin(1.0 / obs_dist_km) * _RAD2DEG
         return fov
     if s in ('deg', 'degree', 'degrees'):
         return fov
@@ -579,6 +738,94 @@ def _fov_deg_from_unit(
     return fov
 
 
+def _normalize_body_name(name: str) -> str:
+    """Normalize body-like names for forgiving CGI matching."""
+    return name.split('(')[0].strip().lower()
+
+
+def _resolve_center_body_id(cfg: PlanetConfig, center_body_name: str | None) -> int:
+    """Resolve center body name to NAIF ID, defaulting to the planet."""
+    if center_body_name is None or center_body_name.strip() == '':
+        return cfg.planet_id
+    wanted = _normalize_body_name(center_body_name)
+    if wanted == _normalize_body_name(cfg.planet_name):
+        return cfg.planet_id
+    for moon in cfg.moons:
+        if moon.id == cfg.planet_id:
+            continue
+        if _normalize_body_name(moon.name) == wanted:
+            return moon.id
+    return cfg.planet_id
+
+
+def _resolve_center_ansa_radius_km(cfg: PlanetConfig, center_ansa_name: str | None) -> float | None:
+    """Resolve center ring ansa name to a representative ring radius."""
+    if center_ansa_name is None or center_ansa_name.strip() == '':
+        return None
+    target = center_ansa_name.lower().replace(' ring', '').strip()
+    # Jupiter viewer rings are named in FORTRAN but unnamed in Python config.
+    if cfg.planet_num == 5:
+        jupiter_radius_map = {
+            'halo': 122000.0,
+            'main': 129000.0,
+            'amalthea': 181350.0,
+            'thebe': 221900.0,
+        }
+        if target in jupiter_radius_map:
+            return jupiter_radius_map[target]
+    # Neptune viewer rings are indexed by name in FORTRAN, but the Python ring
+    # specs are unnamed; map canonical names to the FORTRAN ring index.
+    if cfg.planet_num == 8:
+        neptune_index = {
+            'galle': 0,
+            'leverrier': 1,
+            'arago': 2,
+            'adams': 3,
+        }.get(target)
+        if neptune_index is not None and neptune_index < len(cfg.rings):
+            return cfg.rings[neptune_index].outer_km
+    if cfg.planet_num == 4:
+        mars_radius_map = {
+            'phobos': 9378.0,
+            'deimos': 23459.0,
+        }
+        if target in mars_radius_map:
+            return mars_radius_map[target]
+    # FORTRAN viewer3_ura.f uses a custom mapping for Uranus center ansa:
+    # Epsilon -> average of rings 10 and 11, Nu -> ring 13, Mu -> ring 16.
+    if cfg.planet_num == 7:
+        if target == 'epsilon' and len(cfg.rings) >= 11:
+            return 0.5 * (cfg.rings[9].outer_km + cfg.rings[10].outer_km)
+        if target == 'nu' and len(cfg.rings) >= 13:
+            return cfg.rings[12].outer_km
+        if target == 'mu' and len(cfg.rings) >= 16:
+            return cfg.rings[15].outer_km
+    matched_radii: list[float] = []
+    for ring in cfg.rings:
+        ring_name = getattr(ring, 'name', '')
+        if not ring_name:
+            continue
+        if ring_name.lower().replace(' ring', '').strip() == target:
+            matched_radii.append(ring.outer_km)
+    if len(matched_radii) == 0:
+        return None
+    # Prefer the outermost matching component for multi-part ring names.
+    return max(matched_radii)
+
+
+def _strip_leading_option_code(text: str) -> str:
+    """Strip leading numeric CGI option code from a selection label."""
+    s = text.strip()
+    idx = 0
+    while idx < len(s) and s[idx].isdigit():
+        idx += 1
+    if idx == 0:
+        return s
+    while idx < len(s) and s[idx].isspace():
+        idx += 1
+    return s[idx:] if idx < len(s) else s
+
+
 def _viewer_call_kwargs_from_params(params: ViewerParams) -> dict[str, object]:
     """Convert a ``ViewerParams`` object to legacy ``run_viewer`` keyword args."""
     center_ra = (
@@ -589,27 +836,59 @@ def _viewer_call_kwargs_from_params(params: ViewerParams) -> dict[str, object]:
     center_dec = (
         params.center.dec_deg if params.center.mode == 'J2000' and params.center.dec_deg else 0.0
     )
-    viewpoint = params.observer.name if params.observer.name is not None else 'Earth'
+    if params.observer.name is not None and params.observer.name.strip() != '':
+        viewpoint = params.observer.name
+    elif params.observer.latitude_deg is not None and params.observer.longitude_deg is not None:
+        viewpoint = 'latlon'
+    else:
+        viewpoint = 'Earth'
     ring_display = None
     if params.display is not None and params.display.rings_display:
         ring_display = params.display.rings_display
     elif params.ring_names:
         ring_display = ', '.join(params.ring_names)
+    moon_display = None
+    if params.display is not None and params.display.moons_display:
+        moon_display = params.display.moons_display
+    viewpoint_display = None
+    if params.display is not None and params.display.viewpoint_display:
+        viewpoint_display = params.display.viewpoint_display
     return {
         'planet_num': params.planet_num,
         'time_str': params.time_str,
         'fov': params.fov_value,
+        'center_mode': params.center.mode,
         'center_ra': center_ra,
         'center_dec': center_dec,
+        'center_body_name': params.center.body_name,
+        'center_ansa_name': params.center.ansa_name,
+        'center_ansa_ew': params.center.ansa_ew,
         'viewpoint': viewpoint,
         'ephem_version': params.ephem_version,
         'moon_ids': params.moon_ids,
+        'moon_selection_display': moon_display,
         'blank_disks': params.blank_disks,
         'ring_selection': params.ring_names,
         'ring_selection_display': ring_display,
         'output_ps': params.output_ps,
         'output_txt': params.output_txt,
         'fov_unit': params.fov_unit,
+        'observer_latitude': params.observer.latitude_deg,
+        'observer_longitude': params.observer.longitude_deg,
+        'observer_altitude': params.observer.altitude_m,
+        'observer_lon_dir': params.observer.lon_dir,
+        'viewpoint_display': viewpoint_display,
+        'labels': params.labels,
+        'moon_points': params.moonpts,
+        'meridian_points': 1.3 if params.meridians else 0.0,
+        'torus': params.torus,
+        'torus_inc': params.torus_inc,
+        'torus_rad': params.torus_rad,
+        'extra_star_name': params.extra_star.name if params.extra_star is not None else None,
+        'extra_star_ra_deg': params.extra_star.ra_deg if params.extra_star is not None else None,
+        'extra_star_dec_deg': params.extra_star.dec_deg if params.extra_star is not None else None,
+        'other_bodies': params.other_bodies,
+        'title': params.title,
     }
 
 
@@ -617,17 +896,38 @@ def run_viewer(
     planet_num: int | ViewerParams,
     time_str: str = '',
     fov: float = 1.0,
+    center_mode: str = 'J2000',
     center_ra: float = 0.0,
     center_dec: float = 0.0,
+    center_body_name: str | None = None,
+    center_ansa_name: str | None = None,
+    center_ansa_ew: str = 'east',
     viewpoint: str = 'Earth',
     ephem_version: int = 0,
     moon_ids: list[int] | None = None,
+    moon_selection_display: str | None = None,
     blank_disks: bool = False,
     ring_selection: list[str] | None = None,
     ring_selection_display: str | None = None,
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
     fov_unit: str | None = None,
+    observer_latitude: float | None = None,
+    observer_longitude: float | None = None,
+    observer_altitude: float | None = None,
+    observer_lon_dir: str = 'east',
+    viewpoint_display: str | None = None,
+    labels: str | None = None,
+    moon_points: float = 0.0,
+    meridian_points: float = 0.0,
+    torus: bool = False,
+    torus_inc: float = 6.8,
+    torus_rad: float = 422000.0,
+    extra_star_name: str | None = None,
+    extra_star_ra_deg: float | None = None,
+    extra_star_dec_deg: float | None = None,
+    other_bodies: list[str] | None = None,
+    title: str = '',
 ) -> None:
     """Generate planet viewer PostScript diagram and FOV table (port of viewer3_*.f).
 
@@ -664,39 +964,87 @@ def run_viewer(
             planet_num=kwargs['planet_num'],  # type: ignore[arg-type]
             time_str=kwargs['time_str'],  # type: ignore[arg-type]
             fov=kwargs['fov'],  # type: ignore[arg-type]
+            center_mode=kwargs['center_mode'],  # type: ignore[arg-type]
             center_ra=kwargs['center_ra'],  # type: ignore[arg-type]
             center_dec=kwargs['center_dec'],  # type: ignore[arg-type]
+            center_body_name=kwargs['center_body_name'],  # type: ignore[arg-type]
+            center_ansa_name=kwargs['center_ansa_name'],  # type: ignore[arg-type]
+            center_ansa_ew=kwargs['center_ansa_ew'],  # type: ignore[arg-type]
             viewpoint=kwargs['viewpoint'],  # type: ignore[arg-type]
             ephem_version=kwargs['ephem_version'],  # type: ignore[arg-type]
             moon_ids=kwargs['moon_ids'],  # type: ignore[arg-type]
+            moon_selection_display=kwargs['moon_selection_display'],  # type: ignore[arg-type]
             blank_disks=kwargs['blank_disks'],  # type: ignore[arg-type]
             ring_selection=kwargs['ring_selection'],  # type: ignore[arg-type]
             ring_selection_display=kwargs['ring_selection_display'],  # type: ignore[arg-type]
             output_ps=kwargs['output_ps'],  # type: ignore[arg-type]
             output_txt=kwargs['output_txt'],  # type: ignore[arg-type]
             fov_unit=kwargs['fov_unit'],  # type: ignore[arg-type]
+            observer_latitude=kwargs['observer_latitude'],  # type: ignore[arg-type]
+            observer_longitude=kwargs['observer_longitude'],  # type: ignore[arg-type]
+            observer_altitude=kwargs['observer_altitude'],  # type: ignore[arg-type]
+            observer_lon_dir=kwargs['observer_lon_dir'],  # type: ignore[arg-type]
+            viewpoint_display=kwargs['viewpoint_display'],  # type: ignore[arg-type]
+            labels=kwargs['labels'],  # type: ignore[arg-type]
+            moon_points=kwargs['moon_points'],  # type: ignore[arg-type]
+            meridian_points=kwargs['meridian_points'],  # type: ignore[arg-type]
+            torus=kwargs['torus'],  # type: ignore[arg-type]
+            torus_inc=kwargs['torus_inc'],  # type: ignore[arg-type]
+            torus_rad=kwargs['torus_rad'],  # type: ignore[arg-type]
+            extra_star_name=kwargs['extra_star_name'],  # type: ignore[arg-type]
+            extra_star_ra_deg=kwargs['extra_star_ra_deg'],  # type: ignore[arg-type]
+            extra_star_dec_deg=kwargs['extra_star_dec_deg'],  # type: ignore[arg-type]
+            other_bodies=kwargs['other_bodies'],  # type: ignore[arg-type]
+            title=kwargs['title'],  # type: ignore[arg-type]
         )
         return
 
     cfg = get_planet_config(planet_num)
     if cfg is None:
         raise ValueError(f'Unknown planet number: {planet_num}')
-    from ephemeris_tools.constants import EARTH_ID
-    from ephemeris_tools.spice.geometry import body_radec, limb_radius
+    from ephemeris_tools.constants import EARTH_ID, SUN_ID
+    from ephemeris_tools.spice.geometry import anti_sun, body_radec, limb_radius
     from ephemeris_tools.spice.load import load_spice_files
-    from ephemeris_tools.spice.observer import set_observer_id
+    from ephemeris_tools.spice.observer import observer_state, set_observer_id, set_observer_location
     from ephemeris_tools.time_utils import parse_datetime, tai_from_day_sec, tdb_from_tai
 
     ok, reason = load_spice_files(planet_num, ephem_version)
     if not ok:
         raise RuntimeError(f'Failed to load SPICE kernels: {reason}')
-    set_observer_id(EARTH_ID)
+    if observer_latitude is not None and observer_longitude is not None:
+        set_observer_location(
+            observer_latitude,
+            observer_longitude,
+            observer_altitude if observer_altitude is not None else 0.0,
+        )
+    else:
+        from ephemeris_tools.constants import spacecraft_code_to_id, spacecraft_name_to_code
+        from ephemeris_tools.spice.load import load_spacecraft
+
+        code = spacecraft_name_to_code(viewpoint)
+        if code is not None:
+            sc_id = spacecraft_code_to_id(code)
+            if sc_id:
+                try:
+                    load_spacecraft(sc_id, planet_num, ephem_version, set_obs=True)
+                except Exception:
+                    # FORTRAN viewer keeps running for named observatories even when
+                    # no trajectory kernels exist for that name at the target epoch.
+                    set_observer_id(EARTH_ID)
+            else:
+                set_observer_id(EARTH_ID)
+        else:
+            set_observer_id(EARTH_ID)
 
     parsed = parse_datetime(time_str)
     if parsed is None:
         raise ValueError(f'Invalid time: {time_str!r}')
     day, sec = parsed
     et = tdb_from_tai(tai_from_day_sec(day, sec))
+    try:
+        observer_state(et)
+    except Exception:
+        set_observer_id(EARTH_ID)
 
     fov_deg = _fov_deg_from_unit(fov, fov_unit, et=et, cfg=cfg)
     fov_rad = fov_deg * _DEG2RAD
@@ -705,7 +1053,33 @@ def run_viewer(
 
     _, _limb_rad_rad = limb_radius(et)
     planet_ra, planet_dec = body_radec(et, cfg.planet_id)
-    if center_ra == 0.0 and center_dec == 0.0:
+    caption_center_body_id = cfg.planet_id
+    caption_center_body_name = cfg.planet_name
+    if center_mode == 'J2000' and (center_ra != 0.0 or center_dec != 0.0):
+        center_ra_rad = center_ra * _DEG2RAD
+        center_dec_rad = center_dec * _DEG2RAD
+    elif center_mode == 'body':
+        center_body_id = _resolve_center_body_id(cfg, center_body_name)
+        center_ra_rad, center_dec_rad = body_radec(et, center_body_id)
+        caption_center_body_id = center_body_id
+        if center_body_id != cfg.planet_id:
+            for moon in cfg.moons:
+                if moon.id == center_body_id:
+                    caption_center_body_name = moon.name
+                    break
+    elif center_mode == 'ansa':
+        from ephemeris_tools.spice.rings import ansa_radec
+
+        ring_radius_km = _resolve_center_ansa_radius_km(cfg, center_ansa_name)
+        if ring_radius_km is None:
+            center_ra_rad = planet_ra
+            center_dec_rad = planet_dec
+        else:
+            # Match FORTRAN viewer3_*.f semantics:
+            # center_ew='west' -> right ansa, 'east' -> left ansa.
+            is_right_ansa = center_ansa_ew.strip().lower() == 'west'
+            center_ra_rad, center_dec_rad = ansa_radec(et, ring_radius_km, is_right_ansa)
+    elif center_ra == 0.0 and center_dec == 0.0:
         center_ra_rad = planet_ra
         center_dec_rad = planet_dec
     else:
@@ -742,8 +1116,8 @@ def run_viewer(
         name = id_to_name.get(mid, str(mid))
         bodies.append((mx, my, name.upper(), False))
 
-    # FORTRAN: title from CGI 'title' key; when absent, keep blank so caption order matches.
-    title = ''
+    # Use CGI/CLI title directly; blank title remains blank.
+    title = title or ''
 
     if not blank_disks:
         from ephemeris_tools.rendering.planet_grid import compute_planet_grid
@@ -778,19 +1152,31 @@ def run_viewer(
 
         # Caption 3: Viewpoint
         lc.append('Viewpoint:')
-        viewpoint_display = (
+        viewpoint_text = (
             "Earth's center"
             if 'earth' in viewpoint.lower() or viewpoint == 'observatory'
             else viewpoint
         )
-        # FORTRAN appends ' (sc_trajectory(5:))' if sc_trajectory key found
-        # For default case with sc_trajectory=0, CGI value "0" → (5:) is blank
-        # So output is "Earth's center ()" for typical case
-        rc.append(viewpoint_display + ' ()')
+        if viewpoint_display:
+            viewpoint_text = viewpoint_display
+        elif (
+            viewpoint == 'latlon'
+            and observer_latitude is not None
+            and observer_longitude is not None
+            and observer_altitude is not None
+        ):
+            lon_dir = observer_lon_dir.lower()
+            viewpoint_text = (
+                f'({observer_latitude:.7f}, {observer_longitude:.7f} {lon_dir},'
+                f' {observer_altitude:g})'
+            )
+        rc.append(viewpoint_text)
 
-        # Caption 4: Moon selection — FORTRAN uses moons CGI value(5:); we show list
+        # Caption 4: Moon selection — prefer raw CGI display text when available.
         lc.append('Moon selection:')
-        if track_moon_ids:
+        if moon_selection_display:
+            rc.append(_strip_leading_option_code(moon_selection_display))
+        elif track_moon_ids:
             rc.append(', '.join(id_to_name.get(mid, str(mid)) for mid in track_moon_ids))
         else:
             rc.append('')
@@ -800,19 +1186,20 @@ def run_viewer(
         rc.append(ring_selection_display if ring_selection_display else '')
 
         # Caption 6: Center body (lon,lat)
-        center_body_id = cfg.planet_id  # Default center is planet
-        subobs_lon, subobs_lat, _sslon, _sslat = body_lonlat(et, center_body_id)
+        subobs_lon, subobs_lat, _sslon, _sslat = body_lonlat(et, caption_center_body_id)
         lon_dir = cfg.longitude_direction if hasattr(cfg, 'longitude_direction') else 'W'
         lon_deg = subobs_lon * _RAD2DEG
         lat_deg = subobs_lat * _RAD2DEG
-        lc.append(f'{cfg.planet_name} center (lon,lat):')
+        lc.append(f'{caption_center_body_name} center (lon,lat):')
         # FORTRAN format: ('(',f7.3,'\260 ',a1,',',f7.3,'\260)')
-        rc.append(f'({lon_deg:7.3f}\\260 {lon_dir},{lat_deg:7.3f}\\260)')
+        lon_text = _fortran_fixed(lon_deg, 3)
+        lat_text = _fortran_fixed(lat_deg, 3)
+        rc.append(f'({lon_text:>7s}\\260 {lon_dir},{lat_text:>7s}\\260)')
 
         # Caption 7: Phase angle
-        phase_rad = body_phase(et, center_body_id)
+        phase_rad = body_phase(et, caption_center_body_id)
         phase_deg = phase_rad * _RAD2DEG
-        lc.append(f'{cfg.planet_name} phase angle: ')
+        lc.append(f'{caption_center_body_name} phase angle: ')
         # FORTRAN format: (f7.3,'\260') → e.g. '  2.920\260'
         rc.append(f'{phase_deg:7.3f}\\260')
 
@@ -850,6 +1237,7 @@ def run_viewer(
 
         if hasattr(cfg, 'rings') and cfg.rings:
             ring_offset_list = _compute_ring_center_offsets(et, cfg)
+            mars_deimos_node = _compute_mars_deimos_ring_node(et) if planet_num == 4 else None
             resolved_flags: list[bool] | None = None
             if ring_selection:
                 resolved_flags = _resolve_viewer_ring_flags(planet_num, ring_selection, cfg.rings)
@@ -864,12 +1252,69 @@ def run_viewer(
                 f_ring_eccs.append(getattr(r, 'ecc', 0.0))
                 f_ring_incs.append(getattr(r, 'inc_rad', 0.0))
                 f_ring_peris.append(getattr(r, 'peri_rad', 0.0))
-                f_ring_nodes.append(getattr(r, 'node_rad', 0.0))
+                if planet_num == 4 and i in (2, 3) and mars_deimos_node is not None:
+                    f_ring_nodes.append(mars_deimos_node)
+                else:
+                    f_ring_nodes.append(getattr(r, 'node_rad', 0.0))
                 f_ring_offsets.append(
                     list(ring_offset_list[i]) if i < len(ring_offset_list) else [0.0, 0.0, 0.0]
                 )
                 f_ring_opaqs.append(getattr(r, 'opaque', False))
                 f_ring_dashed.append(getattr(r, 'dashed', False))
+            if planet_num == 5 and torus and len(f_ring_flags) >= 7:
+                torus_idx = 6  # FORTRAN ring #7
+                f_ring_flags[torus_idx] = True
+                f_ring_rads[torus_idx] = torus_rad
+                f_ring_incs[torus_idx] = torus_inc * _DEG2RAD
+                torus_node_rad = _compute_jupiter_torus_node(et)
+                if torus_node_rad is not None:
+                    f_ring_nodes[torus_idx] = torus_node_rad
+
+        star_ras: list[float] = []
+        star_decs: list[float] = []
+        star_names: list[str] = []
+        if extra_star_ra_deg is not None and extra_star_dec_deg is not None:
+            star_ras.append(extra_star_ra_deg * _DEG2RAD)
+            star_decs.append(extra_star_dec_deg * _DEG2RAD)
+            star_names.append(extra_star_name or '')
+        for other_name in other_bodies or []:
+            token = other_name.strip()
+            if token == '':
+                continue
+            low = token.lower()
+            try:
+                if low == 'sun':
+                    ra, dec = body_radec(et, SUN_ID)
+                elif low in {'anti-sun', 'antisun'}:
+                    ra, dec = anti_sun(et, cfg.planet_id)
+                elif low == 'earth':
+                    ra, dec = body_radec(et, EARTH_ID)
+                elif low == 'barycenter' and cfg.barycenter_id is not None:
+                    ra, dec = body_radec(et, cfg.barycenter_id)
+                else:
+                    import cspyce
+
+                    from ephemeris_tools.constants import spacecraft_code_to_id, spacecraft_name_to_code
+                    from ephemeris_tools.spice.load import load_spacecraft
+
+                    known_spacecraft_id = spacecraft_name_to_code(token)
+                    if known_spacecraft_id is not None:
+                        body_id = known_spacecraft_id
+                    else:
+                        body_id = cspyce.bodn2c(token)
+                    if body_id < 0:
+                        try:
+                            sc_abbrev = spacecraft_code_to_id(body_id)
+                            if sc_abbrev:
+                                load_spacecraft(sc_abbrev, planet_num, ephem_version, set_obs=False)
+                        except Exception:
+                            pass
+                    ra, dec = body_radec(et, body_id)
+            except Exception:
+                continue
+            star_ras.append(ra)
+            star_decs.append(dec)
+            star_names.append(token)
 
         draw_planetary_view(
             output_ps,
@@ -879,13 +1324,13 @@ def run_viewer(
             center_dec=center_dec_rad,
             planet_name=cfg.planet_name,
             blank_disks=blank_disks,
-            prime_pts=0.0,
+            prime_pts=meridian_points,
             nmoons=f_nmoons,
             moon_flags=f_moon_flags,
             moon_ids=f_moon_ids,
             moon_names=f_moon_names,
-            moon_labelpts=6.0,
-            moon_diampts=3.0,
+            moon_labelpts=_label_points_from_selection(labels),
+            moon_diampts=moon_points,
             nrings=f_nrings,
             ring_flags=f_ring_flags,
             ring_rads=f_ring_rads,
@@ -898,6 +1343,11 @@ def run_viewer(
             ring_opaqs=f_ring_opaqs,
             ring_dashed=f_ring_dashed,
             ring_method=0,
+            nstars=len(star_ras),
+            star_ras=star_ras,
+            star_decs=star_decs,
+            star_names=star_names,
+            star_labels=_label_points_from_selection(labels) > 0.0,
             title=title,
             ncaptions=ncaptions,
             lcaptions=lc,

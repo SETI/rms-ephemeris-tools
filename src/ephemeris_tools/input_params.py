@@ -346,7 +346,11 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     _w(stream, f'      Arc weight: {arcpts or " "} (points)')
 
     # Prime meridians
-    meridians = (getattr(args, 'meridians', None) or 'Yes').strip()
+    meridians_raw = getattr(args, 'meridians', None)
+    if isinstance(meridians_raw, bool):
+        meridians = 'Yes' if meridians_raw else 'No'
+    else:
+        meridians = (meridians_raw or 'Yes').strip()
     _w(stream, f' Prime meridians: {meridians}')
 
     _w(stream, ' ')

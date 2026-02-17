@@ -10,6 +10,7 @@ import sys
 from typing import NoReturn, TextIO, cast
 
 from ephemeris_tools.params import (
+    ExtraStar,
     EphemerisParams,
     Observer,
     TrackerParams,
@@ -18,6 +19,7 @@ from ephemeris_tools.params import (
     parse_center,
     parse_fov,
     parse_observer,
+    _parse_sexagesimal_to_degrees,
     parse_planet,
     parse_viewer_rings,
     tracker_params_from_env,
@@ -430,6 +432,13 @@ def main() -> int:
     view_parser.add_argument(
         '--rings', type=str, nargs='*', default=None, help='Ring option codes or names; env: rings'
     )
+    view_parser.add_argument('--torus', type=str, default=None, help='Show Io torus; env: torus')
+    view_parser.add_argument(
+        '--torus-inc', type=float, default=6.8, help='Io torus inclination (deg); env: torus_inc'
+    )
+    view_parser.add_argument(
+        '--torus-rad', type=float, default=422000.0, help='Io torus radius (km); env: torus_rad'
+    )
     view_parser.add_argument(
         '--ephem-display',
         type=str,
@@ -640,6 +649,19 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             fov_value, fov_unit = (1.0, 'degrees')
         if getattr(args, 'observer', None):
             observer = parse_observer(args.observer)
+        elif (getattr(args, 'viewpoint', '') or '').strip().lower() == 'latlon':
+            lon_dir = (getattr(args, 'lon_dir', 'east') or 'east').strip().lower()
+            lat = getattr(args, 'latitude', None)
+            lon = getattr(args, 'longitude', None)
+            alt = getattr(args, 'altitude', None)
+            if lon is not None and lon_dir == 'west':
+                lon = -lon
+            observer = Observer(
+                latitude_deg=lat,
+                longitude_deg=lon,
+                lon_dir=lon_dir,
+                altitude_m=alt,
+            )
         else:
             observer_name = (args.observatory or "Earth's Center").strip() or "Earth's Center"
             observer = parse_observer([observer_name])
@@ -671,8 +693,40 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
         if getattr(args, 'moons', None):
             moon_ids = parse_moon_spec(args.planet, [str(x) for x in args.moons])
         rings_raw = [str(r) for r in (getattr(args, 'rings', None) or [])]
-        ring_names = parse_viewer_rings(args.planet, rings_raw) if rings_raw else None
+        ring_names: list[str] | None = None
+        if rings_raw:
+            ring_names = []
+            for token in rings_raw:
+                for comma_part in token.split(','):
+                    for amp_part in comma_part.split('&'):
+                        part = amp_part.strip()
+                        if part:
+                            ring_names.append(part)
         blank = (getattr(args, 'blank', None) or '').strip().lower()
+        meridians = (getattr(args, 'meridians', None) or '').strip().lower()
+        torus = (getattr(args, 'torus', None) or '').strip().lower()
+        labels = (getattr(args, 'labels', None) or 'Small (6 points)').strip()
+        moonpts_raw = (getattr(args, 'moonpts', None) or '0').strip()
+        try:
+            moonpts = float(moonpts_raw)
+        except ValueError:
+            moonpts = 0.0
+        additional = (getattr(args, 'additional', None) or '').strip().lower()
+        show_standard_stars = additional in {'yes', 'y', 'true', '1'}
+        extra_star: ExtraStar | None = None
+        extra_ra = (getattr(args, 'extra_ra', None) or '').strip()
+        extra_dec = (getattr(args, 'extra_dec', None) or '').strip()
+        if show_standard_stars and extra_ra and extra_dec:
+            ra_type = (getattr(args, 'extra_ra_type', None) or 'hours').strip().lower()
+            is_hours = not ra_type.startswith('d')
+            try:
+                extra_star = ExtraStar(
+                    name=(getattr(args, 'extra_name', None) or '').strip(),
+                    ra_deg=_parse_sexagesimal_to_degrees(extra_ra, is_ra_hours=is_hours),
+                    dec_deg=_parse_sexagesimal_to_degrees(extra_dec, is_ra_hours=False),
+                )
+            except ValueError:
+                extra_star = None
         viewer_params = ViewerParams(
             planet_num=args.planet,
             time_str=args.time or '2025-01-01 12:00',
@@ -684,6 +738,15 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             moon_ids=moon_ids,
             ring_names=ring_names,
             blank_disks=blank in ('yes', 'y', 'true', '1'),
+            labels=labels,
+            moonpts=moonpts,
+            meridians=meridians in ('yes', 'y', 'true', '1'),
+            torus=torus in ('yes', 'y', 'true', '1'),
+            torus_inc=float(getattr(args, 'torus_inc', 6.8)),
+            torus_rad=float(getattr(args, 'torus_rad', 422000.0)),
+            show_standard_stars=show_standard_stars,
+            extra_star=extra_star,
+            other_bodies=[str(o) for o in (getattr(args, 'other', None) or [])] or None,
             title=(getattr(args, 'title', None) or '').strip(),
             output_ps=out,
             output_txt=out_txt,

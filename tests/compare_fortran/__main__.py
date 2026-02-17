@@ -27,6 +27,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ephemeris_tools.params import (
+    _parse_sexagesimal_to_degrees,
     parse_column_spec,
     parse_mooncol_spec,
     parse_planet,
@@ -59,6 +60,17 @@ _ABBREV_TO_PLANET: dict[str, int] = {
     'nep': 8,
     'plu': 9,
 }
+
+
+def _parse_center_angle(value: str, *, is_ra_hours: bool) -> float | str:
+    """Parse viewer center angle, allowing sexagesimal URL values."""
+    s = value.strip()
+    if s == '':
+        return ''
+    try:
+        return float(s)
+    except ValueError:
+        return _parse_sexagesimal_to_degrees(s, is_ra_hours=is_ra_hours)
 
 
 def _tool_from_query_url(url_or_query: str) -> str:
@@ -140,7 +152,31 @@ def spec_from_query_input(url_or_query: str) -> RunSpec:
         params['fov_unit'] = qs.get('fov_unit', ['degrees'])[0]
         params['center'] = qs.get('center', ['body'])[0]
         params['center_body'] = qs.get('center_body', [''])[0]
+        params['center_ansa'] = qs.get('center_ansa', [''])[0]
+        params['center_ew'] = qs.get('center_ew', ['east'])[0]
+        center_ra_raw = qs.get('center_ra', [''])[0]
+        params['center_ra_type'] = qs.get('center_ra_type', ['hours'])[0]
+        is_ra_hours = not params['center_ra_type'].strip().lower().startswith('d')
+        params['center_ra'] = _parse_center_angle(center_ra_raw, is_ra_hours=is_ra_hours)
+        center_dec_raw = qs.get('center_dec', [''])[0]
+        params['center_dec'] = _parse_center_angle(center_dec_raw, is_ra_hours=False)
+        params['center_star'] = qs.get('center_star', [''])[0]
         params['rings'] = qs.get('rings', [None])[0]
+        params['torus'] = qs.get('torus', ['No'])[0]
+        params['torus_inc'] = qs.get('torus_inc', ['6.8'])[0]
+        params['torus_rad'] = qs.get('torus_rad', ['422000'])[0]
+        params['labels'] = qs.get('labels', ['Small (6 points)'])[0]
+        params['moonpts'] = qs.get('moonpts', ['0'])[0]
+        params['blank'] = qs.get('blank', ['No'])[0]
+        params['peris'] = qs.get('peris', ['None'])[0]
+        params['peripts'] = qs.get('peripts', ['4'])[0]
+        params['meridians'] = qs.get('meridians', ['No'])[0]
+        params['additional'] = qs.get('additional', ['No'])[0]
+        params['extra_name'] = qs.get('extra_name', [''])[0]
+        params['extra_ra'] = qs.get('extra_ra', [''])[0]
+        params['extra_ra_type'] = qs.get('extra_ra_type', ['hours'])[0]
+        params['extra_dec'] = qs.get('extra_dec', [''])[0]
+        params['other'] = qs.get('other', [])
         params['title'] = qs.get('title', [''])[0]
 
     params['viewpoint'] = qs.get('viewpoint', ['observatory'])[0]

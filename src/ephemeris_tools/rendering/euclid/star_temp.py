@@ -8,6 +8,7 @@ from ephemeris_tools.rendering.escher import (
     esdraw,
     esdump,
 )
+from ephemeris_tools.rendering.escher.ps_output import espl07
 from ephemeris_tools.rendering.euclid.state import EuclidState
 from ephemeris_tools.rendering.euclid.vec_math import _mtxv
 
@@ -46,15 +47,23 @@ def eustar(
     star = _mtxv(cam, list(strpos))
     if star[2] <= 0:
         return
+    center_proj_x = -star[0] / star[2]
+    center_proj_y = -star[1] / star[2]
+    if abs(view_state._ux) < 1.0e-12 or abs(view_state._uy) < 1.0e-12:
+        return
+    left, right, bottom, top = espl07()
+    hspan = abs(view_state.view[1] - view_state.view[0])
+    vspan = abs(view_state.view[3] - view_state.view[2])
+    dx_proj_scale = fntscl * hspan * abs(right - left) / abs(view_state._ux)
+    dy_proj_scale = fntscl * vspan * abs(top - bottom) / abs(view_state._uy)
     for i in range(min(fntsiz, len(font))):
         (fx1, fy1), (fx2, fy2) = font[i]
-        scale = fntscl * star[2]
-        x1 = fx1 * scale
-        y1 = fy1 * scale
-        x2 = fx2 * scale
-        y2 = fy2 * scale
-        beg = (-x1 * star[2], -y1 * star[2], star[2])
-        end = (-x2 * star[2], -y2 * star[2], star[2])
+        proj_x1 = center_proj_x + (fx1 * dx_proj_scale)
+        proj_y1 = center_proj_y + (fy1 * dy_proj_scale)
+        proj_x2 = center_proj_x + (fx2 * dx_proj_scale)
+        proj_y2 = center_proj_y + (fy2 * dy_proj_scale)
+        beg = (-proj_x1 * star[2], -proj_y1 * star[2], star[2])
+        end = (-proj_x2 * star[2], -proj_y2 * star[2], star[2])
         esdraw(beg, end, color, view_state, escher_state)
     esdump(view_state, escher_state)
 
