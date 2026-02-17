@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from ephemeris_tools.params import (
+    ExtraStar,
+    Observer,
+    ViewerCenter,
+    ViewerDisplayInfo,
+    ViewerParams,
+)
 from ephemeris_tools.planets import JUPITER_CONFIG, MARS_CONFIG, NEPTUNE_CONFIG, URANUS_CONFIG
-from ephemeris_tools.params import ExtraStar, Observer, ViewerCenter, ViewerDisplayInfo, ViewerParams
 from ephemeris_tools.viewer import (
     _fov_deg_from_unit,
     _resolve_center_ansa_radius_km,
@@ -114,7 +120,12 @@ def test_viewer_call_kwargs_from_params_latlon_observer() -> None:
     params = ViewerParams(
         planet_num=4,
         time_str='2025-01-01 12:00',
-        observer=Observer(latitude_deg=33.0, longitude_deg=-116.0, lon_dir='west', altitude_m=1000.0),
+        observer=Observer(
+            latitude_deg=33.0,
+            longitude_deg=-116.0,
+            lon_dir='west',
+            altitude_m=1000.0,
+        ),
     )
     kwargs = _viewer_call_kwargs_from_params(params)
     assert kwargs['viewpoint'] == 'latlon'
@@ -241,5 +252,3 @@ def test_fov_deg_from_unit_voyager_wide_matches_fortran_constant() -> None:
     """Voyager ISS wide-angle unit matches FORTRAN radian multiplier."""
     fov_deg = _fov_deg_from_unit(1.0, 'Voyager ISS wide angle FOVs')
     assert abs(fov_deg - 3.130068434799687) < 1e-12
-
-

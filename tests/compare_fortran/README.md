@@ -94,6 +94,15 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
   - Default: `0.0015`
   - Set `0` for exact numeric comparison
 
+How the two options interact: `--float-tol` (significant-digit relative tolerance) is applied to
+comparisons that use significant-digit semantics (e.g., formatted floating-point fields and
+relative comparisons). `--numeric-tol` (absolute tolerance) is applied to plain numeric/text/table
+cell comparisons as an absolute difference. When both are relevant to a value, the comparison
+must pass both checks (it must satisfy the significant-digit criterion and have absolute
+difference ≤ `--numeric-tol`). Recommended workflow: use `--float-tol` for relative/scale-invariant
+checks (scientific notation, percentages) and `--numeric-tol` for fixed-scale absolute checks
+(counts, thresholds); keep defaults unless you need stricter absolute or relative behavior.
+
 ### Arguments and environment
 
 - **Arguments** to `python -m tests.compare_fortran` are the same logical parameters as the Python CLI (`ephemeris-tools ephemeris ...`) and the FORTRAN CGI (e.g. `start`, `stop`, `NPLANET`). The framework converts them into:

@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from ephemeris_tools.constants import EARTH_ID
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.load import load_spice_files
 
 
-def test_load_spice_files_resets_observer_to_earth_center(monkeypatch, tmp_path: Path) -> None:
+def test_load_spice_files_resets_observer_to_earth_center(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """Planet load resets observer state like FORTRAN RSPK_LoadFiles."""
 
     spice_dir = tmp_path / 'spice'

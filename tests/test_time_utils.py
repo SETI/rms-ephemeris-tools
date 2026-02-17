@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
 from ephemeris_tools import time_utils
 
 
-def test_ensure_leapsecs_sets_spice_ut_model(monkeypatch) -> None:
+def test_ensure_leapsecs_sets_spice_ut_model(monkeypatch: pytest.MonkeyPatch) -> None:
     """Leap-second init uses SPICE-compatible UT model for FORTRAN parity."""
 
     calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
@@ -49,4 +51,3 @@ def test_parse_datetime_accepts_year_hms_form() -> None:
     assert compact is not None
     assert explicit is not None
     assert compact == explicit
-

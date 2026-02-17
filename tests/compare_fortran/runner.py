@@ -29,7 +29,7 @@ def run_python(
         query_string = str(spec.params['query_string'])
         parsed = parse_qs(query_string, keep_blank_values=True)
         for key, values in parsed.items():
-            if len(values) == 0:
+            if not values or all(v == '' for v in values):
                 continue
             env[key] = values[0]
             if len(values) > 1:

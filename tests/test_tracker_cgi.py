@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
 from ephemeris_tools.params import tracker_params_from_env
 
 
-def test_tracker_params_from_env_basic(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_tracker_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tracker CGI env parses into TrackerParams."""
     monkeypatch.setenv('NPLANET', '6')
     monkeypatch.setenv('start', '2025-01-01 00:00')
@@ -30,8 +32,8 @@ def test_tracker_params_from_env_basic(monkeypatch) -> None:  # type: ignore[no-
 
 
 def test_tracker_params_from_env_observatory_with_coordinates(
-    monkeypatch,
-) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Named observatory with embedded coordinates sets observer geodetic fields."""
 
     monkeypatch.setenv('NPLANET', '5')

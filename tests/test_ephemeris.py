@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 
+import pytest
+
 from ephemeris_tools.params import (
     EphemerisParams,
 )
@@ -60,7 +62,9 @@ def test_start_second_normalization_rounds_to_minutes_for_all_units() -> None:
     assert _normalized_start_sec(30.0, 'sec') == 60.0
 
 
-def test_set_observer_from_params_parses_observatory_coordinates(monkeypatch) -> None:
+def test_set_observer_from_params_parses_observatory_coordinates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Observatory strings with embedded coordinates set topocentric observer."""
     from ephemeris_tools.ephemeris import _set_observer_from_params
 
@@ -69,7 +73,9 @@ def test_set_observer_from_params_parses_observatory_coordinates(monkeypatch) ->
     def _fake_set_observer_location(lat: float, lon: float, alt: float) -> None:
         called['coords'] = (lat, lon, alt)
 
-    monkeypatch.setattr('ephemeris_tools.ephemeris.set_observer_location', _fake_set_observer_location)
+    monkeypatch.setattr(
+        'ephemeris_tools.ephemeris.set_observer_location', _fake_set_observer_location
+    )
     monkeypatch.setattr('ephemeris_tools.ephemeris.set_observer_id', lambda _obs_id: None)
 
     params = EphemerisParams(

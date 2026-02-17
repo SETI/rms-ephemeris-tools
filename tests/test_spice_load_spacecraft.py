@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.load import load_spacecraft
 
 
 def test_load_spacecraft_sets_body_observer_without_geodetic_flag(
-    monkeypatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Spacecraft observer should not enable geodetic observatory correction.
 
@@ -33,7 +35,7 @@ def test_load_spacecraft_sets_body_observer_without_geodetic_flag(
     state.planet_id = 0
     state.pool_loaded = False
     state.obs_id = 0
-    state.obs_is_set = False
+    state.obs_is_set = True  # start True to exercise clearing by load_spacecraft
     state.obs_lat = 0.0
     state.obs_lon = 0.0
     state.obs_alt = 0.0
@@ -42,4 +44,4 @@ def test_load_spacecraft_sets_body_observer_without_geodetic_flag(
 
     assert ok is True
     assert state.obs_id == 399001
-    assert state.obs_is_set is False
+    assert state.obs_is_set is False  # body observer clears the flag

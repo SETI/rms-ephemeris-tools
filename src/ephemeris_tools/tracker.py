@@ -231,7 +231,7 @@ def run_tracker(
         xrange_val = max(xrange_val, 10.0)
         xscaled = False
     if not xscaled and not explicit_xrange:
-        xrange_val = max(xrange_val, 10.0)
+        xrange_val = max(xrange_val if xrange_val is not None else 0.0, 10.0)
 
     # Planet radius (km) for ring drawing - from SPICE to match FORTRAN.
     import cspyce
@@ -302,7 +302,7 @@ def run_tracker(
             time1_tai=tai1,
             time2_tai=tai2,
             dt=sample_dt,
-            xrange=xrange_val,
+            xrange=xrange_val if xrange_val is not None else 100.0,
             xscaled=xscaled,
             moon_arcsec=moon_offsets_arcsec,
             limb_arcsec=limb_arcsec,

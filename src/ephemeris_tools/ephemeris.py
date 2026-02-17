@@ -45,8 +45,8 @@ from ephemeris_tools.params import (
     MCOL_RADEC,
     MCOL_SUBOBS,
     MCOL_SUBSOL,
-    _parse_observatory_coords,
     EphemerisParams,
+    _parse_observatory_coords,
 )
 from ephemeris_tools.record import Record
 from ephemeris_tools.spice.geometry import (

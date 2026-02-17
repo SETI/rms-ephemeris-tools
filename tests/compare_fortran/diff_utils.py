@@ -231,7 +231,6 @@ def _compare_tables_column_aware(
                 if len(details) < 50:
                     details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
                     details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
-                break
     return num_diffs, details, max_abs_diff
 
 

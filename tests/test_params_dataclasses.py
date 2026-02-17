@@ -95,7 +95,7 @@ def test_tracker_params_defaults() -> None:
     assert params.start_time == '2025-01-01 00:00'
     assert params.stop_time == '2025-01-02 00:00'
     assert params.interval == 1.0
-    assert params.time_unit == 'hours'
+    assert params.time_unit == 'hour'
     assert params.observer.name is None
     assert params.ephem_version == 0
     assert params.moon_ids == []

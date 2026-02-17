@@ -7,21 +7,21 @@ import contextlib
 import logging
 import os
 import sys
+from datetime import datetime, timedelta, timezone
 from typing import NoReturn, TextIO, cast
 
 from ephemeris_tools.params import (
-    ExtraStar,
     EphemerisParams,
+    ExtraStar,
     Observer,
     TrackerParams,
     ViewerParams,
+    _parse_sexagesimal_to_degrees,
     ephemeris_params_from_env,
     parse_center,
     parse_fov,
     parse_observer,
-    _parse_sexagesimal_to_degrees,
     parse_planet,
-    parse_viewer_rings,
     tracker_params_from_env,
     viewer_params_from_env,
 )
@@ -565,10 +565,13 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     else:
         observer_name = (args.observatory or "Earth's Center").strip() or "Earth's Center"
         observer = parse_observer([observer_name])
+    _now = datetime.now(timezone.utc)
+    _default_start = _now.strftime('%Y-%m-%d %H:%M')
+    _default_stop = (_now + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
     tracker_params = TrackerParams(
         planet_num=args.planet,
-        start_time=args.start or '2025-01-01 00:00',
-        stop_time=args.stop or '2025-01-02 00:00',
+        start_time=args.start or _default_start,
+        stop_time=args.stop or _default_stop,
         interval=args.interval,
         time_unit=args.time_unit,
         observer=observer,
@@ -581,13 +584,9 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     )
     write_input_parameters_tracker(sys.stdout, tracker_params)
     with contextlib.ExitStack() as stack:
-        out_ps = (
-            stack.enter_context(open(args.output, 'w')) if args.output is not None else None
-        )
+        out_ps = stack.enter_context(open(args.output, 'w')) if args.output is not None else None
         out_txt = (
-            stack.enter_context(open(args.output_txt, 'w'))
-            if args.output_txt is not None
-            else None
+            stack.enter_context(open(args.output_txt, 'w')) if args.output_txt is not None else None
         )
         try:
             tracker_params.output_ps = out_ps
@@ -636,9 +635,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
     with contextlib.ExitStack() as stack:
         out = stack.enter_context(open(args.output, 'w')) if args.output is not None else None
         out_txt = (
-            stack.enter_context(open(args.output_txt, 'w'))
-            if args.output_txt is not None
-            else None
+            stack.enter_context(open(args.output_txt, 'w')) if args.output_txt is not None else None
         )
         fov_tokens = args.fov
         if fov_tokens:
@@ -727,8 +724,8 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
         additional = (args.additional or '').strip().lower()
         show_standard_stars = additional in {'yes', 'y', 'true', '1'}
         extra_star: ExtraStar | None = None
-extra_ra = (args.extra_ra or '').strip()
-            extra_dec = (args.extra_dec or '').strip()
+        extra_ra = (args.extra_ra or '').strip()
+        extra_dec = (args.extra_dec or '').strip()
         if show_standard_stars and extra_ra and extra_dec:
             ra_type = (args.extra_ra_type or 'hours').strip().lower()
             is_hours = not ra_type.startswith('d')

@@ -781,7 +781,7 @@ class TrackerParams:
     start_time: str
     stop_time: str
     interval: float = 1.0
-    time_unit: str = 'hours'
+    time_unit: str = 'hour'
     observer: Observer = field(default_factory=Observer)
     ephem_version: int = 0
     moon_ids: list[int] = field(default_factory=list)
@@ -815,6 +815,22 @@ class EphemerisParams:
     mooncols: list[int] = field(default_factory=list)
     moon_ids: list[int] = field(default_factory=list)
     output: TextIO | None = None
+
+
+def _safe_float(value: str, default: float) -> float:
+    """Parse string to float; return default on ValueError.
+
+    Parameters:
+        value: String to parse.
+        default: Fallback when parsing fails.
+
+    Returns:
+        Parsed float or default.
+    """
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
 
 
 def _get_env(key: str, default: str = '') -> str:
@@ -1182,8 +1198,8 @@ def viewer_params_from_env() -> ViewerParams | None:
         arcmodel=arcmodel,
         arcpts=arcpts,
         torus=_get_env('torus', '').strip().lower() in {'yes', 'y', 'true', '1'},
-        torus_inc=float(_get_env('torus_inc', '6.8') or '6.8'),
-        torus_rad=float(_get_env('torus_rad', '422000') or '422000'),
+        torus_inc=_safe_float(_get_env('torus_inc', '6.8') or '6.8', 6.8),
+        torus_rad=_safe_float(_get_env('torus_rad', '422000') or '422000', 422000),
         other_bodies=other_bodies if other_bodies else None,
         show_standard_stars=show_standard_stars,
         extra_star=extra_star,
@@ -1230,21 +1246,24 @@ def tracker_params_from_env() -> TrackerParams | None:
         lat_s = _get_env('latitude')
         lon_s = _get_env('longitude')
         alt_s = _get_env('altitude')
+        lat_deg: float | None
+        lon_deg: float | None
+        alt_m: float | None
         try:
-            lat = float(lat_s) if lat_s else None
+            lat_deg = float(lat_s) if lat_s else None
         except ValueError:
-            lat = None
+            lat_deg = None
         try:
-            lon = float(lon_s) if lon_s else None
+            lon_deg = float(lon_s) if lon_s else None
         except ValueError:
-            lon = None
+            lon_deg = None
         try:
-            alt = float(alt_s) if alt_s else None
+            alt_m = float(alt_s) if alt_s else None
         except ValueError:
-            alt = None
-        if lon is not None and _get_env('lon_dir', 'east').lower() == 'west':
-            lon = -lon
-        observer = Observer(latitude_deg=lat, longitude_deg=lon, altitude_m=alt)
+            alt_m = None
+        if lon_deg is not None and _get_env('lon_dir', 'east').lower() == 'west':
+            lon_deg = -lon_deg
+        observer = Observer(latitude_deg=lat_deg, longitude_deg=lon_deg, altitude_m=alt_m)
     elif viewpoint:
         observer = Observer(name=viewpoint)
     moon_tokens = _get_keys_env('moons')

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from ephemeris_tools.constants import EARTH_ID
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.observer import observer_state, set_observer_location
 
 
-def test_observer_state_geodetic_keeps_ssb_velocity(monkeypatch) -> None:
+def test_observer_state_geodetic_keeps_ssb_velocity(monkeypatch: pytest.MonkeyPatch) -> None:
     """Geodetic observer adjusts position only; velocity remains Earth SSB velocity."""
 
     monkeypatch.setattr(

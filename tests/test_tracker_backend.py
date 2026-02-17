@@ -57,7 +57,7 @@ def test_tracker_call_kwargs_from_params_radii_unit_sets_scaled() -> None:
     assert kwargs['viewpoint'] == 'Earth'
 
 
-def test_tracker_matches_fortran_time_grid_split(monkeypatch) -> None:
+def test_tracker_matches_fortran_time_grid_split(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tracker samples geometry on stretched grid but labels fixed interval times."""
 
     sampled_ets: list[float] = []
@@ -127,7 +127,7 @@ def test_tracker_matches_fortran_time_grid_split(monkeypatch) -> None:
     assert second.rstrip().endswith('7637691.111')
 
 
-def test_tracker_preserves_user_arcsec_xrange_below_ten(monkeypatch) -> None:
+def test_tracker_preserves_user_arcsec_xrange_below_ten(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tracker should keep explicit small arcsec ranges from CGI/CLI inputs."""
 
     captured_xranges: list[float] = []
@@ -176,5 +176,3 @@ def test_tracker_preserves_user_arcsec_xrange_below_ten(monkeypatch) -> None:
     )
 
     assert captured_xranges == [5.0]
-
-

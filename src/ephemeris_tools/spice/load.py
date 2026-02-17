@@ -74,7 +74,7 @@ def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
             try:
                 p = int(parts[0])
                 v = int(parts[1])
-                filename = parts[2].strip('"')
+                filename = parts[2].strip().strip('"')
             except ValueError as e:
                 logger.error(
                     'SPICE_planets.txt line %d: bad value '

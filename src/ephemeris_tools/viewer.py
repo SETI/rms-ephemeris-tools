@@ -233,7 +233,7 @@ def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[flo
     if cfg.planet_num == 4 and cfg.ring_offsets_km:
         from ephemeris_tools.spice.bodmat import bodmat
 
-        planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
+        _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
         planet_time = et - dt
         planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
         sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
@@ -286,7 +286,7 @@ def _compute_mars_deimos_ring_node(et: float) -> float | None:
         return None
 
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
+    _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
     planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
     rotmat = bodmat(state.planet_id, planet_time)
@@ -567,7 +567,7 @@ def _write_fov_table(
 
     # FORTRAN uses arcsec for Earth observer, degrees for spacecraft
     state = get_state()
-    is_earth_observer = (state.obs_id == EARTH_ID or state.obs_id == 0)
+    is_earth_observer = state.obs_id == EARTH_ID or state.obs_id == 0
 
     stream.write('\n')
     stream.write('Field of View Description (J2000)\n')
@@ -880,7 +880,9 @@ def _viewer_call_kwargs_from_params(params: ViewerParams) -> dict[str, object]:
         else 0.0
     )
     center_dec = (
-        params.center.dec_deg if params.center.mode == 'J2000' and params.center.dec_deg else 0.0
+        params.center.dec_deg
+        if params.center.mode == 'J2000' and params.center.dec_deg is not None
+        else 0.0
     )
     if params.observer.name is not None and params.observer.name.strip() != '':
         viewpoint = params.observer.name
@@ -1065,7 +1067,11 @@ def run_viewer(
     )
     from ephemeris_tools.spice.geometry import anti_sun, body_radec, limb_radius
     from ephemeris_tools.spice.load import load_spacecraft, load_spice_files
-    from ephemeris_tools.spice.observer import observer_state, set_observer_id, set_observer_location
+    from ephemeris_tools.spice.observer import (
+        observer_state,
+        set_observer_id,
+        set_observer_location,
+    )
     from ephemeris_tools.time_utils import parse_datetime, tai_from_day_sec, tdb_from_tai
 
     spacecraft_observer_id: int | None = None
@@ -1448,14 +1454,17 @@ def run_viewer(
                 else:
                     import cspyce
 
-                    from ephemeris_tools.constants import spacecraft_code_to_id, spacecraft_name_to_code
+                    from ephemeris_tools.constants import (
+                        spacecraft_code_to_id,
+                        spacecraft_name_to_code,
+                    )
                     from ephemeris_tools.spice.load import load_spacecraft
 
                     known_spacecraft_id = spacecraft_name_to_code(token)
                     if known_spacecraft_id is not None:
                         body_id = known_spacecraft_id
                     else:
-                        body_id = cspyce.bodn2c(token)
+                        body_id = cspyce.bodn2c(token)  # type: ignore[attr-defined]
                     if body_id < 0:
                         try:
                             sc_abbrev = spacecraft_code_to_id(body_id)

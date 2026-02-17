@@ -58,7 +58,8 @@ def ring_opening(et: float) -> RingGeometry:
         pole = [-pole[0], -pole[1], -pole[2]]
     axis_z = [0.0, 0.0, 1.0]
     ascnode = cspyce.vcrss(axis_z, pole)
-    pole_rot = cspyce.twovec(pole, 3, ascnode, 1)
+    pole_rot_raw = cspyce.twovec(pole, 3, ascnode, 1)
+    pole_rot = [list(row) for row in pole_rot_raw]
     # Match FORTRAN RSPK_RingOpen quirk:
     # "This fixes a bug in TWOVEC(): rotmat(3,1)=pole(1)".
     pole_rot[2][0] = pole[0]

@@ -26,7 +26,7 @@ def _ensure_leapsecs() -> None:
     if _leapsecs_loaded:
         return
     # Match historical UTC handling used by SPICE/FORTRAN tooling.
-    julian.set_ut_model('SPICE')
+    julian.set_ut_model('SPICE')  # type: ignore[attr-defined]
     path = get_leapsecs_path()
     try:
         julian.load_lsk(path)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, TextIO
 
 if TYPE_CHECKING:
@@ -95,12 +96,15 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
     _w(stream, '----------------')
     _w(stream, ' ')
 
+    _now = datetime.now(timezone.utc)
+    _fallback_start = _now.strftime('%Y-%m-%d %H:%M')
+    _fallback_stop = (_now + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
     start = (
         getattr(args, 'start', None) or getattr(args, 'start_time', None) or ' '
-    ).strip() or '2025-01-01 00:00'
+    ).strip() or _fallback_start
     stop = (
         getattr(args, 'stop', None) or getattr(args, 'stop_time', None) or ' '
-    ).strip() or '2025-01-02 00:00'
+    ).strip() or _fallback_stop
     _w(stream, f'     Start time: {start}')
     _w(stream, f'      Stop time: {stop}')
 
@@ -192,7 +196,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     # Observation time (no leading spaces on label)
     time_str = (
         getattr(args, 'time', None) or getattr(args, 'time_str', None) or ' '
-    ).strip() or '2025-01-01 12:00'
+    ).strip() or datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
     _w(stream, f'Observation time: {time_str}')
 
     # Ephemeris (display string from form, or numeric version)
@@ -217,7 +221,14 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     center_obj = getattr(args, 'center', None)
     center_ra = getattr(args, 'center_ra', 0.0)
     center_dec = getattr(args, 'center_dec', 0.0)
-    center_mode = getattr(center_obj, 'mode', None) or getattr(args, 'center', None) or 'body'
+    mode = getattr(center_obj, 'mode', None)
+    val = getattr(args, 'center', None)
+    if isinstance(mode, str):
+        center_mode = mode
+    elif isinstance(val, str):
+        center_mode = val
+    else:
+        center_mode = 'body'
     center = center_mode.strip().lower()
     center_body = (
         getattr(center_obj, 'body_name', None) or getattr(args, 'center_body', None) or ' '

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
 from ephemeris_tools.params import viewer_params_from_env
 
 
-def test_viewer_params_from_env_basic(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     """Viewer CGI env parses into ViewerParams."""
     monkeypatch.setenv('NPLANET', '8')
     monkeypatch.setenv('time', '2025-01-01 12:00')
@@ -30,8 +32,8 @@ def test_viewer_params_from_env_basic(monkeypatch) -> None:  # type: ignore[no-u
 
 
 def test_viewer_params_from_env_observatory_with_embedded_coords(
-    monkeypatch,
-) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Observatory display strings with coords populate observer lat/lon/alt."""
     monkeypatch.setenv('NPLANET', '4')
     monkeypatch.setenv('time', '2001-01-01 00:00')
@@ -48,7 +50,7 @@ def test_viewer_params_from_env_observatory_with_embedded_coords(
     assert params.observer.altitude_m == 2674.0
 
 
-def test_viewer_params_from_env_meridians_flag(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_meridians_flag(monkeypatch: pytest.MonkeyPatch) -> None:
     """Meridians yes/no parses into ViewerParams.meridians."""
     monkeypatch.setenv('NPLANET', '4')
     monkeypatch.setenv('time', '2001-01-01 00:00')
@@ -58,7 +60,7 @@ def test_viewer_params_from_env_meridians_flag(monkeypatch) -> None:  # type: ig
     assert params.meridians is True
 
 
-def test_viewer_params_from_env_title_labels_and_moonpts(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_title_labels_and_moonpts(monkeypatch: pytest.MonkeyPatch) -> None:
     """Viewer CGI title/labels/moonpts are preserved in parsed params."""
     monkeypatch.setenv('NPLANET', '4')
     monkeypatch.setenv('time', '2001-01-01 00:00')
@@ -72,7 +74,7 @@ def test_viewer_params_from_env_title_labels_and_moonpts(monkeypatch) -> None:  
     assert params.moonpts == 2.5
 
 
-def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch: pytest.MonkeyPatch) -> None:
     """J2000 CGI center supports sexagesimal RA/Dec parsing."""
     monkeypatch.setenv('NPLANET', '9')
     monkeypatch.setenv('time', '2018-08-15 05:32:32')
@@ -89,7 +91,7 @@ def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch) -> None:  # type:
     assert abs(params.center.dec_deg - (-21.980283333333334)) < 1e-9
 
 
-def test_viewer_params_from_env_additional_extra_star(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_additional_extra_star(monkeypatch: pytest.MonkeyPatch) -> None:
     """CGI additional star fields parse into ViewerParams.extra_star."""
     monkeypatch.setenv('NPLANET', '9')
     monkeypatch.setenv('time', '2018-08-15 05:32:32')
@@ -107,7 +109,7 @@ def test_viewer_params_from_env_additional_extra_star(monkeypatch) -> None:  # t
     assert abs(params.extra_star.dec_deg - (-21.980283333333334)) < 1e-9
 
 
-def test_viewer_params_from_env_other_bodies(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_other_bodies(monkeypatch: pytest.MonkeyPatch) -> None:
     """CGI other-body selections are captured for background stars."""
     monkeypatch.setenv('NPLANET', '7')
     monkeypatch.setenv('time', '1986-01-24 21:00:00')
@@ -117,7 +119,9 @@ def test_viewer_params_from_env_other_bodies(monkeypatch) -> None:  # type: igno
     assert params.other_bodies == ['Sun']
 
 
-def test_viewer_params_from_env_latlon_viewpoint_display_precision(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_latlon_viewpoint_display_precision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Lat/lon viewpoint caption preserves CGI precision."""
     monkeypatch.setenv('NPLANET', '9')
     monkeypatch.setenv('time', '2018-08-15 05:32:32')
@@ -132,7 +136,7 @@ def test_viewer_params_from_env_latlon_viewpoint_display_precision(monkeypatch) 
     assert params.display.viewpoint_display == '(33.2319835, -116.7600221 east, 844)'
 
 
-def test_viewer_params_from_env_latlon_west_longitude(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_viewer_params_from_env_latlon_west_longitude(monkeypatch: pytest.MonkeyPatch) -> None:
     """Lat/lon viewpoint applies lon_dir west sign convention."""
     monkeypatch.setenv('NPLANET', '7')
     monkeypatch.setenv('time', '2001-01-21 00:17:00')

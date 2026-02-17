@@ -395,7 +395,7 @@ Moon Selection
    Jupiter:
 
    - ``"504 Galilean satellites (J1-J4)"``
-   - ``"505 Galileans satellites, Amalthea (J1-J5)"``
+   - ``"505 Galilean satellites, Amalthea (J1-J5)"``
    - ``"516 All inner moons (J1-J5,J14-J16)"``
 
    Saturn:

@@ -135,7 +135,7 @@ def _fortran_nint(value: float) -> int:
 
 def _fortran_data_real(value: float) -> float:
     """Round-trip through IEEE float32 like FORTRAN DATA real literal parsing."""
-    return struct.unpack('!f', struct.pack('!f', value))[0]
+    return float(struct.unpack('!f', struct.pack('!f', value))[0])
 
 
 # ---------------------------------------------------------------------------
@@ -313,7 +313,7 @@ def _rspk_labels2(
         ismajor = (k % nsubs) == 0
         if ismajor:
             length = dtick1
-        j2000_los = cspyce.radrec(1.0, s / spr, dec)
+        j2000_los = cspyce.radrec(1.0, s / spr, dec)  # type: ignore[attr-defined]
         cam = list(cspyce.mtxv(cmatrix, j2000_los))
         x = -cam[0] / cam[2]
         if abs(x) <= delta:
@@ -341,7 +341,7 @@ def _rspk_labels2(
         ismajor = (k % nsubs) == 0
         if ismajor:
             length = dtick1
-        j2000_los = cspyce.radrec(1.0, ra, s / spr)
+        j2000_los = cspyce.radrec(1.0, ra, s / spr)  # type: ignore[attr-defined]
         cam = list(cspyce.mtxv(cmatrix, j2000_los))
         y = -cam[1] / cam[2]
         if abs(y) <= delta:
@@ -531,8 +531,8 @@ def camera_matrix(center_ra_rad: float, center_dec_rad: float) -> list[list[floa
         3x3 row-major matrix (list of 3 rows); columns are camera x, y, z axes.
     """
     # Use SPICE vector primitives directly to match FORTRAN RADREC/VPERP/VHAT/VCRSS.
-    col3 = list(cspyce.radrec(1.0, center_ra_rad, center_dec_rad))
-    temp = list(cspyce.vperp((0.0, 0.0, 1.0), col3))
+    col3 = list(cspyce.radrec(1.0, center_ra_rad, center_dec_rad))  # type: ignore[attr-defined]
+    temp = list(cspyce.vperp((0.0, 0.0, 1.0), col3))  # type: ignore[attr-defined]
     n2 = math.sqrt(temp[0] * temp[0] + temp[1] * temp[1] + temp[2] * temp[2])
     if n2 < 1e-12:
         col2 = [1.0, 0.0, 0.0]

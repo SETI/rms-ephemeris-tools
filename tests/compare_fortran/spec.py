@@ -331,17 +331,17 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
                 planet_num = int(p.get('planet', 6))
                 cb = PLANET_NAMES.get(planet_num, 'Saturn')
             pairs.append(('center_body', cb))
-        if 'center_ansa' in p:
+        if p.get('center_ansa'):
             pairs.append(('center_ansa', str(p['center_ansa'])))
-        if 'center_ew' in p:
+        if p.get('center_ew'):
             pairs.append(('center_ew', str(p['center_ew'])))
-        if 'center_ra' in p:
+        if 'center_ra' in p and p['center_ra'] not in (None, ''):
             pairs.append(('center_ra', str(p['center_ra'])))
-        if 'center_ra_type' in p:
+        if p.get('center_ra_type'):
             pairs.append(('center_ra_type', str(p['center_ra_type'])))
-        if 'center_dec' in p:
+        if 'center_dec' in p and p['center_dec'] not in (None, ''):
             pairs.append(('center_dec', str(p['center_dec'])))
-        if 'center_star' in p:
+        if p.get('center_star'):
             pairs.append(('center_star', str(p['center_star'])))
 
         # Rings: FORTRAN expects form value strings (e.g. "Nine major rings"), not option codes.
@@ -381,15 +381,15 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
             pairs.append(('arcmodel', str(p['arcmodel'])))
         if 'arcpts' in p and p['arcpts'] is not None:
             pairs.append(('arcpts', str(p['arcpts'])))
-        if 'additional' in p:
+        if 'additional' in p and p['additional'] is not None:
             pairs.append(('additional', str(p['additional'])))
-        if 'extra_ra' in p:
+        if 'extra_ra' in p and p['extra_ra'] is not None:
             pairs.append(('extra_ra', str(p['extra_ra'])))
-        if 'extra_ra_type' in p:
+        if 'extra_ra_type' in p and p['extra_ra_type'] is not None:
             pairs.append(('extra_ra_type', str(p['extra_ra_type'])))
-        if 'extra_dec' in p:
+        if 'extra_dec' in p and p['extra_dec'] is not None:
             pairs.append(('extra_dec', str(p['extra_dec'])))
-        if 'extra_name' in p:
+        if 'extra_name' in p and p['extra_name'] is not None:
             pairs.append(('extra_name', str(p['extra_name'])))
         for other in p.get('other') or []:
             pairs.append(('other', str(other)))
@@ -509,17 +509,17 @@ class RunSpec:
                 args.extend(['--center', str(p['center'])])
             if 'center_body' in p:
                 args.extend(['--center-body', str(p['center_body'])])
-            if 'center_ansa' in p and p['center_ansa']:
+            if p.get('center_ansa'):
                 args.extend(['--center-ansa', str(p['center_ansa'])])
-            if 'center_ew' in p and p['center_ew']:
+            if p.get('center_ew'):
                 args.extend(['--center-ew', str(p['center_ew'])])
             if 'center_ra' in p and p['center_ra'] not in (None, ''):
                 args.extend(['--center-ra', str(p['center_ra'])])
-            if 'center_ra_type' in p and p['center_ra_type']:
+            if p.get('center_ra_type'):
                 args.extend(['--center-ra-type', str(p['center_ra_type'])])
             if 'center_dec' in p and p['center_dec'] not in (None, ''):
                 args.extend(['--center-dec', str(p['center_dec'])])
-            if 'center_star' in p and p['center_star']:
+            if p.get('center_star'):
                 args.extend(['--center-star', str(p['center_star'])])
             if p.get('rings'):
                 args.append('--rings')
@@ -542,7 +542,7 @@ class RunSpec:
                 args.extend(['--extra-ra-type', str(p['extra_ra_type'])])
             if 'extra_dec' in p and p['extra_dec'] is not None:
                 args.extend(['--extra-dec', str(p['extra_dec'])])
-            if 'other' in p and p['other']:
+            if p.get('other'):
                 args.append('--other')
                 args.extend(str(o) for o in p['other'])
             if 'labels' in p and p['labels'] is not None:
