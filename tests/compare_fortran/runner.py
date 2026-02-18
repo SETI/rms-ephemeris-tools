@@ -31,12 +31,20 @@ def run_python(
         for key, values in parsed.items():
             if not values or all(v == '' for v in values):
                 continue
-            env[key] = values[0]
+            first_non_empty = next((v for v in values if v != ''), None)
+            if first_non_empty is None:
+                continue
+            env[key] = first_non_empty
             if len(values) > 1:
                 for idx, value in enumerate(values, start=1):
                     env[f'{key}#{idx}'] = value
         if 'planet' in spec.params:
-            env['NPLANET'] = str(int(spec.params['planet']))
+            try:
+                env['NPLANET'] = str(int(spec.params['planet']))
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    f"spec.params['planet'] must be numeric, got {spec.params['planet']!r}"
+                ) from e
         if out_table and spec.tool == 'ephemeris':
             env['EPHEM_FILE'] = str(out_table)
         if out_ps and spec.tool == 'tracker':

@@ -434,7 +434,7 @@ class RunSpec:
         else:
             pairs = _query_pairs(p, self.tool)
             env['QUERY_STRING'] = '&'.join(
-                f'{quote(name, safe="")}{""}={quote(value, safe="")}' for name, value in pairs
+                f'{quote(name, safe="")}={quote(value, safe="")}' for name, value in pairs
             )
 
         # Variables read via WWW_GetEnv (real env vars, not QUERY_STRING).

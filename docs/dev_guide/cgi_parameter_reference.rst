@@ -11,6 +11,16 @@ The Perl ``newcgi.pm`` module parses the query string and exports each
 now, the Python ``--cgi`` mode) reads these environment variables
 directly.
 
+**PREFIX** is an optional string prepended to CGI environment variable
+names to distinguish mission-specific forms from Earth-based forms.  When
+the form is for Earth (no mission), PREFIX is empty.  Examples of
+non-empty PREFIX include ``"Cassini"`` and ``"JUICE/"``; variables then
+appear as ``PREFIXvariable`` or ``PREFIX/variable`` depending on usage.
+The ``newcgi.pm`` module sets these environment variables; the Viewer,
+Tracker, and Ephemeris Generator tools read them.  Conditional parameter
+availability and possible values throughout this document depend on
+whether PREFIX is empty or set (e.g. ``xunit`` and body lists).
+
 .. contents:: Table of Contents
    :local:
    :depth: 2
@@ -928,7 +938,9 @@ Ring Selection
 
    - ``"081 Adams Ring"``
 
-   Note: Mars and Pluto tracker forms do not have ring selection.
+   Mars and Pluto do not have tracker forms (see Tracker ``abbrev`` and
+   Ephemeris Selection above), so this ring selection section applies only
+   to Jupiter, Saturn, Uranus, and Neptune.
 
 Plot Options
 ~~~~~~~~~~~~

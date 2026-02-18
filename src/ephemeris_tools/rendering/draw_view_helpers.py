@@ -165,7 +165,7 @@ def _rspk_write_label(
     s = f'{ideg:3d} {imin:02d} {isec:02d}.{ims:03d}'
     if (offset == 'B' and ims == 0) or (offset == 'L' and ims == 0):
         s = f'{ideg:3d} {imin:02d} {isec:02d}'
-    elif offset in ('B', 'L') or offset not in ('B', 'L'):
+    else:
         s = s.rstrip('0 ').rstrip('.')
     s = s.lstrip()
     if fsign < 0:

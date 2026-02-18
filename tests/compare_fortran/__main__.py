@@ -271,7 +271,14 @@ def _execute_spec(
     float_tol: int | None,
     numeric_tol: float | None,
 ) -> tuple[bool, list[str], float | None]:
-    """Execute one comparison spec and return (passed, detail lines)."""
+    """Execute one comparison spec and return (passed, detail lines, duration).
+
+    Returns:
+        A 3-tuple: (passed, detail_lines, duration). passed is True if the
+        comparison passed (or FORTRAN was skipped). detail_lines is a list of
+        summary/detail strings. duration is the run duration in seconds, or
+        None if timing is unavailable.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     details: list[str] = [f'tool={spec.tool} planet={spec.params.get("planet", "?")}']
     max_table_abs_diff: float | None = None
@@ -491,6 +498,7 @@ def main() -> int:
         all_details_lines: list[str] = []
         failed: list[str] = []
         passed_count = 0
+        skipped_count = 0
         run_max_table_abs_diff: float | None = None
         for idx, url in enumerate(urls, start=1):
             spec = spec_from_query_input(url)
@@ -513,6 +521,8 @@ def main() -> int:
             all_details_lines.append(url)
             all_details_lines.extend(details)
             all_details_lines.append('')
+            if 'fortran_skipped' in details:
+                skipped_count += 1
             if ok:
                 passed_count += 1
             else:
@@ -525,7 +535,6 @@ def main() -> int:
                 )
         total = len(urls)
         failed_count = len(failed)
-        skipped_count = 0
         summary_lines.append(f'total={total}')
         summary_lines.append(f'passed={passed_count}')
         summary_lines.append(f'failed={failed_count}')

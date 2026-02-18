@@ -38,6 +38,8 @@ from ephemeris_tools.planets import parse_moon_spec
 from ephemeris_tools.tracker import run_tracker
 from ephemeris_tools.viewer import run_viewer
 
+logger = logging.getLogger(__name__)
+
 
 def _configure_logging(verbose: bool = False) -> None:
     """Configure logging for CLI (stderr, level from --verbose or EPHEMERIS_TOOLS_LOG)."""
@@ -570,7 +572,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     _now = datetime.now(timezone.utc)
     _default_start = _now.strftime('%Y-%m-%d %H:%M')
     _default_stop = (_now + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
-    if args.start is not None and args.stop is None:
+    if args.start and not args.stop:
         try:
             parsed_start = datetime.strptime(args.start, '%Y-%m-%d %H:%M').replace(
                 tzinfo=timezone.utc
@@ -581,7 +583,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     else:
         _computed_stop = _default_stop
     start_time = args.start or _default_start
-    stop_time = args.stop if args.stop is not None else _computed_stop
+    stop_time = args.stop or _computed_stop
     tracker_params = TrackerParams(
         planet_num=args.planet,
         start_time=start_time,
@@ -745,7 +747,16 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
                     ra_deg=_parse_sexagesimal_to_degrees(extra_ra, is_ra_hours=is_hours),
                     dec_deg=_parse_sexagesimal_to_degrees(extra_dec, is_ra_hours=False),
                 )
-            except ValueError:
+            except ValueError as e:
+                logger.warning(
+                    'Invalid extra star input (extra_name=%r, extra_ra=%r, extra_dec=%r, '
+                    'is_hours=%s): %s',
+                    args.extra_name,
+                    extra_ra,
+                    extra_dec,
+                    is_hours,
+                    e,
+                )
                 extra_star = None
         viewer_params = ViewerParams(
             planet_num=args.planet,

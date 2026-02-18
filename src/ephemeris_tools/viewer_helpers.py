@@ -236,10 +236,6 @@ def _propagated_neptune_arcs(
         maxlon = (
             arc.maxlon_deg + arc_motion_deg_day * ddays + b1950_to_j2000_nep
         ) % DEGREES_PER_CIRCLE
-        if minlon < 0.0:
-            minlon += DEGREES_PER_CIRCLE
-        if maxlon < 0.0:
-            maxlon += DEGREES_PER_CIRCLE
         result.append((minlon, maxlon))
     return result
 
@@ -734,19 +730,11 @@ def _write_fov_table(
             if propagated is not None:
                 peri_rad, node_rad = propagated
                 peri_deg = (peri_rad * _RAD2DEG) % 360.0
-                if peri_deg < 0.0:
-                    peri_deg += 360.0
                 node_deg = (node_rad * _RAD2DEG) % 360.0
-                if node_deg < 0.0:
-                    node_deg += 360.0
             else:
                 ring = cfg.rings[cfg.f_ring_index]
                 peri_deg = (ring.peri_rad * _RAD2DEG) % 360.0
-                if peri_deg < 0.0:
-                    peri_deg += 360.0
                 node_deg = (ring.node_rad * _RAD2DEG) % 360.0
-                if node_deg < 0.0:
-                    node_deg += 360.0
             stream.write('\n')
             stream.write(
                 f'      F Ring pericenter (deg): {peri_deg:9.5f}  from ring plane ascending node\n'

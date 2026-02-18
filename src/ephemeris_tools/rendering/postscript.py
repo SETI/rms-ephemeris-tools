@@ -30,7 +30,7 @@ def clip_line(
     dy = y2 - y1
 
     def in_rect(x: float, y: float) -> bool:
-        """Return True if (x, y) lies inside the rectangle [xmin,xmax] x [ymin,ymax]."""
+        """Return True if (x, y) lies inside the rectangle (xmin, xmax) x (ymin, ymax)."""
         return xmin < x < xmax and ymin < y < ymax
 
     p1_in = in_rect(x1, y1)
