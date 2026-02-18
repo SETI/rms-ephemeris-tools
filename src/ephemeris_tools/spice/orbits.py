@@ -1,4 +1,7 @@
-"""Moon orbit geometry: orbit opening, moon angular offsets (rspk_orbitopen, rspk_moondist)."""
+"""Moon orbit geometry: orbit opening, moon angular offsets.
+
+Ported from rspk_orbitopen, rspk_moondist.
+"""
 
 from __future__ import annotations
 

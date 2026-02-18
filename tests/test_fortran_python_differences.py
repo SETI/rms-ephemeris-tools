@@ -17,6 +17,7 @@ from ephemeris_tools.spice.load import load_spice_files
 from ephemeris_tools.spice.observer import set_observer_id
 from ephemeris_tools.time_utils import tai_from_day_sec, tdb_from_tai
 from ephemeris_tools.viewer import _propagated_saturn_f_ring, run_viewer
+from ephemeris_tools.viewer_helpers import viewer_params_from_legacy_kwargs
 
 
 class TestHighPriorityDifferences:
@@ -42,13 +43,15 @@ class TestHighPriorityDifferences:
         # Test with a very large FOV (120 degrees)
         # This should be clamped to 90 degrees internally
         run_viewer(
-            planet_num=5,
-            time_str='2024-01-01 00:00:00',
-            fov=120.0,
-            fov_unit='deg',
-            viewpoint='Earth',
-            output_ps=ps_out,
-            output_txt=txt_out,
+            viewer_params_from_legacy_kwargs(
+                planet_num=5,
+                time_str='2024-01-01 00:00:00',
+                fov=120.0,
+                fov_unit='deg',
+                viewpoint='Earth',
+                output_ps=ps_out,
+                output_txt=txt_out,
+            )
         )
 
         # The function should complete without error (no NaN or projection failures)
@@ -78,13 +81,15 @@ class TestHighPriorityDifferences:
 
         # Test with FOV exactly at the clamp limit
         run_viewer(
-            planet_num=5,
-            time_str='2024-01-01 00:00:00',
-            fov=90.0,
-            fov_unit='deg',
-            viewpoint='Earth',
-            output_ps=ps_out,
-            output_txt=txt_out,
+            viewer_params_from_legacy_kwargs(
+                planet_num=5,
+                time_str='2024-01-01 00:00:00',
+                fov=90.0,
+                fov_unit='deg',
+                viewpoint='Earth',
+                output_ps=ps_out,
+                output_txt=txt_out,
+            )
         )
 
         ps_content = ps_out.getvalue()
@@ -164,13 +169,15 @@ class TestHighPriorityDifferences:
 
         try:
             run_viewer(
-                planet_num=5,
-                time_str='2024-01-01 00:00:00',
-                fov=1.0,
-                fov_unit='deg',
-                viewpoint='Earth',
-                output_ps=StringIO(),
-                output_txt=txt_out,
+                viewer_params_from_legacy_kwargs(
+                    planet_num=5,
+                    time_str='2024-01-01 00:00:00',
+                    fov=1.0,
+                    fov_unit='deg',
+                    viewpoint='Earth',
+                    output_ps=StringIO(),
+                    output_txt=txt_out,
+                )
             )
         except (KeyError, OSError) as e:
             if 'RADII' in str(e) or 'KERNELVARNOTFOUND' in str(e) or 'NOLOADEDFILES' in str(e):
@@ -204,13 +211,15 @@ class TestHighPriorityDifferences:
 
         try:
             run_viewer(
-                planet_num=6,
-                time_str='2017-09-15 00:00:00',  # Cassini Grand Finale
-                fov=1.0,
-                fov_unit='deg',
-                viewpoint='CAS',
-                output_ps=StringIO(),
-                output_txt=txt_out,
+                viewer_params_from_legacy_kwargs(
+                    planet_num=6,
+                    time_str='2017-09-15 00:00:00',  # Cassini Grand Finale
+                    fov=1.0,
+                    fov_unit='deg',
+                    viewpoint='CAS',
+                    output_ps=StringIO(),
+                    output_txt=txt_out,
+                )
             )
         except (KeyError, OSError) as e:
             if 'RADII' in str(e) or 'KERNELVARNOTFOUND' in str(e) or 'NOLOADEDFILES' in str(e):
@@ -257,13 +266,15 @@ class TestHighPriorityDifferences:
         # Saturn to test F ring propagation
         # Earth observer to test arcsec units
         run_viewer(
-            planet_num=6,
-            time_str='2020-01-01 00:00:00',
-            fov=100.0,  # Will be clamped to 90
-            fov_unit='deg',
-            viewpoint='Earth',
-            output_ps=ps_out,
-            output_txt=txt_out,
+            viewer_params_from_legacy_kwargs(
+                planet_num=6,
+                time_str='2020-01-01 00:00:00',
+                fov=100.0,  # Will be clamped to 90
+                fov_unit='deg',
+                viewpoint='Earth',
+                output_ps=ps_out,
+                output_txt=txt_out,
+            )
         )
 
         ps_content = ps_out.getvalue()

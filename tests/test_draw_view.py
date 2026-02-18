@@ -6,7 +6,11 @@ from io import StringIO
 
 import pytest
 
-from ephemeris_tools.rendering.draw_view import _rspk_write_label, draw_planetary_view
+from ephemeris_tools.rendering.draw_view import (
+    DrawPlanetaryViewOptions,
+    _rspk_write_label,
+    draw_planetary_view,
+)
 from ephemeris_tools.rendering.escher import EscherState
 
 
@@ -14,8 +18,7 @@ def test_draw_planetary_view_produces_diagram_not_stub() -> None:
     """draw_planetary_view emits real PostScript (Escher/Euclid preamble), not a stub."""
     out = StringIO()
     try:
-        draw_planetary_view(
-            out,
+        options = DrawPlanetaryViewOptions(
             obs_time=0.0,
             fov=0.01,
             center_ra=0.0,
@@ -23,6 +26,7 @@ def test_draw_planetary_view_produces_diagram_not_stub() -> None:
             planet_name='Saturn',
             title='Saturn  2025-01-01 12:00',
         )
+        draw_planetary_view(out, options)
     except (OSError, RuntimeError) as e:
         if 'SPICE' in str(e) or 'NOLOADEDFILES' in str(e):
             pytest.skip('SPICE kernels not loaded')
@@ -41,8 +45,7 @@ def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
     """draw_planetary_view emits PostScript with lineto/stroke (Escher/Euclid drawing)."""
     out = StringIO()
     try:
-        draw_planetary_view(
-            out,
+        options = DrawPlanetaryViewOptions(
             obs_time=0.0,
             fov=0.01,
             center_ra=0.0,
@@ -50,6 +53,7 @@ def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
             planet_name='Saturn',
             title='Saturn',
         )
+        draw_planetary_view(out, options)
     except (OSError, RuntimeError) as e:
         if 'SPICE' in str(e) or 'NOLOADEDFILES' in str(e):
             pytest.skip('SPICE kernels not loaded')

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
 
 import cspyce
 
@@ -12,9 +11,6 @@ from ephemeris_tools.spice.bodmat import bodmat
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.observer import observer_state
 from ephemeris_tools.spice.shifts import spkapp_shifted
-
-if TYPE_CHECKING:
-    pass
 
 TWOPI = 2.0 * math.pi
 

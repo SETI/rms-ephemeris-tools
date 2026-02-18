@@ -8,6 +8,12 @@ import re
 import julian
 
 from ephemeris_tools.config import get_leapsecs_path
+from ephemeris_tools.constants import (
+    DEFAULT_MIN_INTERVAL_SECONDS,
+    SECONDS_PER_DAY,
+    SECONDS_PER_HOUR,
+    SECONDS_PER_MINUTE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +32,7 @@ def _ensure_leapsecs() -> None:
     if _leapsecs_loaded:
         return
     # Match historical UTC handling used by SPICE/FORTRAN tooling.
-    julian.set_ut_model('SPICE')  # type: ignore[attr-defined]
+    julian.set_ut_model('SPICE')
     path = get_leapsecs_path()
     try:
         julian.load_lsk(path)
@@ -239,7 +245,7 @@ def interval_seconds(
     interval: float,
     time_unit: str,
     *,
-    min_seconds: float = 1.0,
+    min_seconds: float = DEFAULT_MIN_INTERVAL_SECONDS,
     round_to_minutes: bool = False,
 ) -> float:
     """Convert interval and time_unit to seconds.
@@ -257,14 +263,14 @@ def interval_seconds(
     if u in ('sec', 'seco'):
         dsec = abs(interval)
     elif u in ('min', 'minu'):
-        dsec = abs(interval) * 60.0
+        dsec = abs(interval) * SECONDS_PER_MINUTE
     elif u == 'hour':
-        dsec = abs(interval) * 3600.0
+        dsec = abs(interval) * SECONDS_PER_HOUR
     elif u == 'day':
-        dsec = abs(interval) * 86400.0
+        dsec = abs(interval) * SECONDS_PER_DAY
     else:
         raise ValueError(f'Invalid time_unit {time_unit!r}; expected one of sec, min, hour, day')
     dsec = max(dsec, min_seconds)
     if round_to_minutes:
-        dsec = 60.0 * int(dsec / 60.0 + 0.5)
+        dsec = SECONDS_PER_MINUTE * int(dsec / SECONDS_PER_MINUTE + 0.5)
     return dsec

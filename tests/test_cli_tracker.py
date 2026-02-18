@@ -16,7 +16,7 @@ def test_cli_tracker_simplified_args(monkeypatch) -> None:  # type: ignore[no-un
         captured['value'] = params_or_planet
         return None
 
-    monkeypatch.setattr('ephemeris_tools.tracker.run_tracker', _fake_run_tracker)
+    monkeypatch.setattr('ephemeris_tools.cli.main.run_tracker', _fake_run_tracker)
     monkeypatch.setattr(
         'ephemeris_tools.input_params.write_input_parameters_tracker',
         lambda *_: None,

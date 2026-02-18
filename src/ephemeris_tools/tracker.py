@@ -3,12 +3,33 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, TextIO
+from typing import TextIO, TypedDict, cast
 
+from ephemeris_tools.params import Observer, TrackerParams
 from ephemeris_tools.spice.common import get_state
 
-if TYPE_CHECKING:
-    from ephemeris_tools.params import TrackerParams
+
+class _RunTrackerKwargs(TypedDict, total=True):
+    """Keyword arguments for run_tracker (legacy signature from TrackerParams)."""
+
+    planet_num: int
+    start_time: str
+    stop_time: str
+    interval: float
+    time_unit: str
+    viewpoint: str
+    moon_ids: list[int] | None
+    ephem_version: int
+    xrange: float | None
+    xscaled: bool
+    title: str
+    ring_options: list[int] | None
+    observer_latitude: float | None
+    observer_longitude: float | None
+    observer_altitude: float | None
+    output_ps: TextIO | None
+    output_txt: TextIO | None
+
 
 # Radians to arcsec for tracker plot
 _RAD_TO_ARCSEC = 180.0 / math.pi * 3600.0
@@ -45,7 +66,7 @@ def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int
     return flags
 
 
-def _tracker_call_kwargs_from_params(params: TrackerParams) -> dict[str, object]:
+def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs:
     """Convert a ``TrackerParams`` object to legacy ``run_tracker`` kwargs."""
     viewpoint = params.observer.name if params.observer.name is not None else 'Earth'
     xunit = params.xunit.lower()
@@ -75,8 +96,26 @@ def _tracker_call_kwargs_from_params(params: TrackerParams) -> dict[str, object]
     }
 
 
-def run_tracker(
-    planet_num: int | TrackerParams,
+def run_tracker(params: TrackerParams) -> None:
+    """Generate moon tracker PostScript plot and optional text table (tracker3_xxx.f).
+
+    Loads SPICE, computes moon offsets over the time range, draws plot and table.
+
+    Parameters:
+        params: Structured tracker inputs (planet, time range, interval, observer,
+            moons, rings, output streams).
+
+    Raises:
+        ValueError: Invalid time range or planet.
+        RuntimeError: SPICE load failure.
+    """
+    kwargs = _tracker_call_kwargs_from_params(params)
+    _run_tracker_impl(**kwargs)
+
+
+def _run_tracker_impl(
+    *,
+    planet_num: int,
     start_time: str = '',
     stop_time: str = '',
     interval: float = 1.0,
@@ -94,53 +133,9 @@ def run_tracker(
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
 ) -> None:
-    """Generate moon tracker PostScript plot and optional text table (tracker3_xxx.f).
-
-    Loads SPICE, computes moon offsets over the time range, draws plot and table.
-
-    Parameters:
-        planet_num: Planet index 4-9.
-        start_time, stop_time: Time range strings.
-        interval, time_unit: Step (e.g. 1 hour).
-        viewpoint: Observer (e.g. Earth).
-        moon_ids: Moon body IDs to include; empty = all.
-        ephem_version: SPICE version or 0.
-        xrange: Plot x-axis range (arcsec or radii if xscaled).
-        xscaled: If True, xrange in planet radii.
-        title: Plot title.
-        ring_options: Ring option codes for drawing rings.
-        output_ps, output_txt: Optional output streams.
-
-    Raises:
-        ValueError: Invalid time range or planet.
-        RuntimeError: SPICE load failure.
-    """
+    """Internal tracker implementation (flat kwargs from TrackerParams)."""
     from ephemeris_tools.constants import EARTH_ID
-    from ephemeris_tools.params import TrackerParams
     from ephemeris_tools.spice.geometry import moon_tracker_offsets
-
-    if isinstance(planet_num, TrackerParams):
-        kwargs = _tracker_call_kwargs_from_params(planet_num)
-        run_tracker(
-            planet_num=kwargs['planet_num'],  # type: ignore[arg-type]
-            start_time=kwargs['start_time'],  # type: ignore[arg-type]
-            stop_time=kwargs['stop_time'],  # type: ignore[arg-type]
-            interval=kwargs['interval'],  # type: ignore[arg-type]
-            time_unit=kwargs['time_unit'],  # type: ignore[arg-type]
-            viewpoint=kwargs['viewpoint'],  # type: ignore[arg-type]
-            moon_ids=kwargs['moon_ids'],  # type: ignore[arg-type]
-            ephem_version=kwargs['ephem_version'],  # type: ignore[arg-type]
-            xrange=kwargs['xrange'],  # type: ignore[arg-type]
-            xscaled=kwargs['xscaled'],  # type: ignore[arg-type]
-            title=kwargs['title'],  # type: ignore[arg-type]
-            ring_options=kwargs['ring_options'],  # type: ignore[arg-type]
-            observer_latitude=kwargs['observer_latitude'],  # type: ignore[arg-type]
-            observer_longitude=kwargs['observer_longitude'],  # type: ignore[arg-type]
-            observer_altitude=kwargs['observer_altitude'],  # type: ignore[arg-type]
-            output_ps=kwargs['output_ps'],  # type: ignore[arg-type]
-            output_txt=kwargs['output_txt'],  # type: ignore[arg-type]
-        )
-        return
 
     if moon_ids is None:
         moon_ids = []
@@ -354,3 +349,37 @@ def run_tracker(
                 row += ' ' * 10
             output_txt.write(row + '\n')
         output_txt.flush()
+
+
+def tracker_params_from_legacy_kwargs(**kwargs: object) -> TrackerParams:
+    """Build TrackerParams from flat legacy keyword arguments (e.g. for tests).
+
+    Accepts the same keyword names as the legacy run_tracker signature.
+    """
+
+    def _get(key: str, default: object = None) -> object:
+        return kwargs.get(key, default)
+
+    observer = Observer(
+        name=cast('str | None', _get('viewpoint')),
+        latitude_deg=cast('float | None', _get('observer_latitude')),
+        longitude_deg=cast('float | None', _get('observer_longitude')),
+        altitude_m=cast('float | None', _get('observer_altitude')),
+    )
+    xscaled = bool(_get('xscaled', False))
+    return TrackerParams(
+        planet_num=int(cast('int', _get('planet_num', 0))),
+        start_time=str(_get('start_time', '')),
+        stop_time=str(_get('stop_time', '')),
+        interval=float(cast('float', _get('interval', 1.0))),
+        time_unit=str(_get('time_unit', 'hour')),
+        observer=observer,
+        ephem_version=int(cast('int', _get('ephem_version', 0))),
+        moon_ids=cast('list[int]', _get('moon_ids') or []),
+        ring_names=None,
+        xrange=cast('float | None', _get('xrange')),
+        xunit='radii' if xscaled else 'arcsec',
+        title=str(_get('title', '')),
+        output_ps=cast('TextIO | None', _get('output_ps')),
+        output_txt=cast('TextIO | None', _get('output_txt')),
+    )

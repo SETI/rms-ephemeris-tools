@@ -1,10 +1,12 @@
-"""Ring geometry: opening angles, RA/Dec of ring points (rspk_ringopen, ringradec, ansaradec)."""
+"""Ring geometry: opening angles, RA/Dec of ring points.
+
+Ported from rspk_ringopen, ringradec, ansaradec.
+"""
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import cspyce
 
@@ -12,9 +14,6 @@ from ephemeris_tools.constants import SUN_ID
 from ephemeris_tools.spice.bodmat import bodmat as planet_bodmat
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.observer import observer_state
-
-if TYPE_CHECKING:
-    pass
 
 TWOPI = 2.0 * math.pi
 

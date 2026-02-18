@@ -35,13 +35,7 @@ def get_moon_name_to_index(planet_num: int) -> dict[str, int]:
     cfg = _PLANET_CONFIGS.get(planet_num)
     if cfg is None:
         return {}
-    out: dict[str, int] = {}
-    for i, moon in enumerate(cfg.moons):
-        if moon.id == cfg.planet_id:
-            continue
-        # First moon is at list index 1, which is 1-based index 1
-        out[moon.name.lower()] = i
-    return out
+    return {moon.name.lower(): i for i, moon in enumerate(cfg.moons) if moon.id != cfg.planet_id}
 
 
 def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
@@ -175,13 +169,13 @@ def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
                 digits += ch
             else:
                 break
-        if not digits:
+        if len(digits) == 0:
             return None
         return int(digits)
 
     for s in tokens:
         s = s.strip()
-        if not s:
+        if len(s) == 0:
             continue
         key = s.lower()
         if key == 'classical':

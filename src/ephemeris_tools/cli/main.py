@@ -10,6 +10,13 @@ import sys
 from datetime import datetime, timedelta, timezone
 from typing import NoReturn, TextIO, cast
 
+from ephemeris_tools.constants import DEFAULT_INTERVAL
+from ephemeris_tools.ephemeris import generate_ephemeris
+from ephemeris_tools.input_params import (
+    write_input_parameters_ephemeris,
+    write_input_parameters_tracker,
+    write_input_parameters_viewer,
+)
 from ephemeris_tools.params import (
     EphemerisParams,
     ExtraStar,
@@ -19,12 +26,17 @@ from ephemeris_tools.params import (
     _parse_sexagesimal_to_degrees,
     ephemeris_params_from_env,
     parse_center,
+    parse_column_spec,
     parse_fov,
+    parse_mooncol_spec,
     parse_observer,
     parse_planet,
     tracker_params_from_env,
     viewer_params_from_env,
 )
+from ephemeris_tools.planets import parse_moon_spec
+from ephemeris_tools.tracker import run_tracker
+from ephemeris_tools.viewer import run_viewer
 
 
 def _configure_logging(verbose: bool = False) -> None:
@@ -59,10 +71,6 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
     Returns:
         Exit code 0 on success, 1 on error.
     """
-    from ephemeris_tools.ephemeris import generate_ephemeris
-    from ephemeris_tools.params import parse_column_spec, parse_mooncol_spec
-    from ephemeris_tools.planets import parse_moon_spec
-
     if args.cgi:
         params = ephemeris_params_from_env()
         if params is None:
@@ -107,8 +115,6 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         )
         if viewpoint != 'latlon' and args.viewpoint and args.viewpoint != "Earth's Center":
             params.observatory = args.viewpoint or observatory
-
-    from ephemeris_tools.input_params import write_input_parameters_ephemeris
 
     write_input_parameters_ephemeris(sys.stdout, params)
 
@@ -158,7 +164,7 @@ def main() -> int:
         '--stop', type=str, default='', help='Stop time; env: stop, STOP_TIME'
     )
     ephem_parser.add_argument(
-        '--interval', type=float, default=1.0, help='Time step; env: interval'
+        '--interval', type=float, default=DEFAULT_INTERVAL, help='Time step; env: interval'
     )
     ephem_parser.add_argument(
         '--time-unit',
@@ -250,7 +256,7 @@ def main() -> int:
     track_parser.add_argument('--start', type=str, default='', help='Start time; env: start')
     track_parser.add_argument('--stop', type=str, default='', help='Stop time; env: stop')
     track_parser.add_argument(
-        '--interval', type=float, default=1.0, help='Time step; env: interval'
+        '--interval', type=float, default=DEFAULT_INTERVAL, help='Time step; env: interval'
     )
     track_parser.add_argument(
         '--time-unit',
@@ -534,10 +540,6 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     Returns:
         Exit code 0 on success, 1 on error.
     """
-    from ephemeris_tools.input_params import write_input_parameters_tracker
-    from ephemeris_tools.planets import parse_moon_spec
-    from ephemeris_tools.tracker import run_tracker
-
     if args.cgi:
         params = tracker_params_from_env()
         if params is None:
@@ -608,10 +610,6 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
     Returns:
         Exit code 0 on success, 1 on error.
     """
-    from ephemeris_tools.input_params import write_input_parameters_viewer
-    from ephemeris_tools.planets import parse_moon_spec
-    from ephemeris_tools.viewer import run_viewer
-
     if args.cgi:
         params = viewer_params_from_env()
         if params is None:

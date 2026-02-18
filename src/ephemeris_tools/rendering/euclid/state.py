@@ -15,6 +15,7 @@ class EuclidState:
     """
 
     def __init__(self) -> None:
+        """Initialize Euclid state (device, view, FOV, geometry buffers)."""
         self.device = 0
         self.view = (0.0, 0.0, 0.0, 0.0)
         self.fov = (0.0, 0.0, 0.0, 0.0)

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from ephemeris_tools.params import RING_NAME_TO_CODE
 from tests.compare_fortran import RunSpec, compare_postscript, compare_tables, run_python
 from tests.compare_fortran.spec import (
     VIEWER_DEFAULT_RINGS,
@@ -375,8 +376,6 @@ def test_viewer_ring_defaults_match_fortran_form_values() -> None:
 def test_viewer_ring_codes_cover_python_ring_names() -> None:
     """Every Python --rings name/code (params.RING_NAME_TO_CODE) has a viewer
     form mapping where applicable."""
-    from ephemeris_tools.params import RING_NAME_TO_CODE
-
     for planet, name_to_code in RING_NAME_TO_CODE.items():
         code_to_form = VIEWER_RING_CODE_TO_FORM.get(planet)
         if code_to_form is None:

@@ -6,10 +6,10 @@ import io
 
 import pytest
 
-from ephemeris_tools.params import (
-    EphemerisParams,
-)
+from ephemeris_tools.ephemeris import _normalized_start_sec, _set_observer_from_params
+from ephemeris_tools.params import EphemerisParams
 from ephemeris_tools.record import Record
+from ephemeris_tools.time_utils import interval_seconds
 
 
 def test_record_append_and_write() -> None:
@@ -41,8 +41,6 @@ def test_ephemeris_params_defaults() -> None:
 
 def test_interval_seconds() -> None:
     """Interval conversion via time_utils.interval_seconds (ephemeris default)."""
-    from ephemeris_tools.time_utils import interval_seconds
-
     assert interval_seconds(1, 'hour') == 3600.0
     assert interval_seconds(1, 'day') == 86400.0
     assert interval_seconds(5, 'min') == 300.0
@@ -53,8 +51,6 @@ def test_interval_seconds() -> None:
 
 def test_start_second_normalization_rounds_to_minutes_for_all_units() -> None:
     """Ephemeris start boundary seconds always round to minute precision."""
-    from ephemeris_tools.ephemeris import _normalized_start_sec
-
     assert _normalized_start_sec(8.0, 'sec') == 0.0
     assert _normalized_start_sec(8.0, 'min') == 0.0
     assert _normalized_start_sec(8.0, 'hour') == 0.0
@@ -66,8 +62,6 @@ def test_set_observer_from_params_parses_observatory_coordinates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Observatory strings with embedded coordinates set topocentric observer."""
-    from ephemeris_tools.ephemeris import _set_observer_from_params
-
     called: dict[str, tuple[float, float, float]] = {}
 
     def _fake_set_observer_location(lat: float, lon: float, alt: float) -> None:

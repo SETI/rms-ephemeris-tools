@@ -16,7 +16,7 @@ def test_cli_viewer_simplified_args(monkeypatch) -> None:  # type: ignore[no-unt
         captured['value'] = params_or_planet
         return None
 
-    monkeypatch.setattr('ephemeris_tools.viewer.run_viewer', _fake_run_viewer)
+    monkeypatch.setattr('ephemeris_tools.cli.main.run_viewer', _fake_run_viewer)
     monkeypatch.setattr(
         'ephemeris_tools.input_params.write_input_parameters_viewer',
         lambda *_: None,

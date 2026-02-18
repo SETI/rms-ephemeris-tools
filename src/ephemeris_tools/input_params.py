@@ -49,7 +49,7 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         _w(stream, f'                 Alt = {alt} (m)')
     else:
         vp = (params.observatory or "Earth's Center").strip()
-        if not vp:
+        if len(vp) == 0:
             vp = "Earth's Center"
         if params.sc_trajectory:
             vp = f'{vp} ({params.sc_trajectory})'
@@ -233,7 +233,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     center_body = (
         getattr(center_obj, 'body_name', None) or getattr(args, 'center_body', None) or ' '
     ).strip()
-    if not center_body:
+    if len(center_body) == 0:
         center_body = _PLANET_NAMES.get(getattr(args, 'planet', 6), 'Saturn')
     if center == 'ansa':
         center_ansa = (
@@ -315,7 +315,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
 
     # Additional star
     additional = getattr(args, 'additional', None)
-    if not additional:
+    if additional is None or (isinstance(additional, str) and len(additional) == 0):
         _w(stream, ' Additional star: No')
     else:
         extra_name = (getattr(args, 'extra_name', None) or ' ').strip()
@@ -328,7 +328,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
 
     # Other bodies
     other = getattr(args, 'other', None) or []
-    if not other:
+    if len(other) == 0:
         _w(stream, '    Other bodies: None')
     else:
         other_list = other if isinstance(other, (list, tuple)) else [other]

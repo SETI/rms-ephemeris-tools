@@ -12,6 +12,7 @@ from ephemeris_tools.params import Observer, TrackerParams
 from ephemeris_tools.tracker import (
     _tracker_call_kwargs_from_params,
     run_tracker,
+    tracker_params_from_legacy_kwargs,
 )
 
 
@@ -105,15 +106,17 @@ def test_tracker_matches_fortran_time_grid_split(monkeypatch: pytest.MonkeyPatch
     out = StringIO()
     out_ps = StringIO()
     run_tracker(
-        planet_num=5,
-        start_time='January 7 2015 00:00:00',
-        stop_time='January 10 2015 00:00:00',
-        interval=10,
-        time_unit='hours',
-        viewpoint="Earth's center",
-        moon_ids=[501],
-        output_ps=out_ps,
-        output_txt=out,
+        tracker_params_from_legacy_kwargs(
+            planet_num=5,
+            start_time='January 7 2015 00:00:00',
+            stop_time='January 10 2015 00:00:00',
+            interval=10,
+            time_unit='hours',
+            viewpoint="Earth's center",
+            moon_ids=[501],
+            output_ps=out_ps,
+            output_txt=out,
+        )
     )
 
     assert len(sampled_ets) == 8
@@ -162,17 +165,19 @@ def test_tracker_preserves_user_arcsec_xrange_below_ten(monkeypatch: pytest.Monk
     )
 
     run_tracker(
-        planet_num=8,
-        start_time='2030-01-23',
-        stop_time='2030-01-25',
-        interval=1.0,
-        time_unit='hours',
-        viewpoint='observatory',
-        moon_ids=[803],
-        xrange=5.0,
-        xscaled=False,
-        output_ps=StringIO(),
-        output_txt=StringIO(),
+        tracker_params_from_legacy_kwargs(
+            planet_num=8,
+            start_time='2030-01-23',
+            stop_time='2030-01-25',
+            interval=1.0,
+            time_unit='hours',
+            viewpoint='observatory',
+            moon_ids=[803],
+            xrange=5.0,
+            xscaled=False,
+            output_ps=StringIO(),
+            output_txt=StringIO(),
+        )
     )
 
     assert captured_xranges == [5.0]

@@ -9,7 +9,14 @@ from ephemeris_tools.params import (
     ViewerDisplayInfo,
     ViewerParams,
 )
-from ephemeris_tools.planets import JUPITER_CONFIG, MARS_CONFIG, NEPTUNE_CONFIG, URANUS_CONFIG
+from ephemeris_tools.planets import (
+    JUPITER_CONFIG,
+    MARS_CONFIG,
+    NEPTUNE_CONFIG,
+    PLUTO_CONFIG,
+    SATURN_CONFIG,
+    URANUS_CONFIG,
+)
 from ephemeris_tools.viewer import (
     _fov_deg_from_unit,
     _resolve_center_ansa_radius_km,
@@ -73,8 +80,6 @@ def test_resolve_viewer_ring_flags_mars_both_groups() -> None:
 
 def test_resolve_viewer_ring_flags_pluto_named_orbits() -> None:
     """Pluto orbit names select the expected ring indices."""
-    from ephemeris_tools.planets import PLUTO_CONFIG
-
     flags = _resolve_viewer_ring_flags(9, ['Charon', 'Kerberos'], PLUTO_CONFIG.rings)
     assert flags == [True, False, False, True, False]
 
@@ -106,8 +111,6 @@ def test_resolve_viewer_ring_flags_uranus_all_inner_group() -> None:
 
 def test_resolve_viewer_ring_flags_saturn_abc_names() -> None:
     """Saturn A/B/C names keep the first five FORTRAN rings enabled."""
-    from ephemeris_tools.planets import SATURN_CONFIG
-
     flags = _resolve_viewer_ring_flags(6, ['A', 'B', 'C'], SATURN_CONFIG.rings)
     expected = [False] * len(SATURN_CONFIG.rings)
     for i in range(5):

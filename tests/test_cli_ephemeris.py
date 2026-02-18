@@ -16,7 +16,7 @@ def test_cli_ephemeris_observer_and_moons(monkeypatch) -> None:  # type: ignore[
         captured['value'] = params
         return None
 
-    monkeypatch.setattr('ephemeris_tools.ephemeris.generate_ephemeris', _fake_generate)
+    monkeypatch.setattr('ephemeris_tools.cli.main.generate_ephemeris', _fake_generate)
     monkeypatch.setattr(
         'ephemeris_tools.input_params.write_input_parameters_ephemeris',
         lambda *_: None,
