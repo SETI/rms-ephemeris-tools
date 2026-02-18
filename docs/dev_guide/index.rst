@@ -15,4 +15,5 @@ Contents
    architecture
    modules
    porting
+   fortran_compatibility
    cgi_parameter_reference

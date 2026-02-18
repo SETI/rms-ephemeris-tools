@@ -185,6 +185,8 @@ def draw_planetary_view(output: TextIO, options: DrawPlanetaryViewOptions) -> No
     # ===================================================================
     # Initialize camera
     # ===================================================================
+    if not (0 < options.fov < math.pi):
+        raise ValueError(f'options.fov must be in (0, pi), got {options.fov!r}')
     delta = math.tan(options.fov / 2.0)
     view_state = EscherViewState()
     euclid_state = EuclidState()

@@ -250,7 +250,7 @@ def _run_viewer_impl(
             id_to_name=id_to_name,
             neptune_arc_model=neptune_arc_model,
         )
-    if output_txt is not None:
+    elif output_txt is not None:
         _write_fov_table(
             output_txt,
             et=et,
@@ -265,17 +265,22 @@ def _run_viewer_impl(
     # Plot: FOV_PTS diameter, scale = FOV_PTS / (2*tan(fov/2)) for camera projection.
     scale = FOV_PTS / (2.0 * math.tan(fov_rad / 2.0))
 
-    def to_plot(ra: float, dec: float) -> tuple[float, float]:
+    def to_plot(ra: float, dec: float) -> tuple[float, float] | None:
         """Convert (ra, dec) in radians to plot (x, y) via camera projection."""
         return radec_to_plot(ra, dec, center_ra_rad, center_dec_rad, fov_rad)
 
     bodies: list[tuple[float, float, str, bool]] = []
-    px, py = to_plot(planet_ra, planet_dec)
-    bodies.append((px, py, cfg.planet_name, True))
+    plot_result = to_plot(planet_ra, planet_dec)
+    if plot_result is not None:
+        px, py = plot_result
+        bodies.append((px, py, cfg.planet_name, True))
 
     for mid in track_moon_ids:
         ra, dec = body_radec(et, mid)
-        mx, my = to_plot(ra, dec)
+        plot_result = to_plot(ra, dec)
+        if plot_result is None:
+            continue
+        mx, my = plot_result
         name = id_to_name.get(mid, str(mid))
         bodies.append((mx, my, name.upper(), False))
 

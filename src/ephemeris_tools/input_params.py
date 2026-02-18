@@ -222,7 +222,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     center_ra = getattr(args, 'center_ra', 0.0)
     center_dec = getattr(args, 'center_dec', 0.0)
     mode = getattr(center_obj, 'mode', None)
-    val = getattr(args, 'center', None)
+    val = getattr(center_obj, 'center', center_obj) if center_obj is not None else None
     if isinstance(mode, str):
         center_mode = mode
     elif isinstance(val, str):

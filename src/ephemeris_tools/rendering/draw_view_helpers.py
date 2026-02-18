@@ -129,10 +129,14 @@ def _radrec(r: float, lon_rad: float, lat_rad: float) -> tuple[float, float, flo
     )
 
 
+def _rspk_escape(s: str) -> str:
+    """Escape a string for PostScript: backslashes and parentheses."""
+    return s.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
 def _rspk_write_string(s: str, state: EscherState) -> None:
-    """Write a PostScript-format string with escaped parentheses (port of RSPK_WriteString)."""
-    safe = s.replace('(', '\\(').replace(')', '\\)')
-    eswrit(f'({safe})', state)
+    """Write a PostScript-format string with escaped backslashes and parentheses."""
+    eswrit(f'({_rspk_escape(s)})', state)
 
 
 def _rspk_write_label(
@@ -167,7 +171,7 @@ def _rspk_write_label(
     if fsign < 0:
         s = '-' + s
     esmove(escher_state)
-    safe = s.replace('(', '\\(').replace(')', '\\)')
+    safe = _rspk_escape(s)
     if offset == 'L':
         eswrit(f'({safe}) LabelLeft', escher_state)
     else:
@@ -194,7 +198,7 @@ def _rspk_annotate(
     if abs(x) < delta and abs(y) < delta:
         eutemp([x], [y], [x], [y], 1, 1, view_state, escher_state)
         esmove(escher_state)
-        name_safe = name.replace('(', '\\(').replace(')', '\\)')
+        name_safe = _rspk_escape(name)
         eswrit(f'({name_safe}) LabelBody', escher_state)
 
 
@@ -223,6 +227,7 @@ def _rspk_labels2(
     ra_sec = ra * spr
     k1 = _fortran_nint((ra_sec - sdelta) / ds + 0.5)
     k2 = _fortran_nint((ra_sec + sdelta) / ds - 0.5)
+    _eps = 1e-12
     for k in range(k1, k2 + 1):
         s = k * ds
         length = dtick2
@@ -231,6 +236,8 @@ def _rspk_labels2(
             length = dtick1
         j2000_los = cspyce.radrec(1.0, s / spr, dec)
         cam = list(cspyce.mtxv(cmatrix, j2000_los))
+        if cam[2] <= _eps or abs(cam[2]) < _eps:
+            continue
         x = -cam[0] / cam[2]
         if abs(x) <= delta:
             eutemp([x], [delta - length], [x], [delta], 1, ltype, view_state, escher_state)
@@ -257,6 +264,8 @@ def _rspk_labels2(
             length = dtick1
         j2000_los = cspyce.radrec(1.0, ra, s / spr)
         cam = list(cspyce.mtxv(cmatrix, j2000_los))
+        if cam[2] <= _eps or abs(cam[2]) < _eps:
+            continue
         y = -cam[1] / cam[2]
         if abs(y) <= delta:
             eutemp([-delta + length], [y], [-delta], [y], 1, ltype, view_state, escher_state)
@@ -410,13 +419,17 @@ def radec_to_plot(
     center_ra_rad: float,
     center_dec_rad: float,
     fov_rad: float,
-) -> tuple[float, float]:
-    """Convert (ra, dec) to plot coordinates (x, y) in points. Returns (0, 0) if behind camera."""
-    cmat = camera_matrix(center_ra_rad, center_dec_rad)
+    cmat: list[list[float]] | None = None,
+) -> tuple[float, float] | None:
+    """Convert (ra, dec) to plot coordinates (x, y) in points. Returns None if behind camera."""
+    if fov_rad <= 0:
+        raise ValueError('fov_rad must be positive')
+    if cmat is None:
+        cmat = camera_matrix(center_ra_rad, center_dec_rad)
     los = list(cspyce.radrec(1.0, ra_rad, dec_rad))
     cam = list(cspyce.mtxv(cmat, los))
     if cam[2] <= 0.0:
-        return (0.0, 0.0)
+        return None
     half = math.tan(fov_rad / 2.0)
     x_plot = -FOV_PTS * cam[0] / (cam[2] * 2.0 * half)
     y_plot = -FOV_PTS * cam[1] / (cam[2] * 2.0 * half)
@@ -449,6 +462,8 @@ def _opsgnd(a: float, b: float) -> bool:
 def _vrotv(v: list[float], axis: list[float], angle: float) -> list[float]:
     """Rotate vector v around axis by angle (radians). Port of SPICE VROTV."""
     ax = _vhat(axis)
+    if _vnorm(ax) == 0.0:
+        raise ValueError('axis must be non-zero')
     ca = math.cos(angle)
     sa = math.sin(angle)
     dot = v[0] * ax[0] + v[1] * ax[1] + v[2] * ax[2]
@@ -493,14 +508,17 @@ def _write_ps_preamble(
     eswrit('unscale 90 rotate', escher_state)
     eswrit('dup stringwidth pop -0.5 mul TextHeight 0.3 mul', escher_state)
     eswrit('moveto show grestore} def', escher_state)
-    if moon_labelpts > 0.0:
-        scale_val = min(moon_labelpts / MOON_LABEL_SCALE_DIVISOR, MOON_LABEL_SCALE_CAP)
-        scale_str = f'{scale_val:.3f}'
-        eswrit('/LabelBody {gsave currentpoint translate', escher_state)
-        eswrit('unscale', escher_state)
-        eswrit(f'{scale_str} {scale_str} scale', escher_state)
-        eswrit('TextHeight 0.2 mul dup', escher_state)
-        eswrit('moveto show grestore} def', escher_state)
+    scale_val = (
+        min(moon_labelpts / MOON_LABEL_SCALE_DIVISOR, MOON_LABEL_SCALE_CAP)
+        if moon_labelpts > 0.0
+        else 1.0
+    )
+    scale_str = f'{scale_val:.3f}'
+    eswrit('/LabelBody {gsave currentpoint translate', escher_state)
+    eswrit('unscale', escher_state)
+    eswrit(f'{scale_str} {scale_str} scale', escher_state)
+    eswrit('TextHeight 0.2 mul dup', escher_state)
+    eswrit('moveto show grestore} def', escher_state)
     eswrit('%%EndProlog', escher_state)
     eswrit('%', escher_state)
     if title.strip():
@@ -529,10 +547,11 @@ def _write_ps_preamble(
     )
     eswrit('0 0 moveto', escher_state)
     date_str = _generated_date_str()
-    eswrit(
-        f'(Generated by the {planet_name} Viewer Tool, PDS Ring-Moon Systems Node, {date_str})',
-        escher_state,
+    footer_text = (
+        f'Generated by the {_rspk_escape(planet_name)} Viewer Tool, '
+        f'PDS Ring-Moon Systems Node, {_rspk_escape(date_str)}'
     )
+    eswrit(f'({footer_text})', escher_state)
     eswrit('show grestore', escher_state)
     eswrit('gsave unscale', escher_state)
     eswrit('324 180 translate 1.2 1.2 scale', escher_state)

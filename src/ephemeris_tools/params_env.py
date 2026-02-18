@@ -290,10 +290,11 @@ def viewer_params_from_env() -> ViewerParams | None:
             except ValueError:
                 extra_star = None
     ephem_s = _get_env('ephem', '0')
-    ephem_value = ephem_s.split()[0] if ephem_s else '0'
+    parts = (ephem_s or '').strip().split()
+    ephem_value = parts[0] if parts else '0'
     try:
         ephem_version = int(ephem_value)
-    except ValueError:
+    except (ValueError, IndexError):
         ephem_version = 0
 
     display = ViewerDisplayInfo(
@@ -385,9 +386,15 @@ def tracker_params_from_env() -> TrackerParams | None:
             alt_m = float(alt_s) if alt_s else None
         except ValueError:
             alt_m = None
-        if lon_deg is not None and _get_env('lon_dir', 'east').lower() == 'west':
+        lon_dir = _get_env('lon_dir', 'east')
+        if lon_deg is not None and lon_dir.lower() == 'west':
             lon_deg = -lon_deg
-        observer = Observer(latitude_deg=lat_deg, longitude_deg=lon_deg, altitude_m=alt_m)
+        observer = Observer(
+            latitude_deg=lat_deg,
+            longitude_deg=lon_deg,
+            altitude_m=alt_m,
+            lon_dir=lon_dir,
+        )
     elif viewpoint:
         observer = Observer(name=viewpoint)
     moon_tokens = _get_keys_env('moons')
@@ -405,10 +412,11 @@ def tracker_params_from_env() -> TrackerParams | None:
     xunit = 'radii' if 'radii' in xunit_raw.lower() else 'arcsec'
     title = _get_env('title')
     ephem_s = _get_env('ephem', '0')
-    ephem_value = ephem_s.split()[0] if ephem_s else '0'
+    parts = (ephem_s or '').strip().split()
+    ephem_value = parts[0] if parts else '0'
     try:
         ephem_version = int(ephem_value)
-    except ValueError:
+    except (ValueError, IndexError):
         ephem_version = 0
     return TrackerParams(
         planet_num=planet_num,

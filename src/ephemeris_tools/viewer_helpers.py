@@ -816,21 +816,27 @@ def _fov_deg_from_unit(
 
         _sun_dist_km, obs_dist_km = planet_ranges(et)
         if obs_dist_km > 0:
-            return fov * math.asin(cfg.equatorial_radius_km / obs_dist_km) * _RAD2DEG
+            ratio = cfg.equatorial_radius_km / obs_dist_km
+            clamped = max(-1.0, min(1.0, ratio))
+            return fov * math.asin(clamped) * _RAD2DEG
         return fov
     if ('pluto-charon separation' in s or 'pluto charon separation' in s) and et is not None:
         from ephemeris_tools.spice.geometry import planet_ranges
 
         _sun_dist_km, obs_dist_km = planet_ranges(et)
         if obs_dist_km > 0:
-            return fov * math.asin(_PLUTO_CHARON_SEP_KM / obs_dist_km) * _RAD2DEG
+            ratio = _PLUTO_CHARON_SEP_KM / obs_dist_km
+            clamped = max(-1.0, min(1.0, ratio))
+            return fov * math.asin(clamped) * _RAD2DEG
         return fov
     if ('kilometer' in s or s.strip() == 'km') and et is not None:
         from ephemeris_tools.spice.geometry import planet_ranges
 
         _sun_dist_km, obs_dist_km = planet_ranges(et)
         if obs_dist_km > 0:
-            return fov * math.asin(1.0 / obs_dist_km) * _RAD2DEG
+            ratio = 1.0 / obs_dist_km
+            clamped = max(-1.0, min(1.0, ratio))
+            return fov * math.asin(clamped) * _RAD2DEG
         return fov
     if s in ('deg', 'degree', 'degrees'):
         return fov

@@ -233,7 +233,8 @@ class TestHighPriorityDifferences:
         assert 'dDec (deg)' in txt_content, 'Spacecraft observer should use degrees'
         # Should NOT show arcsec units for offset columns
         lines = txt_content.split('\n')
-        header_line = next(line for line in lines if 'dRA' in line and 'dDec' in line)
+        header_line = next((line for line in lines if 'dRA' in line and 'dDec' in line), None)
+        assert header_line is not None, 'Header line with dRA and dDec not found in output'
         # In header for spacecraft, should be "(deg)" not "(")"
         assert '(")' not in header_line or header_line.count('(deg)') > 0, (
             'Spacecraft observer should use degrees for offsets'

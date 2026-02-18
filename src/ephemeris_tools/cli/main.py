@@ -570,10 +570,22 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     _now = datetime.now(timezone.utc)
     _default_start = _now.strftime('%Y-%m-%d %H:%M')
     _default_stop = (_now + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
+    if args.start is not None and args.stop is None:
+        try:
+            parsed_start = datetime.strptime(args.start, '%Y-%m-%d %H:%M').replace(
+                tzinfo=timezone.utc
+            )
+            _computed_stop = (parsed_start + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
+        except ValueError:
+            _computed_stop = _default_stop
+    else:
+        _computed_stop = _default_stop
+    start_time = args.start or _default_start
+    stop_time = args.stop if args.stop is not None else _computed_stop
     tracker_params = TrackerParams(
         planet_num=args.planet,
-        start_time=args.start or _default_start,
-        stop_time=args.stop or _default_stop,
+        start_time=start_time,
+        stop_time=stop_time,
         interval=args.interval,
         time_unit=args.time_unit,
         observer=observer,
