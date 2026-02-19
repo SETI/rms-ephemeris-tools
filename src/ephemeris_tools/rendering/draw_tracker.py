@@ -66,9 +66,13 @@ BAND_WIDTH = 16.0
 
 
 def _track_string(s: str) -> str:
-    """Escape ( ) for PostScript and wrap in parentheses (RSPK_TrackString)."""
-    temp = s.replace('\\', '\\\\')
-    temp = temp.replace('(', '\\(').replace(')', '\\)')
+    """Escape ( ) and degree for PostScript and wrap in parentheses (RSPK_TrackString).
+
+    Unicode degree (U+00B0) is replaced with \\260 so PostScript emits one byte 0xB0
+    and only the degree glyph is shown (avoids UTF-8 C2 B0 rendering as prime + degree).
+    """
+    temp = s.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+    temp = temp.replace('\u00b0', '\\260')
     return f'({temp})'
 
 

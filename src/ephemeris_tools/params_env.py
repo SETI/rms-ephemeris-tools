@@ -266,10 +266,11 @@ def viewer_params_from_env() -> ViewerParams | None:
     except ValueError:
         moonpts = 0.0
     title = _get_env('title')
+    standard_flag = _get_env('standard', '').lower()
+    show_standard_stars = standard_flag in {'yes', 'y', 'true', '1'}
     additional_flag = _get_env('additional', '').lower()
-    show_standard_stars = additional_flag in {'yes', 'y', 'true', '1'}
     extra_star: ExtraStar | None = None
-    if show_standard_stars:
+    if additional_flag in {'yes', 'y', 'true', '1'}:
         extra_ra_s = _get_env('extra_ra', '')
         extra_dec_s = _get_env('extra_dec', '')
         extra_ra_type = _get_env('extra_ra_type', 'hours').strip().lower()
@@ -418,6 +419,9 @@ def tracker_params_from_env() -> TrackerParams | None:
         ephem_version = int(ephem_value)
     except (ValueError, IndexError):
         ephem_version = 0
+    ephem_display = _get_env('ephem') or None
+    moons_display = _get_keys_env('moons') or None
+    rings_display = _get_keys_env('rings') or None
     return TrackerParams(
         planet_num=planet_num,
         start_time=start_time,
@@ -431,4 +435,7 @@ def tracker_params_from_env() -> TrackerParams | None:
         xrange=xrange,
         xunit=xunit,
         title=title,
+        ephem_display=ephem_display,
+        moons_display=moons_display,
+        rings_display=rings_display,
     )

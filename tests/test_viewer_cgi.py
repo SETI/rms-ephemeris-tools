@@ -91,10 +91,23 @@ def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch: pytest.MonkeyPatc
     assert abs(params.center.dec_deg - (-21.980283333333334)) < 1e-9
 
 
+def test_viewer_params_from_env_standard_stars_from_standard(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Standard stars flag comes from env 'standard', not 'additional'."""
+    monkeypatch.setenv('NPLANET', '6')
+    monkeypatch.setenv('time', '2025-01-01 12:00')
+    monkeypatch.setenv('standard', 'Yes')
+    monkeypatch.setenv('additional', 'No')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.show_standard_stars is True
+    assert params.extra_star is None
+
+
 def test_viewer_params_from_env_additional_extra_star(monkeypatch: pytest.MonkeyPatch) -> None:
     """CGI additional star fields parse into ViewerParams.extra_star."""
     monkeypatch.setenv('NPLANET', '9')
     monkeypatch.setenv('time', '2018-08-15 05:32:32')
+    monkeypatch.setenv('standard', 'Yes')
     monkeypatch.setenv('additional', 'Yes')
     monkeypatch.setenv('extra_ra', '19 22 10.4687')
     monkeypatch.setenv('extra_ra_type', 'hours')
@@ -117,6 +130,22 @@ def test_viewer_params_from_env_other_bodies(monkeypatch: pytest.MonkeyPatch) ->
     params = viewer_params_from_env()
     assert params is not None
     assert params.other_bodies == ['Sun']
+
+
+def test_viewer_params_from_env_other_bodies_multi(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CGI multi-valued other (e.g. other=Barycenter#Sun) is split correctly."""
+    monkeypatch.setenv('NPLANET', '9')
+    monkeypatch.setenv('time', '2015-05-19 19:32:00')
+    monkeypatch.setenv('other', 'Barycenter#Sun#Anti-Sun#Earth#New Horizons')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.other_bodies == [
+        'Barycenter',
+        'Sun',
+        'Anti-Sun',
+        'Earth',
+        'New Horizons',
+    ]
 
 
 def test_viewer_params_from_env_latlon_viewpoint_display_precision(

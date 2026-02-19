@@ -614,6 +614,7 @@ def _write_fov_table(
     body_ids: list[int],
     id_to_name: dict[int, str],
     neptune_arc_model: int = 3,
+    ring_names: list[str] | None = None,
 ) -> None:
     """Write Field of View Description (J2000) and body/ring geometry tables."""
     from ephemeris_tools.constants import EARTH_ID
@@ -639,19 +640,18 @@ def _write_fov_table(
     stream.write('\n')
     if is_earth_observer:
         stream.write(
-            '     Body          RA                 Dec              '
-            '  RA (deg)   Dec (deg)   dRA (")   dDec (")\n'
+            '     Body          RA                  Dec                  '
+            'RA (deg)   Dec (deg)    dRA (")   dDec (")\n'
         )
     else:
         stream.write(
-            '     Body          RA                 Dec              '
-            '  RA (deg)   Dec (deg)   dRA (deg) dDec (deg)\n'
+            '     Body          RA                  Dec                  '
+            'RA (deg)   Dec (deg)   dRA (deg)  dDec (deg)\n'
         )
 
     for body_id in body_ids:
         ra, dec = body_radec(et, body_id)
         if is_earth_observer:
-            # Use arcsec for Earth observations
             dra_display = (ra - planet_ra) * cosdec * _RAD2ARCSEC
             ddec_display = (dec - planet_dec) * _RAD2ARCSEC
             if dra_display < -0.5 * _MAX_ARCSEC:
@@ -659,7 +659,6 @@ def _write_fov_table(
             if dra_display > 0.5 * _MAX_ARCSEC:
                 dra_display -= _MAX_ARCSEC
         else:
-            # Use degrees for spacecraft observations
             dra_display = (ra - planet_ra) * cosdec * _RAD2DEG
             ddec_display = (dec - planet_dec) * _RAD2DEG
             if dra_display < -HALF_CIRCLE_DEGREES:
@@ -671,17 +670,20 @@ def _write_fov_table(
         name = id_to_name.get(body_id, str(body_id))
         ra_str = _ra_hms(ra)
         dec_str = _dec_dms(dec)
-        stream.write(
-            f'  {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}  '
-            f'{ra_deg:10.6f} {dec_deg:12.6f} {dra_display:10.4f} {ddec_display:10.4f}\n'
-        )
+        if is_earth_observer:
+            fmt = f' {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}    ' \
+                f'{ra_deg:10.6f}{dec_deg:12.6f} {dra_display:10.4f} {ddec_display:10.4f}\n'
+        else:
+            fmt = f' {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}    ' \
+                f'{ra_deg:10.6f}{dec_deg:12.6f} {dra_display:11.6f} {ddec_display:11.6f}\n'
+        stream.write(fmt)
 
     stream.write('\n')
-    stream.write('                   Sub-Observer    Sub-Solar     \n')
+    stream.write('                   Sub-Observer  ' + '       ' + 'Sub-Solar     \n')
     lon_dir = cfg.longitude_direction
     stream.write(
-        f'  Body       Lon(deg{lon_dir}) Lat(deg)  Lon(deg{lon_dir}) Lat(deg)  '
-        'Phase(deg)  Distance(10^6 km)\n'
+        f'     Body          Lon(deg{lon_dir}) Lat(deg)   Lon(deg{lon_dir}) Lat(deg)   '
+        f'Phase(deg)   Distance(10^6 km)\n'
     )
 
     for body_id in body_ids:
@@ -690,14 +692,43 @@ def _write_fov_table(
         _, obs_dist = body_ranges(et, body_id)
         name = id_to_name.get(body_id, str(body_id))
         stream.write(
-            f'  {body_id:3d} {name:10s} '
+            f' {body_id:3d} {name:10s} '
             f'{subobs_lon * _RAD2DEG:10.3f}{subobs_lat * _RAD2DEG:10.3f} '
-            f'{subsol_lon * _RAD2DEG:10.3f}{subsol_lat * _RAD2DEG:10.3f} '
-            f'{phase * _RAD2DEG:13.5f} {obs_dist / 1e6:15.6f}\n'
+            f'{subsol_lon * _RAD2DEG:10.3f}{subsol_lat * _RAD2DEG:10.3f}'
+            f'{phase * _RAD2DEG:13.5f}{obs_dist / 1e6:15.6f}\n'
         )
 
-    # Ring geometry (if rings exist).
+    # Ring table and geometry (if rings exist). Order: ring table first, then sub-solar lat etc.
     if cfg.rings:
+        # Uranus: pericenter/ascending node table first (FORTRAN: first 10 rings only).
+        if cfg.planet_num == 7:
+            peri_deg_list, node_deg_list = _propagated_uranus_rings(et, cfg)
+            stream.write('\n')
+            stream.write(
+                '     Ring          Pericenter   Ascending Node (deg, from ring plane ascending node)\n'
+            )
+            n_uranus_table = 10
+            for i, r in enumerate(cfg.rings[:n_uranus_table]):
+                name = (r.name or '')[:10].ljust(10)
+                peri_deg = 0.0 if r.ecc == 0.0 else peri_deg_list[i]
+                node_deg = 0.0 if r.inc_rad == 0.0 else node_deg_list[i]
+                stream.write(f'     {name}   {peri_deg:8.3f}     {node_deg:8.3f}\n')
+
+        # Resolve ring selection for Saturn F ring block (written after sun-planet table).
+        ring_flags = (
+            _resolve_viewer_ring_flags(cfg.planet_num, ring_names or [], cfg.rings)
+            if ring_names is not None
+            else []
+        )
+        f_ring_selected = (
+            cfg.f_ring_index is not None
+            and cfg.planet_num == 6
+            and cfg.f_ring_index < len(cfg.rings)
+            and cfg.f_ring_index < len(ring_flags)
+            and ring_flags[cfg.f_ring_index]
+        )
+
+        # Ring geometry: sub-solar latitude, opening angle, phase, longitudes, distances.
         from ephemeris_tools.spice.rings import ring_opening
 
         stream.write('\n')
@@ -708,24 +739,27 @@ def _write_fov_table(
         sun_db_deg = geom.sun_db * _RAD2DEG
         litstr = '(lit)' if not geom.is_dark else '(unlit)'
         stream.write(
-            f'  Ring sub-solar latitude (deg): {sun_b_deg:9.5f}  '
-            f'({sun_b_deg - sun_db_deg:9.5f}  to  {sun_b_deg + sun_db_deg:9.5f})\n'
+            f'   Ring sub-solar latitude (deg): {sun_b_deg:9.5f}  '
+            f'({sun_b_deg - sun_db_deg:9.5f}  to {sun_b_deg + sun_db_deg:9.5f})\n'
         )
-        stream.write(f' Ring plane opening angle (deg): {geom.obs_b * _RAD2DEG:9.5f}  {litstr}\n')
-        stream.write(f'  Ring center phase angle (deg): {phase_deg:9.5f}\n')
+        stream.write(f'  Ring plane opening angle (deg): {geom.obs_b * _RAD2DEG:9.5f}  {litstr}\n')
+        stream.write(f'   Ring center phase angle (deg): {phase_deg:9.5f}\n')
         stream.write(
-            f'      Sub-solar longitude (deg): {geom.sun_long * _RAD2DEG:9.5f}  '
+            f'       Sub-solar longitude (deg): {geom.sun_long * _RAD2DEG:9.5f}  '
             'from ring plane ascending node\n'
         )
-        stream.write(f'   Sub-observer longitude (deg): {geom.obs_long * _RAD2DEG:9.5f}\n')
+        stream.write(f'    Sub-observer longitude (deg): {geom.obs_long * _RAD2DEG:9.5f}\n')
         stream.write('\n')
-        stream.write(f'       Sun-planet distance (AU): {sun_dist / _AU_KM:9.5f}\n')
-        stream.write(f'  Observer-planet distance (AU): {obs_dist / _AU_KM:9.5f}\n')
-        stream.write(f'       Sun-planet distance (km): {sun_dist / 1e6:12.6f} x 10^6\n')
-        stream.write(f'  Observer-planet distance (km): {obs_dist / 1e6:12.6f} x 10^6\n')
+        stream.write(f'        Sun-planet distance (AU): {sun_dist / _AU_KM:9.5f}\n')
+        stream.write(f'   Observer-planet distance (AU): {obs_dist / _AU_KM:9.5f}\n')
+        stream.write(f'        Sun-planet distance (km): {sun_dist / 1e6:12.6f} x 10^6\n')
+        stream.write(f'   Observer-planet distance (km): {obs_dist / 1e6:12.6f} x 10^6\n')
+        light_time_sec = obs_dist / 299792.458
+        stream.write(f'         Light travel time (sec): {light_time_sec:12.6f}\n')
         stream.write('\n')
 
-        if cfg.f_ring_index is not None and cfg.planet_num == 6:
+        # Saturn: F ring pericenter/node when selected (after sun-planet table).
+        if f_ring_selected:
             propagated = _propagated_saturn_f_ring(et, cfg)
             if propagated is not None:
                 peri_rad, node_rad = propagated
@@ -735,23 +769,11 @@ def _write_fov_table(
                 ring = cfg.rings[cfg.f_ring_index]
                 peri_deg = (ring.peri_rad * _RAD2DEG) % 360.0
                 node_deg = (ring.node_rad * _RAD2DEG) % 360.0
-            stream.write('\n')
             stream.write(
                 f'      F Ring pericenter (deg): {peri_deg:9.5f}  from ring plane ascending node\n'
             )
             stream.write(f'  F Ring ascending node (deg): {node_deg:9.5f}\n')
-
-    if cfg.rings and cfg.planet_num == 7:
-        peri_deg_list, node_deg_list = _propagated_uranus_rings(et, cfg)
-        stream.write('\n')
-        stream.write(
-            '     Ring          Pericenter   Ascending Node (deg, from ring plane ascending node)\n'
-        )
-        for i, r in enumerate(cfg.rings):
-            name = (r.name or '')[:10].ljust(10)
-            peri_deg = 0.0 if r.ecc == 0.0 else peri_deg_list[i]
-            node_deg = 0.0 if r.inc_rad == 0.0 else node_deg_list[i]
-            stream.write(f'     {name}   {peri_deg:8.3f}     {node_deg:8.3f}\n')
+            stream.write('\n')
 
     if cfg.arcs and cfg.planet_num == 8:
         arc_minmax = _propagated_neptune_arcs(et, cfg, arc_model_index=neptune_arc_model)
@@ -992,6 +1014,8 @@ def _viewer_call_kwargs_from_params(params: ViewerParams) -> _RunViewerKwargs:
         'moon_points': params.moonpts,
         'meridian_points': 1.3 if params.meridians else 0.0,
         'opacity': params.opacity,
+        'peris': params.peris,
+        'peripts': params.peripts,
         'arcmodel': params.arcmodel,
         'arcpts': params.arcpts,
         'torus': params.torus,
@@ -1061,6 +1085,8 @@ def viewer_params_from_legacy_kwargs(**kwargs: object) -> ViewerParams:
         ring_names=cast('list[str] | None', _get('ring_selection')),
         blank_disks=bool(_get('blank_disks', False)),
         opacity=str(_get('opacity', 'Transparent')),
+        peris=str(_get('peris', 'None') or 'None'),
+        peripts=float(cast(Any, _get('peripts', 4.0))),
         labels=str(_get('labels') or 'Small (6 points)'),
         moonpts=float(cast(Any, _get('moon_points', 0.0))),
         meridians=bool(float(cast(Any, _get('meridian_points') or 0)) > 0),

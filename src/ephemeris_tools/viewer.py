@@ -123,6 +123,8 @@ def _run_viewer_impl(
     moon_points: float = 0.0,
     meridian_points: float = 0.0,
     opacity: str = 'Transparent',
+    peris: str = 'None',
+    peripts: float = 4.0,
     arcmodel: str | None = None,
     arcpts: float = 4.0,
     torus: bool = False,
@@ -249,6 +251,7 @@ def _run_viewer_impl(
             body_ids=table_body_ids,
             id_to_name=id_to_name,
             neptune_arc_model=neptune_arc_model,
+            ring_names=ring_selection,
         )
     elif output_txt is not None:
         _write_fov_table(
@@ -260,6 +263,7 @@ def _run_viewer_impl(
             body_ids=table_body_ids,
             id_to_name=id_to_name,
             neptune_arc_model=neptune_arc_model,
+            ring_names=ring_selection,
         )
 
     # Plot: FOV_PTS diameter, scale = FOV_PTS / (2*tan(fov/2)) for camera projection.
@@ -355,14 +359,14 @@ def _run_viewer_impl(
         # FORTRAN format: ('(',f7.3,'\260 ',a1,',',f7.3,'\260)')
         lon_text = _fortran_fixed(lon_deg, 3)
         lat_text = _fortran_fixed(lat_deg, 3)
-        rc.append(f'({lon_text:>7s}\\260 {lon_dir},{lat_text:>7s}\\260)')
+        rc.append(f'({lon_text:>7s}\260 {lon_dir},{lat_text:>7s}\260)')
 
         # Caption 7: Phase angle
         phase_rad = body_phase(et, caption_center_body_id)
         phase_deg = phase_rad * _RAD2DEG
         lc.append(f'{caption_center_body_name} phase angle: ')
         # FORTRAN format: (f7.3,'\260') → e.g. '  2.920\260'
-        rc.append(f'{phase_deg:7.3f}\\260')
+        rc.append(f'{phase_deg:7.3f}\260')
 
         if planet_num == 5 and torus:
             lc.append('Io torus:')
@@ -478,6 +482,44 @@ def _run_viewer_impl(
                 torus_node_rad = _compute_jupiter_torus_node(et)
                 if torus_node_rad is not None:
                     f_ring_nodes[torus_idx] = torus_node_rad
+            # Pericenter markers: zero-length arcs at ring pericenter (FORTRAN style).
+            peris_lower = (peris or '').strip().lower()
+            if planet_num == 7 and peris_lower and peris_lower != 'none':
+                # Uranus: FORTRAN arc_rings(1:7) = rings 1,2,3,4,5,10,11 (1-based).
+                # Epsi: only rings 10,11. Else: rings 1,2,3 if selected; 4,5,10,11 always.
+                n_rings = len(f_ring_flags)
+                uranus_arc_ring_indices = (0, 1, 2, 3, 4, 9, 10)  # 0-based
+                if peris_lower.startswith('epsi'):
+                    for idx in (9, 10):
+                        if idx < n_rings and f_ring_flags[idx]:
+                            f_arc_flags.append(True)
+                            f_arc_rings.append(idx + 1)
+                            f_arc_minlons.append(f_ring_peris[idx])
+                            f_arc_maxlons.append(f_ring_peris[idx])
+                else:
+                    for slot, idx in enumerate(uranus_arc_ring_indices):
+                        if idx >= n_rings:
+                            continue
+                        if slot < 3 and not f_ring_flags[idx]:  # rings 1,2,3: only if selected
+                            continue
+                        f_arc_flags.append(True)
+                        f_arc_rings.append(idx + 1)
+                        f_arc_minlons.append(f_ring_peris[idx])
+                        f_arc_maxlons.append(f_ring_peris[idx])
+                f_narcs = len(f_arc_flags)
+            elif planet_num == 6 and peris_lower and peris_lower != 'none':
+                # Saturn: single pericenter marker on F ring when selected.
+                n_rings = len(f_ring_flags)
+                if (
+                    cfg.f_ring_index is not None
+                    and cfg.f_ring_index < n_rings
+                    and f_ring_flags[cfg.f_ring_index]
+                ):
+                    f_arc_flags.append(True)
+                    f_arc_rings.append(cfg.f_ring_index + 1)
+                    f_arc_minlons.append(f_ring_peris[cfg.f_ring_index])
+                    f_arc_maxlons.append(f_ring_peris[cfg.f_ring_index])
+                f_narcs = len(f_arc_flags)
         if planet_num == 8 and hasattr(cfg, 'arcs') and cfg.arcs:
             arc_minmax = _propagated_neptune_arcs(et, cfg, arc_model_index=neptune_arc_model)
             f_narcs = len(cfg.arcs)
@@ -560,7 +602,7 @@ def _run_viewer_impl(
             arc_rings=f_arc_rings,
             arc_minlons=f_arc_minlons,
             arc_maxlons=f_arc_maxlons,
-            arc_width=arcpts,
+            arc_width=peripts if (planet_num in (6, 7) and f_narcs > 0) else arcpts,
             nstars=len(star_ras),
             star_ras=star_ras,
             star_decs=star_decs,

@@ -330,7 +330,7 @@ def _run_tracker_impl(
             # FORTRAN: moon_names are uppercase (transformed in tracker3_xxx.f)
             uname = name.upper()
             header += ' ' + (uname[:9] if len(uname) >= 9 else uname + ' ' * (9 - len(uname)))
-        output_txt.write(header + '\n')
+        output_txt.write(header.rstrip() + '\n')
         for irec in range(ntimes):
             tai = table_times_tai[irec]
             day, sec = day_sec_from_tai(tai)
@@ -347,7 +347,7 @@ def _run_tracker_impl(
                 row += f'{moon_offsets_arcsec[j][irec]:10.3f}'
             for _ in range(len(track_moon_ids), 25):
                 row += ' ' * 10
-            output_txt.write(row + '\n')
+            output_txt.write(row.rstrip() + '\n')
         output_txt.flush()
 
 

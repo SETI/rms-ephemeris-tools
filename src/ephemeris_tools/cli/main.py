@@ -733,12 +733,13 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             moonpts = float(moonpts_raw)
         except ValueError:
             moonpts = 0.0
+        standard = (args.standard or '').strip().lower()
+        show_standard_stars = standard in {'yes', 'y', 'true', '1'}
         additional = (args.additional or '').strip().lower()
-        show_standard_stars = additional in {'yes', 'y', 'true', '1'}
         extra_star: ExtraStar | None = None
         extra_ra = (args.extra_ra or '').strip()
         extra_dec = (args.extra_dec or '').strip()
-        if show_standard_stars and extra_ra and extra_dec:
+        if additional in {'yes', 'y', 'true', '1'} and extra_ra and extra_dec:
             ra_type = (args.extra_ra_type or 'hours').strip().lower()
             is_hours = not ra_type.startswith('d')
             try:

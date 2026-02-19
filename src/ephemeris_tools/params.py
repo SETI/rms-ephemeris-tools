@@ -798,6 +798,10 @@ class TrackerParams:
     title: str = ''
     output_ps: TextIO | None = None
     output_txt: TextIO | None = None
+    # Display strings from CGI form (for Input Parameters section).
+    ephem_display: str | None = None
+    moons_display: list[str] | None = None
+    rings_display: list[str] | None = None
 
 
 @dataclass
@@ -843,19 +847,31 @@ def _get_keys_env(key: str) -> list[str]:
     i = 1
     while True:
         v = os.environ.get(f'{key}#{i}', '').strip()
+        from_single_key = False
         if len(v) == 0:
             v = os.environ.get(key if i == 1 else '', '').strip()
+            if i == 1 and len(v) > 0:
+                from_single_key = True
         if len(v) == 0:
             break
         if '#' in v:
+            if from_single_key:
+                break
             v = v.split('#')[0].strip()
         out.append(v)
         i += 1
     if len(out) == 0 and len(key) > 0:
         single = os.environ.get(key, '').strip()
         if len(single) > 0:
-            for part in single.replace(',', ' ').split():
-                out.append(part)
+            # CGI sends multi-valued as #-joined (e.g. other=Barycenter#Sun#New Horizons).
+            if '#' in single:
+                for part in single.split('#'):
+                    part = part.strip()
+                    if part:
+                        out.append(part)
+            else:
+                for part in single.replace(',', ' ').split():
+                    out.append(part)
     return out
 
 
