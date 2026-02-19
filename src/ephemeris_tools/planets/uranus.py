@@ -43,7 +43,7 @@ URANUS_RING_DNODE = [
     -2.66604,
     -2.59271,
     -2.18326,
-    -2.02835,
+    -2.02778,
     0.0,
     -1.74828,
     0.0,
@@ -193,6 +193,7 @@ URANUS_CONFIG = PlanetConfig(
             0.0,
             dperi_dt=URANUS_RING_DPERI[8],
             dnode_dt=URANUS_RING_DNODE[8],
+            dashed=True,
             name='Lambda',
         ),
         RingSpec(

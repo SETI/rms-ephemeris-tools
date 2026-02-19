@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import parse_qs
 
 from tests.compare_fortran.spec import RunSpec
 
@@ -23,19 +24,51 @@ def run_python(
     ephemeris table; out_ps for tracker/viewer PostScript; out_txt for
     tracker text table or viewer FOV table when applicable.
     """
-    cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main']
-    cmd.extend(spec.cli_args_for_python())
     env = os.environ.copy()
-    if out_table and spec.tool == 'ephemeris':
-        cmd.extend(['-o', str(out_table)])
-    if out_ps and spec.tool == 'tracker':
-        cmd.extend(['-o', str(out_ps)])
-        if out_txt:
-            cmd.extend(['--output-txt', str(out_txt)])
-    if out_ps and spec.tool == 'viewer':
-        cmd.extend(['-o', str(out_ps)])
-        if out_txt:
-            cmd.extend(['--output-txt', str(out_txt)])
+    if spec.params.get('query_string'):
+        query_string = str(spec.params['query_string'])
+        parsed = parse_qs(query_string, keep_blank_values=True)
+        for key, values in parsed.items():
+            if not values or all(v == '' for v in values):
+                continue
+            first_non_empty = next((v for v in values if v != ''), None)
+            if first_non_empty is None:
+                continue
+            env[key] = first_non_empty
+            if len(values) > 1:
+                for idx, value in enumerate(values, start=1):
+                    env[f'{key}#{idx}'] = value
+        if 'planet' in spec.params:
+            try:
+                env['NPLANET'] = str(int(spec.params['planet']))
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    f"spec.params['planet'] must be numeric, got {spec.params['planet']!r}"
+                ) from e
+        if out_table and spec.tool == 'ephemeris':
+            env['EPHEM_FILE'] = str(out_table)
+        if out_ps and spec.tool == 'tracker':
+            env['TRACKER_POSTFILE'] = str(out_ps)
+        if out_txt and spec.tool == 'tracker':
+            env['TRACKER_TEXTFILE'] = str(out_txt)
+        if out_ps and spec.tool == 'viewer':
+            env['VIEWER_POSTFILE'] = str(out_ps)
+        if out_txt and spec.tool == 'viewer':
+            env['VIEWER_TEXTFILE'] = str(out_txt)
+        cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main', spec.tool, '--cgi']
+    else:
+        cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main']
+        cmd.extend(spec.cli_args_for_python())
+        if out_table and spec.tool == 'ephemeris':
+            cmd.extend(['-o', str(out_table)])
+        if out_ps and spec.tool == 'tracker':
+            cmd.extend(['-o', str(out_ps)])
+            if out_txt:
+                cmd.extend(['--output-txt', str(out_txt)])
+        if out_ps and spec.tool == 'viewer':
+            cmd.extend(['-o', str(out_ps)])
+            if out_txt:
+                cmd.extend(['--output-txt', str(out_txt)])
     return subprocess.run(
         cmd,
         capture_output=True,

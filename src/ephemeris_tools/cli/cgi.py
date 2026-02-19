@@ -34,9 +34,9 @@ def get_keys(name: str) -> list[str]:
     i = 1
     while True:
         v = os.environ.get(f'{name}#{i}', '').strip()
-        if not v and i == 1:
+        if len(v) == 0 and i == 1:
             v = os.environ.get(name, '').strip()
-        if not v:
+        if len(v) == 0:
             break
         if '#' in v:
             parts = [p.strip() for p in v.split('#') if p.strip()]
@@ -50,11 +50,11 @@ def get_keys(name: str) -> list[str]:
             seen.add(v)
             out.append(_sanitize(v))
         i += 1
-    if not out:
+    if len(out) == 0:
         single = os.environ.get(name, '').strip()
-        if single:
+        if len(single) > 0:
             for part in re.split(r'[\s,#]+', single):
-                if part:
+                if len(part) > 0:
                     sanitized = _sanitize(part)
                     if sanitized not in seen:
                         seen.add(sanitized)

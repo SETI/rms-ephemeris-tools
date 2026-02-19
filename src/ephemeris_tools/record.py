@@ -1,4 +1,7 @@
-"""Tabular output record formatting (ported from ephem3_xxx.f Rec_Init/Rec_Append/Rec_Write)."""
+"""Tabular output record formatting.
+
+Ported from ephem3_xxx.f Rec_Init, Rec_Append, Rec_Write.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +9,7 @@ from typing import TextIO
 
 
 class Record:
-    """Fixed-width record buffer: append fields with a single blank separator, then write line."""
+    """Fixed-width record buffer: append fields with single blank separator, write line."""
 
     def __init__(self, max_length: int = 4096) -> None:
         """Allocate a record buffer (port of FORTRAN record; no Rec_Init doc).

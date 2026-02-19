@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import julian
 
 from ephemeris_tools.config import get_leapsecs_path
+from ephemeris_tools.constants import (
+    DEFAULT_MIN_INTERVAL_SECONDS,
+    SECONDS_PER_DAY,
+    SECONDS_PER_HOUR,
+    SECONDS_PER_MINUTE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +31,8 @@ def _ensure_leapsecs() -> None:
     global _leapsecs_loaded
     if _leapsecs_loaded:
         return
+    # Match historical UTC handling used by SPICE/FORTRAN tooling.
+    julian.set_ut_model('SPICE')
     path = get_leapsecs_path()
     try:
         julian.load_lsk(path)
@@ -57,12 +66,25 @@ def parse_datetime(string: str) -> tuple[int, float] | None:
         None on parse failure.
     """
     _ensure_leapsecs()
-    try:
-        result = julian.day_sec_from_string(string)
-        day, sec = result[0], result[1]
-        return (int(day), float(sec))
-    except (ValueError, TypeError, LookupError, OSError):
-        return None
+    candidate_strings = [string]
+    stripped = string.strip()
+    if stripped.endswith(('Z', 'z')):
+        # rms-julian does not parse ISO UTC suffix "Z"; drop it so the value
+        # is treated as UTC, matching FORTRAN CGI input behavior.
+        candidate_strings.append(stripped[:-1])
+    year_hms_match = re.fullmatch(r'(\d{4})\s+(\d{1,2}:\d{2}:\d{2})', stripped)
+    if year_hms_match is not None:
+        year, hms = year_hms_match.groups()
+        # FORTRAN accepts "YYYY HH:MM:SS" as Jan 1st of that year at the given time.
+        candidate_strings.append(f'{year}-01-01 {hms}')
+    for candidate in candidate_strings:
+        try:
+            result = julian.day_sec_from_string(candidate)
+            day, sec = result[0], result[1]
+            return (int(day), float(sec))
+        except (ValueError, TypeError, LookupError, OSError):
+            continue
+    return None
 
 
 def tai_from_day_sec(day: int, sec: float) -> float:
@@ -223,7 +245,7 @@ def interval_seconds(
     interval: float,
     time_unit: str,
     *,
-    min_seconds: float = 1.0,
+    min_seconds: float = DEFAULT_MIN_INTERVAL_SECONDS,
     round_to_minutes: bool = False,
 ) -> float:
     """Convert interval and time_unit to seconds.
@@ -241,14 +263,14 @@ def interval_seconds(
     if u in ('sec', 'seco'):
         dsec = abs(interval)
     elif u in ('min', 'minu'):
-        dsec = abs(interval) * 60.0
+        dsec = abs(interval) * SECONDS_PER_MINUTE
     elif u == 'hour':
-        dsec = abs(interval) * 3600.0
+        dsec = abs(interval) * SECONDS_PER_HOUR
     elif u == 'day':
-        dsec = abs(interval) * 86400.0
+        dsec = abs(interval) * SECONDS_PER_DAY
     else:
         raise ValueError(f'Invalid time_unit {time_unit!r}; expected one of sec, min, hour, day')
     dsec = max(dsec, min_seconds)
     if round_to_minutes:
-        dsec = 60.0 * int(dsec / 60.0 + 0.5)
+        dsec = SECONDS_PER_MINUTE * int(dsec / SECONDS_PER_MINUTE + 0.5)
     return dsec

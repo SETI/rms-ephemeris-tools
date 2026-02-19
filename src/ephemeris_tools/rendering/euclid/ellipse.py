@@ -1,4 +1,7 @@
-"""Limb/terminator ellipse and plane-intersection helpers (ELLIPS, ECLPMD, ELIPLN, etc.)."""
+"""Limb/terminator ellipse and plane-intersection helpers.
+
+Ported from ELLIPS, ECLPMD, ELIPLN, etc.
+"""
 
 from __future__ import annotations
 

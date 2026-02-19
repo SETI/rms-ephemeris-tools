@@ -30,10 +30,10 @@ NEPTUNE_CONFIG = PlanetConfig(
         RingSpec(outer_km=62932.0, inner_km=57500.0, opaque=True, dashed=False),
     ],
     arcs=[
-        ArcSpec(3, 247.1, 256.7, 'Fraternite', 820.1194),
-        ArcSpec(3, 261.1, 264.1, 'Egalite B', 820.1118),
-        ArcSpec(3, 264.9, 265.9, 'Egalite A', 820.1121),
-        ArcSpec(3, 275.7, 279.8, 'Liberte', 820.1121),
-        ArcSpec(3, 284.5, 285.5, 'Courage', 820.1121),
+        ArcSpec(4, 247.1, 256.7, 'Fraternite', 820.1194),
+        ArcSpec(4, 261.1, 264.1, 'Egalite B', 820.1118),
+        ArcSpec(4, 264.9, 265.9, 'Egalite A', 820.1121),
+        ArcSpec(4, 275.7, 279.8, 'Liberte', 820.1121),
+        ArcSpec(4, 284.5, 285.5, 'Courage', 820.1121),
     ],
 )

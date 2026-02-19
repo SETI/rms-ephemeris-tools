@@ -7,6 +7,12 @@ from collections.abc import Callable
 from datetime import date, datetime
 from typing import TextIO
 
+from ephemeris_tools.time_utils import (
+    day_sec_from_tai,
+    tai_from_day_sec,
+    ymd_from_day,
+)
+
 # FORTRAN planet_names(4:8) - no Pluto in original; we add 9 for compatibility
 PLANET_NAMES = {
     4: 'Mars',
@@ -60,9 +66,13 @@ BAND_WIDTH = 16.0
 
 
 def _track_string(s: str) -> str:
-    """Escape ( ) for PostScript and wrap in parentheses (RSPK_TrackString)."""
-    temp = s.replace('\\', '\\\\')
-    temp = temp.replace('(', '\\(').replace(')', '\\)')
+    """Escape ( ) and degree for PostScript and wrap in parentheses (RSPK_TrackString).
+
+    Unicode degree (U+00B0) is replaced with \\260 so PostScript emits one byte 0xB0
+    and only the degree glyph is shown (avoids UTF-8 C2 B0 rendering as prime + degree).
+    """
+    temp = s.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+    temp = temp.replace('\u00b0', '\\260')
     return f'({temp})'
 
 
@@ -192,8 +202,9 @@ def _label_yaxis(
     day1, _ = day_sec_from_tai(tai1)
     dutc_ref = day1
     if mark1_imins > MINS_PER_DAY:
-        y, m, d = ymd_from_day(day1)
-        dutc_ref = day1 - ((d - 1) % (mark1_imins // MINS_PER_DAY))
+        # Align multi-day major ticks to an absolute day cadence.
+        mark1_days = mark1_imins // MINS_PER_DAY
+        dutc_ref = dutc_ref - (dutc_ref % mark1_days)
     tick_imins = MINS_PER_DAY if mark2_imins > MINS_PER_DAY else mark2_imins
     iticks_per_day = MINS_PER_DAY // tick_imins
     secs_per_tick = 86400.0 / iticks_per_day
@@ -298,12 +309,6 @@ def draw_moon_tracks(
         filename: Output filename (for PostScript comments).
         use_doy_format: True for YYYY-DDD HHh on y-axis (spacecraft).
     """
-    from ephemeris_tools.time_utils import (
-        day_sec_from_tai,
-        tai_from_day_sec,
-        ymd_from_day,
-    )
-
     nmoons = len(moon_names)
     planetstr = PLANET_NAMES.get(planet_num, 'Planet')
     i1 = max(filename.rfind('/'), filename.rfind(']'), filename.rfind(':')) + 1

@@ -117,7 +117,7 @@
                     <label><input type="radio" name="moons" value="504 Galilean satellites (J1-J4)"  autocomplete="on"/> Galilean satellites (Io-Callisto, J1-J4)</label>
                 </li>
                 <li>
-                    <label><input type="radio" name="moons" value="505 Galileans satellites, Amalthea (J1-J5)"  autocomplete="on"/> ...plus Amalthea (J5)</label>
+                    <label><input type="radio" name="moons" value="505 Galilean satellites, Amalthea (J1-J5)"  autocomplete="on"/> ...plus Amalthea (J5)</label>
                 </li>
                 <li>
                     <label><input type="radio" name="moons" value="516 All inner moons (J1-J5,J14-J16)" checked  autocomplete="on"/> ...plus Thebe, Adrastea, Metis (J14-J16)</label>

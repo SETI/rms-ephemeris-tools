@@ -1,4 +1,7 @@
-"""Angle parsing and formatting (ported from viewer3_utils.f ParseAngle and DMS_string)."""
+"""Angle parsing and formatting (ported from viewer3_utils.f ParseAngle and DMS_string).
+
+Ported from FORTRAN viewer3_utils.f.
+"""
 
 from __future__ import annotations
 

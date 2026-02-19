@@ -35,7 +35,7 @@ Apply these rules to ALL new and modified Python code. This project is a Python 
 - ALWAYS apply DRY. NEVER duplicate code. Place reusable logic in a utility module. Search existing utilities before writing new functions. Parameterize utility functions to increase generality.
 - ALWAYS place imports at the top of the file in three alphabetically-sorted groups separated by a blank line: (1) standard library, (2) third-party, (3) local project. Inline imports are permitted only to avoid heavy optional dependencies (e.g., GUI libraries).
 - Limit new functions to at most three positional parameters. Additional parameters MUST be keyword-only (after `*`). Group positional parameters logically.
-- Use the Receive-an-Object, Return-an-Object (RORO) pattern when a function takes or returns more than a few related values: accept a dataclass or TypedDict and return one, rather than long positional tuples.
+- NEVER use `getattr` just as a defensive measure if it is guaranteed that the object has the attribute. ALWAYS reference the attribute directly unless there is a specific reason to know the attribute may not be present.
 
 ## 3. Public API Design
 
