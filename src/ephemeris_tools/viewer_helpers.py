@@ -66,6 +66,8 @@ class _RunViewerKwargs(TypedDict, total=True):
     moon_points: float
     meridian_points: float
     opacity: str
+    peris: str
+    peripts: float
     arcmodel: str | None
     arcpts: float
     torus: bool
@@ -671,11 +673,15 @@ def _write_fov_table(
         ra_str = _ra_hms(ra)
         dec_str = _dec_dms(dec)
         if is_earth_observer:
-            fmt = f' {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}    ' \
+            fmt = (
+                f' {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}    '
                 f'{ra_deg:10.6f}{dec_deg:12.6f} {dra_display:10.4f} {ddec_display:10.4f}\n'
+            )
         else:
-            fmt = f' {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}    ' \
+            fmt = (
+                f' {body_id:3d} {name:10s}  {ra_str:>18} {dec_str:>18}    '
                 f'{ra_deg:10.6f}{dec_deg:12.6f} {dra_display:11.6f} {ddec_display:11.6f}\n'
+            )
         stream.write(fmt)
 
     stream.write('\n')
@@ -705,7 +711,8 @@ def _write_fov_table(
             peri_deg_list, node_deg_list = _propagated_uranus_rings(et, cfg)
             stream.write('\n')
             stream.write(
-                '     Ring          Pericenter   Ascending Node (deg, from ring plane ascending node)\n'
+                '     Ring          Pericenter   Ascending Node (deg, from ring plane '
+                'ascending node)\n'
             )
             n_uranus_table = 10
             for i, r in enumerate(cfg.rings[:n_uranus_table]):
@@ -766,9 +773,13 @@ def _write_fov_table(
                 peri_deg = (peri_rad * _RAD2DEG) % 360.0
                 node_deg = (node_rad * _RAD2DEG) % 360.0
             else:
-                ring = cfg.rings[cfg.f_ring_index]
-                peri_deg = (ring.peri_rad * _RAD2DEG) % 360.0
-                node_deg = (ring.node_rad * _RAD2DEG) % 360.0
+                if cfg.f_ring_index is not None:
+                    ring = cfg.rings[cfg.f_ring_index]
+                    peri_deg = (ring.peri_rad * _RAD2DEG) % 360.0
+                    node_deg = (ring.node_rad * _RAD2DEG) % 360.0
+                else:
+                    peri_deg = 0.0
+                    node_deg = 0.0
             stream.write(
                 f'      F Ring pericenter (deg): {peri_deg:9.5f}  from ring plane ascending node\n'
             )

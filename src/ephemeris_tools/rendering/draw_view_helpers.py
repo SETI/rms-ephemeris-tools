@@ -134,14 +134,11 @@ def _rspk_escape(s: str) -> str:
 
     The Unicode degree character (U+00B0) is emitted as UTF-8 (C2 B0), which
     PostScript interprets as two bytes; the first (0xC2) can render as a prime
-    (′) with common fonts. Replacing it with the PostScript escape \\260
+    (U+2032) with common fonts. Replacing it with the PostScript escape \\260
     yields a single byte 0xB0 so only the degree glyph is shown.
     """
     return (
-        s.replace('\\', '\\\\')
-        .replace('(', '\\(')
-        .replace(')', '\\)')
-        .replace('\u00b0', '\\260')
+        s.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)').replace('\u00b0', '\\260')
     )
 
 

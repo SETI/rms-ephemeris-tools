@@ -113,14 +113,18 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
         interval_s = str(int(interval))
     else:
         interval_s = str(interval).strip() if interval is not None else '1'
+    try:
+        resolved_interval = int(float(interval_s))
+    except (TypeError, ValueError):
+        resolved_interval = 1
     time_unit = getattr(args, 'time_unit', 'hour') or 'hour'
-    if time_unit == 'hour' and interval != 1:
+    if time_unit == 'hour' and resolved_interval != 1:
         time_unit_display = 'hours'
-    elif time_unit == 'day' and interval != 1:
+    elif time_unit == 'day' and resolved_interval != 1:
         time_unit_display = 'days'
-    elif time_unit == 'min' and interval != 1:
+    elif time_unit == 'min' and resolved_interval != 1:
         time_unit_display = 'minutes'
-    elif time_unit == 'sec' and interval != 1:
+    elif time_unit == 'sec' and resolved_interval != 1:
         time_unit_display = 'seconds'
     else:
         time_unit_display = time_unit
@@ -263,8 +267,9 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     if fov is None:
         fov = getattr(args, 'fov_value', 1.0)
     fov_unit = getattr(args, 'fov_unit', 'deg')
+    fov_val = 1.0 if fov is None else fov
     try:
-        fov_f = float(fov)
+        fov_f = float(fov_val)
         fov_s = str(int(fov_f)) if fov_f == int(fov_f) else str(fov_f)
     except (TypeError, ValueError):
         fov_s = str(fov)
@@ -436,11 +441,14 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
         peris = (getattr(args, 'peris', None) or '').strip()
         _w(stream, f'Pericenter markers: {peris or "None"}')
         peripts_val = getattr(args, 'peripts', None)
-        if peripts_val is None:
+        try:
+            if peripts_val is None:
+                peripts_str = '4'
+            else:
+                p = float(peripts_val)
+                peripts_str = str(int(p)) if p == int(p) else str(p)
+        except (TypeError, ValueError):
             peripts_str = '4'
-        else:
-            p = float(peripts_val)
-            peripts_str = str(int(p)) if p == int(p) else str(p)
         _w(stream, f'       Marker size: {peripts_str} (points)')
 
     # Prime meridians (FORTRAN: 3 spaces)

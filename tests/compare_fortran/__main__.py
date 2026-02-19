@@ -271,13 +271,14 @@ def _execute_spec(
     float_tol: int | None,
     numeric_tol: float | None,
 ) -> tuple[bool, list[str], float | None]:
-    """Execute one comparison spec and return (passed, detail lines, duration).
+    """Execute one comparison spec and return (passed, detail lines, max_table_abs_diff).
 
     Returns:
-        A 3-tuple: (passed, detail_lines, duration). passed is True if the
-        comparison passed (or FORTRAN was skipped). detail_lines is a list of
-        summary/detail strings. duration is the run duration in seconds, or
-        None if timing is unavailable.
+        A 3-tuple: (passed, detail_lines, max_table_abs_diff). passed is True
+        if the comparison passed (or FORTRAN was skipped). detail_lines is a
+        list of summary/detail strings. max_table_abs_diff is the maximum
+        absolute difference from table comparisons (float), or None if no
+        table comparison was performed or no numeric diff was recorded.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     details: list[str] = [f'tool={spec.tool} planet={spec.params.get("planet", "?")}']

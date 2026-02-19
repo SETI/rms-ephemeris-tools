@@ -91,7 +91,9 @@ def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch: pytest.MonkeyPatc
     assert abs(params.center.dec_deg - (-21.980283333333334)) < 1e-9
 
 
-def test_viewer_params_from_env_standard_stars_from_standard(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_viewer_params_from_env_standard_stars_from_standard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Standard stars flag comes from env 'standard', not 'additional'."""
     monkeypatch.setenv('NPLANET', '6')
     monkeypatch.setenv('time', '2025-01-01 12:00')
