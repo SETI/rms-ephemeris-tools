@@ -133,7 +133,11 @@ Comparison runs when a FORTRAN binary is available (auto-detected from `fortran/
 
 - **Tables**:
   - lines are normalized (strip, collapse whitespace);
-  - FORTRAN overflow markers (`*****`) are treated as uncomparable fields and ignored;
+  - FORTRAN overflow markers (`*****`) are ignored at the individual field/cell level
+    (only that field is excluded from numeric comparison; the row remains in the output
+    and counts as a skipped-field for `--float-tol`/`--numeric-tol`; the row is not
+    dropped entirely). Skipped overflow fields are reflected in the diff summary and
+    exit code where applicable;
   - numeric fields can be compared with `--float-tol` (significant digits) and/or
     `--numeric-tol` (absolute tolerance).
 - **PostScript**: Variable headers such as `%%Creator` and `%%CreationDate` are ignored so only structural and drawing differences are reported.

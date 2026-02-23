@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 def furnsh(path: str) -> None: ...
+def kclear() -> None: ...
 def spkapp(
     targ: int,
     et: float,
@@ -34,7 +35,7 @@ def twovec(
 ) -> tuple[tuple[float, float, float], ...]: ...
 def recrad(rectan: tuple[float, float, float] | Any) -> tuple[float, float, float]: ...
 def radrec(
-    r: float, colat: float, lon: float
+    r: float, ra: float, dec: float
 ) -> tuple[float, float, float]: ...
 def vperp(
     v1: tuple[float, float, float] | Any,

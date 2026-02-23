@@ -14,7 +14,9 @@ from ephemeris_tools.spice.common import MAXSHIFTS, get_state
 logger = logging.getLogger(__name__)
 
 
-def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
+def load_spice_files(
+    planet: int, version: int = 0, *, force: bool = False
+) -> tuple[bool, str | None]:
     """Load SPICE kernels for the given planet (port of RSPK_LoadFiles).
 
     Initializes the library for geometry calculations. Must be called before
@@ -25,12 +27,27 @@ def load_spice_files(planet: int, version: int = 0) -> tuple[bool, str | None]:
         planet: Planet index: 4=Mars, 5=Jupiter, 6=Saturn, 7=Uranus, 8=Neptune,
             9=Pluto.
         version: Ephemeris version number, or 0 for latest.
+        force: If True, clear kernel pool and internal state and reload (for
+            tests that need a specific planet after another was loaded).
 
     Returns:
         (True, None) if loaded successfully; (False, error_message) on failure.
     """
     state = get_state()
-    if state.planet_num != 0 and state.planet_num != planet:
+    if force:
+        try:
+            cspyce.kclear()
+        except Exception as e:
+            return (False, f'Cannot clear SPICE pool for force reload: {e}')
+        state.pool_loaded = False
+        state.planet_num = 0
+        state.planet_id = 0
+        state.obs_id = EARTH_ID
+        state.obs_is_set = False
+        state.nshifts = 0
+        state.shift_id = [0] * MAXSHIFTS
+        state.shift_dt = [0.0] * MAXSHIFTS
+    elif state.planet_num != 0 and state.planet_num != planet:
         return (False, 'SPICE already loaded for a different planet')
     base = Path(get_spice_path())
     if not base.exists():

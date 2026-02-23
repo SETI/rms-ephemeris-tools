@@ -1,6 +1,10 @@
-"""Fixed constants: body IDs, spacecraft names/codes, planet number mapping.
+"""Fixed constants used across ephemeris, viewer, and tracker.
 
-From FORTRAN tools.inc.
+From FORTRAN tools.inc. Categories include: body IDs (NAIF), spacecraft
+names/codes and planet number mapping; time constants (seconds per minute/hour/
+day, noon offset); angle/unit constants (degrees per circle, DMS/arcmin/arcsec,
+RA degrees per hour); and configuration constants (default interval, min
+interval, max FOV, alignment, string lengths).
 """
 
 # Body IDs (NAIF)

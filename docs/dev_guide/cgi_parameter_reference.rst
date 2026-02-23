@@ -349,7 +349,7 @@ Viewpoint
 
    When PREFIX is empty (Earth-based forms), this is a select with:
 
-   - ``" Earth's center"``
+   - ``" Earth's Center"`` (form may send with leading space; normalized to this)
    - ``" HST"``
    - ``" JWST"``
    - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
@@ -360,7 +360,7 @@ Viewpoint
    - ``" Mt. Evans Observatory (39.587, -105.640, 4305.)"``
    - ``" NMSU Observatory (32.27631, -106.746556, 0.)"``
    - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
-   - ``" Yerkes Observatory (41.098, 88.557, 334.)"``
+   - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
 
    Plus spacecraft options when the viewer TOOL is ``viewer3`` and PREFIX
    is empty:
@@ -784,7 +784,7 @@ Viewpoint
 
    When PREFIX is empty (Earth-based forms), this is a select with:
 
-   - ``" Earth's center"``
+   - ``" Earth's Center"`` (form may send with leading space; normalized to this)
    - ``" HST"``
    - ``" JWST"``
    - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
@@ -795,7 +795,7 @@ Viewpoint
    - ``" Mt. Evans Observatory (39.587, -105.640, 4305.)"``
    - ``" NMSU Observatory (32.27631, -106.746556, 0.)"``
    - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
-   - ``" Yerkes Observatory (41.098, 88.557, 334.)"``
+   - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
 
    Note: spacecraft observatory options (Voyager, etc.) only appear
    for the viewer tool, not the tracker.
@@ -1081,7 +1081,7 @@ Viewpoint
 
    When PREFIX is empty (Earth-based forms), this is a select with:
 
-   - ``" Earth's center"``
+   - ``" Earth's Center"`` (form may send with leading space; normalized to this)
    - ``" HST"``
    - ``" JWST"``
    - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
@@ -1092,7 +1092,7 @@ Viewpoint
    - ``" Mt. Evans Observatory (39.587, -105.640, 4305.)"``
    - ``" NMSU Observatory (32.27631, -106.746556, 0.)"``
    - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
-   - ``" Yerkes Observatory (41.098, 88.557, 334.)"``
+   - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
 
    Note: spacecraft observatory options (Voyager, etc.) do not appear
    for the ephemeris tool.

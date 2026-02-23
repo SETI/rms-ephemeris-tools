@@ -54,6 +54,10 @@ def eustar(
     left, right, bottom, top = espl07()
     hspan = abs(view_state.view[1] - view_state.view[0])
     vspan = abs(view_state.view[3] - view_state.view[2])
+    if hspan < 1.0e-12 or vspan < 1.0e-12:
+        raise ValueError(
+            f'Degenerate view_state.view: hspan={hspan}, vspan={vspan}, view={view_state.view}'
+        )
     # ESSTAR maps glyph coordinates over a viewport-scaled box centered on the
     # target point. The segment font is defined over a full-width range, so the
     # viewport half-size factor is required for FORTRAN-equivalent glyph size.

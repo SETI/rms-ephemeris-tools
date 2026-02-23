@@ -68,6 +68,8 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
 
     viewpoint = _get_env('viewpoint', 'observatory')
     observatory = _get_env('observatory', "Earth's Center")
+    if observatory.strip().lower() == "earth's center":
+        observatory = "Earth's Center"
     lat_s = _get_env('latitude')
     lon_s = _get_env('longitude')
     alt_s = _get_env('altitude')
@@ -139,6 +141,9 @@ def viewer_params_from_env() -> ViewerParams | None:
     try:
         planet_num = int(nplanet_s)
     except ValueError:
+        return None
+    if planet_num < 4 or planet_num > 9:
+        logger.error('NPLANET %d out of range (must be 4-9)', planet_num)
         return None
     time_str = _get_env('time')
     if len(time_str) == 0:
@@ -214,6 +219,8 @@ def viewer_params_from_env() -> ViewerParams | None:
             viewpoint_display = f'({lat_s}, {lon_s} {lon_dir}, {alt_s})'
     elif viewpoint == 'observatory':
         obs_name = _get_env('observatory', "Earth's Center")
+        if obs_name.strip().lower() == "earth's center":
+            obs_name = "Earth's Center"
         coords = _parse_observatory_coords(obs_name)
         if coords is None:
             observer = Observer(name=obs_name)
@@ -343,6 +350,9 @@ def tracker_params_from_env() -> TrackerParams | None:
         planet_num = int(nplanet_s)
     except ValueError:
         return None
+    if planet_num < 4 or planet_num > 9:
+        logger.error('NPLANET %d out of range (must be 4-9)', planet_num)
+        return None
     start_time = _get_env('start')
     stop_time = _get_env('stop')
     if len(start_time) == 0 or len(stop_time) == 0:
@@ -357,6 +367,8 @@ def tracker_params_from_env() -> TrackerParams | None:
     observer = Observer(name="Earth's Center")
     if viewpoint == 'observatory':
         obs_name = _get_env('observatory', "Earth's Center")
+        if obs_name.strip().lower() == "earth's center":
+            obs_name = "Earth's Center"
         coords = _parse_observatory_coords(obs_name)
         if coords is None:
             observer = Observer(name=obs_name)
@@ -419,6 +431,11 @@ def tracker_params_from_env() -> TrackerParams | None:
         ephem_version = int(ephem_value)
     except (ValueError, IndexError):
         ephem_version = 0
+    sc_traj_s = _get_env('sc_trajectory', '0')
+    try:
+        sc_trajectory = int(sc_traj_s[:4] or '0')
+    except ValueError:
+        sc_trajectory = 0
     ephem_display = _get_env('ephem') or None
     moons_display = _get_keys_env('moons') or None
     rings_display = _get_keys_env('rings') or None
@@ -430,6 +447,7 @@ def tracker_params_from_env() -> TrackerParams | None:
         time_unit=time_unit,
         observer=observer,
         ephem_version=ephem_version,
+        sc_trajectory=sc_trajectory,
         moon_ids=moon_ids,
         ring_names=ring_names,
         xrange=xrange,

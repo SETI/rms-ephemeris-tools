@@ -29,11 +29,11 @@ def test_observer_state_geodetic_keeps_ssb_velocity(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr('cspyce.mtxv', lambda mat, vec: vec)
 
     state = get_state()
-    state.obs_id = EARTH_ID
-    state.obs_is_set = False
-    state.obs_lat = 0.0
-    state.obs_lon = 0.0
-    state.obs_alt = 0.0
+    monkeypatch.setattr(state, 'obs_id', EARTH_ID)
+    monkeypatch.setattr(state, 'obs_is_set', False)
+    monkeypatch.setattr(state, 'obs_lat', 0.0)
+    monkeypatch.setattr(state, 'obs_lon', 0.0)
+    monkeypatch.setattr(state, 'obs_alt', 0.0)
 
     set_observer_location(30.0, -100.0, 1000.0)
     out = observer_state(0.0)

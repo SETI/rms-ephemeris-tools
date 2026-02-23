@@ -23,11 +23,13 @@ def test_fov_deg_from_planet_radii(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_fov_deg_from_kilometers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Kilometer units convert by observer range geometry."""
+    """Kilometer units convert by observer range (fov * asin(1/obs_dist) in deg)."""
+    fov = 1000.0
+    obs_dist = 1_000_000.0
     monkeypatch.setattr(
         'ephemeris_tools.spice.geometry.planet_ranges',
-        lambda _et: (0.0, 1_000_000.0),
+        lambda _et: (0.0, obs_dist),
     )
-    result = _fov_deg_from_unit(1000.0, 'kilometers', et=0.0, cfg=NEPTUNE_CONFIG)
-    expected = 2.0 * math.atan((1000.0 / 2.0) / 1_000_000.0) * 180.0 / math.pi
+    result = _fov_deg_from_unit(fov, 'kilometers', et=0.0, cfg=NEPTUNE_CONFIG)
+    expected = fov * math.degrees(math.asin(1.0 / obs_dist))
     assert result == pytest.approx(expected)

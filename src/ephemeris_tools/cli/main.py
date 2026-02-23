@@ -7,7 +7,6 @@ import contextlib
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, timezone
 from typing import NoReturn, TextIO, cast
 
 from ephemeris_tools.constants import DEFAULT_INTERVAL
@@ -160,10 +159,10 @@ def main() -> int:
         help='Planet number or name (4=mars..9=pluto); env: NPLANET',
     )
     ephem_parser.add_argument(
-        '--start', type=str, default='', help='Start time; env: start, START_TIME'
+        '--start', type=str, required=True, help='Start time; env: start, START_TIME'
     )
     ephem_parser.add_argument(
-        '--stop', type=str, default='', help='Stop time; env: stop, STOP_TIME'
+        '--stop', type=str, required=True, help='Stop time; env: stop, STOP_TIME'
     )
     ephem_parser.add_argument(
         '--interval', type=float, default=DEFAULT_INTERVAL, help='Time step; env: interval'
@@ -255,8 +254,8 @@ def main() -> int:
     track_parser.add_argument(
         '--planet', type=parse_planet, default=6, help='Planet number or name; env: NPLANET'
     )
-    track_parser.add_argument('--start', type=str, default='', help='Start time; env: start')
-    track_parser.add_argument('--stop', type=str, default='', help='Stop time; env: stop')
+    track_parser.add_argument('--start', type=str, required=True, help='Start time; env: start')
+    track_parser.add_argument('--stop', type=str, required=True, help='Stop time; env: stop')
     track_parser.add_argument(
         '--interval', type=float, default=DEFAULT_INTERVAL, help='Time step; env: interval'
     )
@@ -569,29 +568,15 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     else:
         observer_name = (args.observatory or "Earth's Center").strip() or "Earth's Center"
         observer = parse_observer([observer_name])
-    _now = datetime.now(timezone.utc)
-    _default_start = _now.strftime('%Y-%m-%d %H:%M')
-    _default_stop = (_now + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
-    if args.start and not args.stop:
-        try:
-            parsed_start = datetime.strptime(args.start, '%Y-%m-%d %H:%M').replace(
-                tzinfo=timezone.utc
-            )
-            _computed_stop = (parsed_start + timedelta(days=1)).strftime('%Y-%m-%d %H:%M')
-        except ValueError:
-            _computed_stop = _default_stop
-    else:
-        _computed_stop = _default_stop
-    start_time = args.start or _default_start
-    stop_time = args.stop or _computed_stop
     tracker_params = TrackerParams(
         planet_num=args.planet,
-        start_time=start_time,
-        stop_time=stop_time,
+        start_time=args.start,
+        stop_time=args.stop,
         interval=args.interval,
         time_unit=args.time_unit,
         observer=observer,
         ephem_version=args.ephem,
+        sc_trajectory=args.sc_trajectory,
         moon_ids=moon_ids,
         ring_names=(args.rings or None),
         xrange=args.xrange,
@@ -761,7 +746,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
                 extra_star = None
         viewer_params = ViewerParams(
             planet_num=args.planet,
-            time_str=args.time or '2025-01-01 12:00',
+            time_str=args.time,
             fov_value=fov_value,
             fov_unit=fov_unit,
             center=center,

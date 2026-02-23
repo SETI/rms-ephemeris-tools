@@ -793,6 +793,7 @@ class TrackerParams:
     ephem_version: int = 0
     moon_ids: list[int] = field(default_factory=list)
     ring_names: list[str] | None = None
+    sc_trajectory: int = 0
     xrange: float | None = None
     xunit: str = 'arcsec'
     title: str = ''

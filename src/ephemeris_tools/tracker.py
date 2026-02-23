@@ -20,6 +20,7 @@ class _RunTrackerKwargs(TypedDict, total=True):
     viewpoint: str
     moon_ids: list[int] | None
     ephem_version: int
+    sc_trajectory: int
     xrange: float | None
     xscaled: bool
     title: str
@@ -84,6 +85,7 @@ def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs
         'viewpoint': viewpoint,
         'moon_ids': params.moon_ids,
         'ephem_version': params.ephem_version,
+        'sc_trajectory': params.sc_trajectory,
         'xrange': params.xrange,
         'xscaled': 'radii' in xunit,
         'title': params.title,
@@ -130,6 +132,7 @@ def _run_tracker_impl(
     observer_latitude: float | None = None,
     observer_longitude: float | None = None,
     observer_altitude: float | None = None,
+    sc_trajectory: int = 0,
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
 ) -> None:
@@ -167,7 +170,7 @@ def _run_tracker_impl(
         if code is not None:
             sc_id = spacecraft_code_to_id(code)
             if sc_id:
-                load_spacecraft(sc_id, planet_num, ephem_version, set_obs=True)
+                load_spacecraft(sc_id, planet_num, sc_trajectory, set_obs=True)
             else:
                 set_observer_id(EARTH_ID)
         else:
@@ -375,6 +378,7 @@ def tracker_params_from_legacy_kwargs(**kwargs: object) -> TrackerParams:
         time_unit=str(_get('time_unit', 'hour')),
         observer=observer,
         ephem_version=int(cast('int', _get('ephem_version', 0))),
+        sc_trajectory=int(cast('int', _get('sc_trajectory', 0))),
         moon_ids=cast('list[int]', _get('moon_ids') or []),
         ring_names=None,
         xrange=cast('float | None', _get('xrange')),

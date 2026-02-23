@@ -69,3 +69,4 @@ def test_label_yaxis_case_7_027_first_major_tick_and_no_mar_31() -> None:
     lines = _yt_lines(out.getvalue())
     first_major = next(line for line in lines if ' YT1' in line)
     assert '(2000-MAR-21' in first_major
+    assert '(31)' not in first_major

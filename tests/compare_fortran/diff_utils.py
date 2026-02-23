@@ -276,25 +276,6 @@ def _lines_match_numeric(line_a: str, line_b: str, sig: int) -> bool:
     return replace_floats(line_a) == replace_floats(line_b)
 
 
-def _lines_match_abs_tol(line_a: str, line_b: str, tol: float) -> bool:
-    """True if each numeric field differs by no more than ``tol``."""
-
-    fields_a = line_a.split()
-    fields_b = line_b.split()
-    if len(fields_a) != len(fields_b):
-        return False
-    for fa, fb in zip(fields_a, fields_b, strict=True):
-        try:
-            va = float(fa)
-            vb = float(fb)
-            if abs(va - vb) > tol:
-                return False
-        except ValueError:
-            if fa != fb:
-                return False
-    return True
-
-
 def _normalize_postscript(text: str, normalize_creator_date: bool = True) -> list[str]:
     """Normalize PostScript for comparison: drop comments that vary, normalize whitespace."""
     out: list[str] = []

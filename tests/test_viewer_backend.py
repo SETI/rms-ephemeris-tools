@@ -230,14 +230,14 @@ def test_viewer_call_kwargs_from_params_prefers_observatory_name_over_latlon() -
         planet_num=5,
         time_str='2025-01-01 12:00',
         observer=Observer(
-            name='Yerkes Observatory (41.098, 88.557, 334.)',
-            latitude_deg=41.098,
-            longitude_deg=88.557,
+            name='Yerkes Observatory (42.57, -88.557, 334.)',
+            latitude_deg=42.57,
+            longitude_deg=-88.557,
             altitude_m=334.0,
         ),
     )
     kwargs = _viewer_call_kwargs_from_params(params)
-    assert kwargs['viewpoint'] == 'Yerkes Observatory (41.098, 88.557, 334.)'
+    assert kwargs['viewpoint'] == 'Yerkes Observatory (42.57, -88.557, 334.)'
 
 
 def test_viewer_call_kwargs_from_params_passes_viewpoint_display() -> None:

@@ -183,8 +183,9 @@ def compute_planet_grid(
         return (px, py)
 
     def body_to_j2000(vb: tuple[float, float, float]) -> tuple[float, float, float]:
-        """Rotate body-frame vector to J2000."""
-        return _mtv(rot_t, vb)
+        """Rotate body-frame vector to J2000. bodmat gives J2000→body, so use R^T."""
+        rot_t_transpose = [list(row) for row in zip(rot_t[0], rot_t[1], rot_t[2], strict=True)]
+        return _mtv(rot_t_transpose, vb)
 
     def classify(lat_rad: float, lon_rad: float) -> tuple[bool, LineType]:
         """Return (visible from observer, line type lit/dark) for body lat/lon."""
