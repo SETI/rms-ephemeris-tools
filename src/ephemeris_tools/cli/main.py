@@ -9,7 +9,7 @@ import os
 import sys
 from typing import NoReturn, TextIO, cast
 
-from ephemeris_tools.constants import DEFAULT_INTERVAL
+from ephemeris_tools.constants import DEFAULT_INTERVAL, DEGREES_PER_HOUR_RA
 from ephemeris_tools.ephemeris import generate_ephemeris
 from ephemeris_tools.input_params import (
     write_input_parameters_ephemeris,
@@ -567,7 +567,23 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
         observer = parse_observer(args.observer)
     else:
         observer_name = (args.observatory or "Earth's Center").strip() or "Earth's Center"
-        observer = parse_observer([observer_name])
+        lat = getattr(args, 'latitude', None)
+        lon = getattr(args, 'longitude', None)
+        lon_dir = (getattr(args, 'lon_dir', None) or 'east').strip().lower()
+        alt = getattr(args, 'altitude', None)
+        if lat is not None or lon is not None or lon_dir != 'east' or alt is not None:
+            lon_deg = lon
+            if lon_deg is not None and lon_dir == 'west':
+                lon_deg = -lon_deg
+            observer = Observer(
+                name=observer_name,
+                latitude_deg=lat,
+                longitude_deg=lon_deg,
+                lon_dir=lon_dir,
+                altitude_m=alt,
+            )
+        else:
+            observer = parse_observer([observer_name])
     tracker_params = TrackerParams(
         planet_num=args.planet,
         start_time=args.start,
@@ -665,9 +681,15 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             if first == 'body' and args.center_body is not None:
                 center = parse_center(args.planet, [str(args.center_body)])
             elif first == 'j2000':
+                ra_type = (getattr(args, 'center_ra_type', None) or 'hours').strip().lower()
+                ra_deg = (
+                    float(args.center_ra) * DEGREES_PER_HOUR_RA
+                    if not ra_type.startswith('d')
+                    else float(args.center_ra)
+                )
                 center = parse_center(
                     args.planet,
-                    [str(args.center_ra), str(args.center_dec)],
+                    [str(ra_deg), str(args.center_dec)],
                 )
             elif first == 'ansa':
                 center = parse_center(
