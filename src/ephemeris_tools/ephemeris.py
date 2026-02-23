@@ -46,6 +46,7 @@ from ephemeris_tools.params import (
     MCOL_SUBOBS,
     MCOL_SUBSOL,
     EphemerisParams,
+    _parse_observatory_coords,
 )
 from ephemeris_tools.record import Record
 from ephemeris_tools.spice.geometry import (
@@ -104,6 +105,11 @@ def _set_observer_from_params(params: EphemerisParams) -> None:
                     set_obs=True,
                 )
                 return
+        parsed_coords = _parse_observatory_coords(params.observatory)
+        if parsed_coords is not None:
+            lat, lon, alt = parsed_coords
+            set_observer_location(lat, lon, alt)
+            return
         if 'Earth' in params.observatory or not params.observatory.strip():
             set_observer_id(EARTH_ID)
             return
@@ -119,7 +125,8 @@ def _round_sec_to_min(sec: float) -> float:
     Returns:
         Seconds rounded to nearest 60.
     """
-    return 60.0 * round(sec / 60.0)
+    # Match FORTRAN's half-up behavior: int(sec/60 + 0.5), not banker's rounding.
+    return 60.0 * int(sec / 60.0 + 0.5)
 
 
 def _round_sec_to_sec(sec: float) -> float:
@@ -132,6 +139,23 @@ def _round_sec_to_sec(sec: float) -> float:
         Rounded seconds.
     """
     return round(sec)
+
+
+def _normalized_start_sec(sec: float, time_unit: str) -> float:
+    """Normalize start second field to match FORTRAN stepping behavior.
+
+    FORTRAN ephemeris rounds the start boundary second field to the nearest
+    minute before building the stepping range, including second-based stepping.
+
+    Parameters:
+        sec: Seconds within day.
+        time_unit: Requested stepping unit (kept for API symmetry).
+
+    Returns:
+        Normalized start seconds within day.
+    """
+    del time_unit
+    return _round_sec_to_min(sec)
 
 
 def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) -> None:
@@ -158,12 +182,8 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
         raise ValueError('Invalid start or stop time')
     day1, sec1 = start_parsed
     day2, sec2 = stop_parsed
-    tai1 = tai_from_day_sec(
-        day1, _round_sec_to_min(sec1) if params.time_unit.startswith('min') else sec1
-    )
-    tai2 = tai_from_day_sec(
-        day2, _round_sec_to_min(sec2) if params.time_unit.startswith('min') else sec2
-    )
+    tai1 = tai_from_day_sec(day1, _normalized_start_sec(sec1, params.time_unit))
+    tai2 = tai_from_day_sec(day2, sec2)
     from ephemeris_tools.time_utils import interval_seconds
 
     dsec = interval_seconds(params.interval, params.time_unit)
@@ -179,8 +199,12 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     _set_observer_from_params(params)
 
     rec = Record()
-    columns = params.columns or [COL_MJD, COL_YMDHMS, COL_RADEC, COL_PHASE]
-    mooncols = params.mooncols or []
+    columns = list(params.columns)
+    mooncols = list(params.mooncols)
+    # Match CGI/FORTRAN behavior: if either columns or moon columns are explicitly
+    # selected, do not inject default planet columns.
+    if len(columns) == 0 and len(mooncols) == 0:
+        columns = [COL_MJD, COL_YMDHMS, COL_RADEC, COL_PHASE]
     moon_ids = list(params.moon_ids)
     planet_id = PLANET_NUM_TO_ID.get(params.planet_num, 100 * params.planet_num + 99)
 

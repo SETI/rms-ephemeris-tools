@@ -15,6 +15,7 @@ class EscherState:
     """
 
     def __init__(self) -> None:
+        """Initialize Escher output state (stream, position, line width/color)."""
         self.outfil = ' '
         self.creator = ' '
         self.fonts = ' '
@@ -36,6 +37,7 @@ class EscherViewState:
     """
 
     def __init__(self) -> None:
+        """Initialize Escher view state (viewport, FOV, segment buffer)."""
         self.device = 0
         self.view = (0.0, 0.0, 0.0, 0.0)  # Hmin, Hmax, Vmin, Vmax (0-1)
         self.fov = (0.0, 0.0, 0.0, 0.0)  # Xmin, Xmax, Ymin, Ymax

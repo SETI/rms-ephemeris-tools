@@ -53,16 +53,11 @@ def set_observer_location(lat_deg: float, lon_deg: float, alt_m: float) -> None:
     state.obs_is_set = abs(lat_deg) <= 90.0
 
 
-# Earth rotation rate (rad/s) in body-fixed frame for surface velocity
-_EARTH_ROT_RATE_RAD_S = 2.0 * math.pi / 86400.0
-
-
 def observer_state(et: float) -> np.ndarray:
     """Return observer state (position and velocity) in J2000 at ephemeris time.
 
     Port of RSPK_ObsLoc. Uses coordinates from set_observer_location or
-    set_observer_id. Position is in km; velocity in km/s. For an Earth
-    observatory, velocity includes Earth rotation.
+    set_observer_id. Position is in km; velocity in km/s.
 
     Parameters:
         et: Ephemeris time (e.g. from cspyce.utc2et).
@@ -77,20 +72,12 @@ def observer_state(et: float) -> np.ndarray:
     if not state.obs_is_set:
         return np.array(obs_pv, dtype=np.float64)
     obs_dp = cspyce.georec(state.obs_lon, state.obs_lat, state.obs_alt, EARTH_RAD_KM, EARTH_FLAT)
-    frame = f'IAU_{cspyce.bodc2n(EARTH_ID).upper()}'
-    earth_mat = cspyce.pxform(frame, 'J2000', et)
+    # RSPK_ObsLoc uses BODMAT (J2000->body-fixed) followed by MTXV.
+    earth_mat = cspyce.tipbod('J2000', EARTH_ID, et)
     rotated = cspyce.mtxv(earth_mat, obs_dp)
     obs_pv[0] += rotated[0]
     obs_pv[1] += rotated[1]
     obs_pv[2] += rotated[2]
-    # Add surface rotational velocity: omega x obs_dp in body frame, then transform to J2000
-    vel_body = [
-        -_EARTH_ROT_RATE_RAD_S * obs_dp[1],
-        _EARTH_ROT_RATE_RAD_S * obs_dp[0],
-        0.0,
-    ]
-    vel_j2000 = cspyce.mtxv(earth_mat, vel_body)
-    obs_pv[3] += vel_j2000[0]
-    obs_pv[4] += vel_j2000[1]
-    obs_pv[5] += vel_j2000[2]
+    # Match FORTRAN RSPK_ObsLoc: observatory offset is added to position only;
+    # velocity remains the Earth-center SPK velocity.
     return np.array(obs_pv, dtype=np.float64)

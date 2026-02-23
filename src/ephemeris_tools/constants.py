@@ -1,9 +1,35 @@
-"""Fixed constants: body IDs, spacecraft names/codes, planet number mapping (from tools.inc)."""
+"""Fixed constants used across ephemeris, viewer, and tracker.
+
+From FORTRAN tools.inc. Categories include: body IDs (NAIF), spacecraft
+names/codes and planet number mapping; time constants (seconds per minute/hour/
+day, noon offset); angle/unit constants (degrees per circle, DMS/arcmin/arcsec,
+RA degrees per hour); and configuration constants (default interval, min
+interval, max FOV, alignment, string lengths).
+"""
 
 # Body IDs (NAIF)
 SUN_ID = 10
 EARTH_ID = 399
 MOON_ID = 301
+
+# Time: seconds per unit (for interval conversion and sexagesimal)
+SECONDS_PER_MINUTE = 60.0
+SECONDS_PER_HOUR = 3600.0
+SECONDS_PER_DAY = 86400.0
+NOON_SECONDS_OFFSET = 12.0 * 3600.0  # seconds from midnight to noon (reference epochs)
+
+# Angle: degrees per circle and sexagesimal (DMS/arcmin/arcsec)
+DEGREES_PER_CIRCLE = 360.0
+HALF_CIRCLE_DEGREES = 180.0
+ARCMIN_PER_DEGREE = 60.0
+ARCSEC_PER_DEGREE = 3600.0
+DEGREES_PER_HOUR_RA = 15.0  # right ascension: 360° / 24 h
+
+# Defaults and thresholds (configuration)
+DEFAULT_INTERVAL = 1.0  # default time step when env invalid or not set
+DEFAULT_MIN_INTERVAL_SECONDS = 1.0  # minimum interval for interval_seconds()
+MAX_FOV_DEGREES = 90.0  # FORTRAN viewer clamps FOV to prevent projection singularities
+DEFAULT_ALIGN_LOC_POINTS = 108.0  # caption alignment from left edge (PostScript points)
 
 # String length constants (for compatibility with FORTRAN column widths)
 EPHEM_ID_LEN = 4
@@ -55,7 +81,8 @@ PLANET_NUM_TO_ID: dict[int, int] = {
 PLANET_ID_TO_NUM: dict[int, int] = {v: k for k, v in PLANET_NUM_TO_ID.items()}
 
 # Planet number → ephemeris kernel description (right-hand side of "Ephemeris:" in plot).
-# FORTRAN/web use "NNN DESCRIPTION"; we show DESCRIPTION. Matches web/tools/EPHEMERIS_INFO.shtml.
+# FORTRAN/web use "NNN DESCRIPTION"; we show DESCRIPTION.
+# Matches web/tools/EPHEMERIS_INFO.shtml.
 EPHEM_DESCRIPTIONS_BY_PLANET: dict[int, str] = {
     4: 'MAR097 + DE440',
     5: 'JUP365 + DE440',

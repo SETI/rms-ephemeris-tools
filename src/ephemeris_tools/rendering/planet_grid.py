@@ -1,4 +1,4 @@
-"""Planet latitude/longitude grid for viewer (port of Euclid EUBODY meridian/lat curves)."""
+"""Planet lat/lon grid for viewer (port of Euclid EUBODY meridian/lat curves)."""
 
 from __future__ import annotations
 
@@ -167,6 +167,7 @@ def compute_planet_grid(
     limb_radius_plot = limb_rad_rad * scale
 
     def to_plot(offset_j2000: tuple[float, float, float]) -> tuple[float, float]:
+        """Map J2000 offset from planet to 2D plot (x, y) in observer frame."""
         vx = obs_to_planet[0] + offset_j2000[0]
         vy = obs_to_planet[1] + offset_j2000[1]
         vz = obs_to_planet[2] + offset_j2000[2]
@@ -182,9 +183,12 @@ def compute_planet_grid(
         return (px, py)
 
     def body_to_j2000(vb: tuple[float, float, float]) -> tuple[float, float, float]:
-        return _mtv(rot_t, vb)
+        """Rotate body-frame vector to J2000. bodmat gives J2000→body, so use R^T."""
+        rot_t_transpose = [list(row) for row in zip(rot_t[0], rot_t[1], rot_t[2], strict=True)]
+        return _mtv(rot_t_transpose, vb)
 
     def classify(lat_rad: float, lon_rad: float) -> tuple[bool, LineType]:
+        """Return (visible from observer, line type lit/dark) for body lat/lon."""
         normal_b = _surface_normal_body(a, b, c, lat_rad, lon_rad)
         normal_j = body_to_j2000(normal_b)
         toward_obs = _vdot(normal_j, view_dir) > 0

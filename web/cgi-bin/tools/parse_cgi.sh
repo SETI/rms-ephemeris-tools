@@ -22,7 +22,7 @@
 # ---------------------------------------------------------------------------
 : "${WWW_WORK:=/var/www/work}"
 export PATH="/var/www/cgi-bin/tools/venv/bin:${PATH}"
-: "${EPHEMERIS_TOOLS:=ephemeris-tools}"
+: "${PYTHON:=python}"
 : "${GS:=/usr/bin/gs}"
 : "${PDFTOPPM:=/usr/bin/pdftoppm}"
 
@@ -102,6 +102,11 @@ parse_query_string() {
             CGI_PARAMS["$key"]="$val"
         fi
         export "$key"="$val" 2>/dev/null || true
+    done
+    # Re-export so multi-valued params (e.g. other=Barycenter&other=Sun) get
+    # full #-joined value in environment for Python _get_keys_env.
+    for key in "${!CGI_PARAMS[@]}"; do
+        export "$key"="${CGI_PARAMS[$key]}"
     done
     return 0
 }

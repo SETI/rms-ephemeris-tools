@@ -9,6 +9,9 @@ documents the structure of the porting process, bugs discovered in the original
 FORTRAN code, and inherent differences between the FORTRAN and Python
 implementations.
 
+For a categorized reference of compatibility fixes, FORTRAN bugs not replicated
+in Python, and Python improvements over FORTRAN, see :ref:`fortran_compatibility`.
+
 Porting methodology
 -------------------
 

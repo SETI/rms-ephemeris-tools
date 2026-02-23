@@ -370,9 +370,7 @@ def eubody(
                 begseg_list.append(_vequ(begcan))
                 endseg_list.append(_vequ(endcan))
 
-            if ellpse == 0:
-                pass  # limb point tracking omitted (not needed for PS output)
-
+            # Limb point tracking omitted when ellpse == 0 (not needed for PS output).
             begcan = _vequ(endcan)
             begvis = endvis
 

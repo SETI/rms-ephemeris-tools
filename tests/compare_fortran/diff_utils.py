@@ -20,6 +20,7 @@ class CompareResult:
     message: str = ''
     details: list[str] = field(default_factory=list)
     num_diffs: int = 0
+    max_abs_diff: float | None = None
 
 
 def _normalize_table_line(line: str) -> str:
@@ -32,11 +33,71 @@ def _normalize_table_content(text: str) -> list[str]:
     return [_normalize_table_line(ln) for ln in text.splitlines() if _normalize_table_line(ln)]
 
 
+def _is_fortran_overflow_token(token: str) -> bool:
+    """Return True when token is a FORTRAN fixed-width overflow marker."""
+
+    return bool(token) and set(token) == {'*'}
+
+
+def _fields_match(
+    field_a: str,
+    field_b: str,
+    *,
+    float_tolerance: int | None,
+    abs_tolerance: float | None,
+) -> bool:
+    """Compare one normalized table field.
+
+    The second field is treated as FORTRAN output. If it is an overflow token
+    (all asterisks), the field is considered uncomparable and therefore ignored.
+    """
+
+    if _is_fortran_overflow_token(field_b):
+        return True
+    if field_a == field_b:
+        return True
+    try:
+        fa = float(field_a)
+        fb = float(field_b)
+    except ValueError:
+        return False
+    if abs_tolerance is not None and abs(fa - fb) <= abs_tolerance:
+        return True
+    if float_tolerance is not None:
+        return f'{fa:.{float_tolerance}g}' == f'{fb:.{float_tolerance}g}'
+    return False
+
+
+def _lines_match_fields(
+    line_a: str,
+    line_b: str,
+    *,
+    float_tolerance: int | None,
+    abs_tolerance: float | None,
+) -> bool:
+    """Compare normalized lines field-by-field with FORTRAN overflow handling."""
+
+    fields_a = line_a.split()
+    fields_b = line_b.split()
+    if len(fields_a) != len(fields_b):
+        return False
+    for field_a, field_b in zip(fields_a, fields_b, strict=True):
+        if not _fields_match(
+            field_a,
+            field_b,
+            float_tolerance=float_tolerance,
+            abs_tolerance=abs_tolerance,
+        ):
+            return False
+    return True
+
+
 def compare_tables(
     path_a: Path | str,
     path_b: Path | str,
     ignore_blank: bool = True,
     float_tolerance: int | None = None,
+    abs_tolerance: float | None = None,
     ignore_column_suffixes: tuple[str, ...] | None = None,
 ) -> CompareResult:
     """Compare two table (text) files line-by-line.
@@ -44,6 +105,9 @@ def compare_tables(
     If float_tolerance is set (e.g. 6), numeric fields are compared only
     to that many significant digits. Otherwise exact string match after
     normalization (strip, collapse whitespace).
+
+    If abs_tolerance is set, numeric fields are considered equal when their
+    absolute difference is <= abs_tolerance.
 
     If ignore_column_suffixes is set (e.g. ("_orbit", "_open")), the first
     line is treated as a header; when comparing data lines, fields whose
@@ -64,14 +128,16 @@ def compare_tables(
         lines_b = [ln for ln in lines_b if ln.strip()]
     details: list[str] = []
     num_diffs = 0
+    max_abs_diff: float | None = None
 
     if ignore_column_suffixes and lines_a and lines_b:
         # Column-aware: parse header, compare field-by-field skipping ignored columns.
-        num_diffs, details = _compare_tables_column_aware(
+        num_diffs, details, max_abs_diff = _compare_tables_column_aware(
             lines_a,
             lines_b,
             ignore_column_suffixes,
             float_tolerance,
+            abs_tolerance,
             details,
         )
     else:
@@ -80,7 +146,15 @@ def compare_tables(
             details.append(f'  Line count: Python {len(lines_a)}, FORTRAN {len(lines_b)}')
         else:
             for i, (la, lb) in enumerate(zip(lines_a, lines_b, strict=True)):
-                if float_tolerance is not None and _lines_match_numeric(la, lb, float_tolerance):
+                line_max = _line_max_abs_diff(la, lb)
+                if line_max is not None:
+                    max_abs_diff = line_max if max_abs_diff is None else max(max_abs_diff, line_max)
+                if _lines_match_fields(
+                    la,
+                    lb,
+                    float_tolerance=float_tolerance,
+                    abs_tolerance=abs_tolerance,
+                ):
                     continue
                 if la != lb:
                     num_diffs += 1
@@ -89,11 +163,15 @@ def compare_tables(
                         details.append(f'    Python:  {la[:100]}{"..." if len(la) > 100 else ""}')
                         details.append(f'    FORTRAN: {lb[:100]}{"..." if len(lb) > 100 else ""}')
     same = num_diffs == 0
+    message = 'Tables match' if same else f'Tables differ ({num_diffs} difference(s))'
+    if max_abs_diff is not None:
+        message = f'{message}; max_abs_diff={max_abs_diff:.6g}'
     return CompareResult(
         same=same,
-        message='Tables match' if same else f'Tables differ ({num_diffs} difference(s))',
+        message=message,
         details=details,
         num_diffs=num_diffs,
+        max_abs_diff=max_abs_diff,
     )
 
 
@@ -102,20 +180,22 @@ def _compare_tables_column_aware(
     lines_b: list[str],
     ignore_suffixes: tuple[str, ...],
     float_tolerance: int | None,
+    abs_tolerance: float | None,
     details: list[str],
-) -> tuple[int, list[str]]:
+) -> tuple[int, list[str], float | None]:
     """Compare tables line-by-line, ignoring columns whose header ends with given suffixes."""
     num_diffs = 0
+    max_abs_diff: float | None = None
     if len(lines_a) != len(lines_b):
         num_diffs += 1
         details.append(f'  Line count: Python {len(lines_a)}, FORTRAN {len(lines_b)}')
-        return num_diffs, details
+        return num_diffs, details, max_abs_diff
     header_a = lines_a[0].split()
     header_b = lines_b[0].split()
     if len(header_a) != len(header_b):
         num_diffs += 1
         details.append(f'  Column count: Python {len(header_a)}, FORTRAN {len(header_b)}')
-        return num_diffs, details
+        return num_diffs, details, max_abs_diff
     ignore_indexes = {
         i for i, name in enumerate(header_a) if any(name.endswith(s) for s in ignore_suffixes)
     }
@@ -138,32 +218,46 @@ def _compare_tables_column_aware(
         for j in range(len(fields_a)):
             if j in ignore_indexes:
                 continue
-            if float_tolerance is not None:
-                try:
-                    fa, fb = float(fields_a[j]), float(fields_b[j])
-                    ra = f'{fa:.{float_tolerance}g}'
-                    rb = f'{fb:.{float_tolerance}g}'
-                    if ra != rb:
-                        num_diffs += 1
-                        if len(details) < 50:
-                            details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
-                            details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
-                        break
-                except ValueError:
-                    if fields_a[j] != fields_b[j]:
-                        num_diffs += 1
-                        if len(details) < 50:
-                            details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
-                            details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
-                        break
-            else:
-                if fields_a[j] != fields_b[j]:
-                    num_diffs += 1
-                    if len(details) < 50:
-                        details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
-                        details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
-                    break
-    return num_diffs, details
+            diff = _field_abs_diff(fields_a[j], fields_b[j])
+            if diff is not None:
+                max_abs_diff = diff if max_abs_diff is None else max(max_abs_diff, diff)
+            if not _fields_match(
+                fields_a[j],
+                fields_b[j],
+                float_tolerance=float_tolerance,
+                abs_tolerance=abs_tolerance,
+            ):
+                num_diffs += 1
+                if len(details) < 50:
+                    details.append(f'  Line {i + 1} col {j + 1} ({header_a[j]}):')
+                    details.append(f'    Python:  {fields_a[j]}, FORTRAN: {fields_b[j]}')
+    return num_diffs, details, max_abs_diff
+
+
+def _field_abs_diff(field_a: str, field_b: str) -> float | None:
+    """Return absolute numeric difference for one field, or None if not numeric/comparable."""
+
+    if _is_fortran_overflow_token(field_b):
+        return None
+    try:
+        return abs(float(field_a) - float(field_b))
+    except ValueError:
+        return None
+
+
+def _line_max_abs_diff(line_a: str, line_b: str) -> float | None:
+    """Return max numeric field diff on a line, excluding FORTRAN overflow fields."""
+
+    fields_a = line_a.split()
+    fields_b = line_b.split()
+    if len(fields_a) != len(fields_b):
+        return None
+    max_diff: float | None = None
+    for field_a, field_b in zip(fields_a, fields_b, strict=True):
+        diff = _field_abs_diff(field_a, field_b)
+        if diff is not None:
+            max_diff = diff if max_diff is None else max(max_diff, diff)
+    return max_diff
 
 
 def _lines_match_numeric(line_a: str, line_b: str, sig: int) -> bool:
@@ -183,10 +277,17 @@ def _lines_match_numeric(line_a: str, line_b: str, sig: int) -> bool:
 
 
 def _normalize_postscript(text: str, normalize_creator_date: bool = True) -> list[str]:
-    """Normalize PostScript for comparison: drop comments that vary, normalize whitespace."""
+    """Normalize PostScript for comparison: drop comments that vary, normalize whitespace.
+
+    When normalize_creator_date is True, also strips body-level PostScript string
+    tokens of the form "(Generated by the …)" (PS strings, not DSC comments);
+    removal is silent and conditional on normalize_creator_date.
+    """
     out: list[str] = []
     for line in text.splitlines():
         s = line.strip()
+        if normalize_creator_date and s.startswith('(Generated by the ') and s.endswith(')'):
+            continue
         if not s or s.startswith('%%'):
             if normalize_creator_date and (
                 s.startswith('%%Creator')
@@ -208,8 +309,11 @@ def compare_postscript(
 ) -> CompareResult:
     """Compare two PostScript files with optional normalization of variable headers.
 
-    When normalize_creator_date is True, %%Creator, %%CreationDate, and
-    %%Title are ignored so only structural and drawing differences are reported.
+    When normalize_creator_date is True, the following are ignored so only
+    structural and drawing differences are reported: %%Creator, %%CreationDate,
+    %%Title, and body-level PostScript strings of the form "(Generated by the …)"
+    (PS string tokens, not DSC comments). The removal is silent and conditional
+    on normalize_creator_date.
     """
     pa = Path(path_a)
     pb = Path(path_b)

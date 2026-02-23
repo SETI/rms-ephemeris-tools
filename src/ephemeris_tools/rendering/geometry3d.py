@@ -1,4 +1,7 @@
-"""3D geometry for viewer/tracker (ported from euclid: ELLIPS, ECLPMD, FOVCLP, PLELSG, etc.)."""
+"""3D geometry for viewer/tracker.
+
+Ported from euclid: ELLIPS, ECLPMD, FOVCLP, PLELSG, etc.
+"""
 
 from __future__ import annotations
 
