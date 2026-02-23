@@ -29,14 +29,12 @@ class TestHighPriorityDifferences:
         FORTRAN clamps FOV to π/2 radians (90 degrees) to prevent projection
         singularities. Python must do the same.
         """
-        # Load SPICE kernels for Jupiter
-        success, error = load_spice_files(planet=5, version=0)
-        assert success, f'Failed to load SPICE: {error}'
+        success, error = load_spice_files(planet=5, version=0, force=True)
+        if not success:
+            pytest.skip(f'SPICE kernels not available: {error}')
 
-        # Set Earth observer
         set_observer_id(EARTH_ID)
 
-        # Create StringIO buffers for output
         ps_out = StringIO()
         txt_out = StringIO()
 
@@ -71,8 +69,9 @@ class TestHighPriorityDifferences:
 
     def test_fov_clamping_boundary(self) -> None:
         """Test FOV exactly at 90 degrees (boundary case)."""
-        success, error = load_spice_files(planet=5, version=0)
-        assert success, f'Failed to load SPICE: {error}'
+        success, error = load_spice_files(planet=5, version=0, force=True)
+        if not success:
+            pytest.skip(f'SPICE kernels not available: {error}')
 
         set_observer_id(EARTH_ID)
 
