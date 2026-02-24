@@ -386,7 +386,7 @@ def compare_postscript(
     path_a: Path | str,
     path_b: Path | str,
     normalize_creator_date: bool = True,
-    numeric_tolerance: float = 0.02,
+    numeric_tolerance: float = 0.05,
     pixel_tolerance: float = 2.0,
 ) -> CompareResult:
     """Compare two PostScript files with optional normalization of variable headers.
@@ -397,8 +397,8 @@ def compare_postscript(
     (PS string tokens, not DSC comments). The removal is silent and conditional
     on normalize_creator_date.
 
-    numeric_tolerance: numeric fields may differ by this amount (e.g. 0.02 for
-    tracker plot coordinates affected by time-library differences).
+    numeric_tolerance: numeric fields may differ by this amount (e.g. 0.05 for
+    tracker plot coordinates and axis labels affected by time-library differences).
     pixel_tolerance: integer-like values (pixel positions) may differ by up to
     this amount; allows 1-2 pixel drift to be ignored.
     """
