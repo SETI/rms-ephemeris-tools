@@ -58,6 +58,12 @@ def run_python(
     if spec.params.get('query_string'):
         query_string = str(spec.params['query_string'])
         env.update(_env_from_query_string(query_string))
+        # FORTRAN requires xrange/xunit for tracker; inject defaults so both get same params.
+        if spec.tool == 'tracker':
+            if not (env.get('xrange') or '').strip():
+                env['xrange'] = '180'
+            if not (env.get('xunit') or '').strip():
+                env['xunit'] = 'arcsec'
 
         # Match real CGI: shell scripts set NPLANET from abbrev (abbrev_to_planet)
         # and export it; the form sends abbrev=, not NPLANET. So when the query

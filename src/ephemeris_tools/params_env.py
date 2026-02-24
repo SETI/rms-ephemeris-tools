@@ -426,7 +426,8 @@ def tracker_params_from_env() -> TrackerParams | None:
     except ValueError:
         xrange = None
     xunit_raw = _get_env('xunit', 'arcsec')
-    xunit = 'radii' if 'radii' in xunit_raw.lower() else 'arcsec'
+    # Preserve raw value to match FORTRAN display (e.g. "degrees", "Uranus radii")
+    xunit = (xunit_raw or 'arcsec').strip() or 'arcsec'
     title = _get_env('title')
     ephem_s = _get_env('ephem', '0')
     parts = (ephem_s or '').strip().split()
@@ -443,6 +444,15 @@ def tracker_params_from_env() -> TrackerParams | None:
     ephem_display = _get_env('ephem') or None
     moons_display = _get_keys_env('moons') or None
     rings_display = _get_keys_env('rings') or None
+    viewpoint_display: str | None = None
+    if viewpoint == 'latlon':
+        lat_s = _get_env('latitude')
+        lon_s = _get_env('longitude')
+        lon_dir = _get_env('lon_dir', 'east')
+        alt_s = _get_env('altitude')
+        if lat_s or lon_s or alt_s:
+            # Match FORTRAN: '(' // lat // ',' // ' ' // lon // ' ' // lon_dir // ',' // alt // ')'
+            viewpoint_display = f'({lat_s or ""}, {lon_s or ""} {lon_dir}, {alt_s or ""})'
     return TrackerParams(
         planet_num=planet_num,
         start_time=start_time,
@@ -460,4 +470,5 @@ def tracker_params_from_env() -> TrackerParams | None:
         ephem_display=ephem_display,
         moons_display=moons_display,
         rings_display=rings_display,
+        viewpoint_display=viewpoint_display,
     )

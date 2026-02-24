@@ -9,7 +9,7 @@ from ephemeris_tools.params import Observer, TrackerParams
 from ephemeris_tools.spice.common import get_state
 
 
-class _RunTrackerKwargs(TypedDict, total=True):
+class _RunTrackerKwargs(TypedDict, total=False):
     """Keyword arguments for run_tracker (legacy signature from TrackerParams)."""
 
     planet_num: int
@@ -18,6 +18,7 @@ class _RunTrackerKwargs(TypedDict, total=True):
     interval: float
     time_unit: str
     viewpoint: str
+    viewpoint_display: str | None
     moon_ids: list[int] | None
     ephem_version: int
     sc_trajectory: int
@@ -32,8 +33,10 @@ class _RunTrackerKwargs(TypedDict, total=True):
     output_txt: TextIO | None
 
 
-# Radians to arcsec for tracker plot
+# Radians to arcsec for tracker plot (Earth observatories; RSPK_TrackMoons)
 _RAD_TO_ARCSEC = 180.0 / math.pi * 3600.0
+# Radians to degrees for spacecraft observers (RSPK_TrackMoonC)
+_RAD_TO_DEG = 180.0 / math.pi
 
 
 def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int) -> list[bool]:
@@ -70,6 +73,7 @@ def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int
 def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs:
     """Convert a ``TrackerParams`` object to legacy ``run_tracker`` kwargs."""
     viewpoint = params.observer.name if params.observer.name is not None else 'Earth'
+    viewpoint_display = getattr(params, 'viewpoint_display', None)
     xunit = params.xunit.lower()
     ring_options = None
     if params.ring_names:
@@ -83,6 +87,7 @@ def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs
         'interval': params.interval,
         'time_unit': params.time_unit,
         'viewpoint': viewpoint,
+        'viewpoint_display': viewpoint_display,
         'moon_ids': params.moon_ids,
         'ephem_version': params.ephem_version,
         'sc_trajectory': params.sc_trajectory,
@@ -123,6 +128,7 @@ def _run_tracker_impl(
     interval: float = 1.0,
     time_unit: str = 'hour',
     viewpoint: str = 'Earth',
+    viewpoint_display: str | None = None,
     moon_ids: list[int] | None = None,
     ephem_version: int = 0,
     xrange: float | None = None,
@@ -182,7 +188,11 @@ def _run_tracker_impl(
         raise ValueError('Invalid start or stop time')
     day1, sec1 = start_parsed
     day2, sec2 = stop_parsed
-    tai1 = tai_from_day_sec(day1, sec1)
+    # Match FORTRAN: round start time to nearest minute (tracker3_xxx.f sec = 60*aint(sec/60+0.5))
+    sec1_rounded = 60.0 * int(sec1 / 60.0 + 0.5)
+    if sec1_rounded >= 86400.0:
+        day1, sec1_rounded = day1 + 1, 0.0
+    tai1 = tai_from_day_sec(day1, sec1_rounded)
     tai2 = tai_from_day_sec(day2, sec2)
     dsec = interval_seconds(interval, time_unit, min_seconds=60.0, round_to_minutes=True)
     ntimes = int((tai2 - tai1) / dsec) + 1
@@ -195,12 +205,33 @@ def _run_tracker_impl(
     if cfg is None:
         raise ValueError(f'Unknown planet number: {planet_num}')
     state = get_state()
-    # Moon body IDs only (exclude planet center, e.g. 699 for Saturn).
-    track_moon_ids = [m.id for m in cfg.moons if m.id != state.planet_id]
+    # Moon body IDs: preserve URL/CGI order when moon_ids provided (match FORTRAN).
+    all_moon_ids = [m.id for m in cfg.moons if m.id != state.planet_id]
     if moon_ids:
-        track_moon_ids = [tid for tid in track_moon_ids if tid in moon_ids]
+        track_moon_ids = [tid for tid in moon_ids if tid in set(all_moon_ids)]
+    else:
+        track_moon_ids = list(all_moon_ids)
     id_to_name = {m.id: m.name for m in cfg.moons}
     moon_names = [id_to_name.get(tid, str(tid)) for tid in track_moon_ids]
+
+    # FORTRAN uses degrees for spacecraft observers (RSPK_TrackMoonC), arcsec for
+    # Earth/JWST/HST (RSPK_TrackMoons).
+    from ephemeris_tools.constants import SPACECRAFT_IDS, SPACECRAFT_NAMES
+
+    obs_is_spacecraft = False
+    obs_vp = (viewpoint or '').strip()
+    if obs_vp.lower() not in ('', 'earth', 'observatory', 'latlon'):
+        for sc_name in SPACECRAFT_NAMES:
+            if obs_vp.lower() == sc_name.lower():
+                obs_is_spacecraft = True
+                break
+        if not obs_is_spacecraft:
+            for sc_id in SPACECRAFT_IDS:
+                if obs_vp.upper() == sc_id:
+                    obs_is_spacecraft = True
+                    break
+    use_degrees = obs_is_spacecraft and 'JWST' not in obs_vp.upper() and 'HST' not in obs_vp.upper()
+    rad_to_angle = _RAD_TO_DEG if use_degrees else _RAD_TO_ARCSEC
 
     # FORTRAN quirk (tracker3_xxx + rspk_trackmoons): moon geometry is sampled
     # on an evenly stretched grid from start->stop, while table timestamps use
@@ -216,9 +247,9 @@ def _run_tracker_impl(
         et = tdb_from_tai(sample_tai)
         offsets_rad, limb_rad = moon_tracker_offsets(et, track_moon_ids)
         table_times_tai.append(table_tai)
-        limb_arcsec.append(limb_rad * _RAD_TO_ARCSEC)
+        limb_arcsec.append(limb_rad * rad_to_angle)
         for j, o in enumerate(offsets_rad):
-            moon_offsets_arcsec[j].append(o * _RAD_TO_ARCSEC)
+            moon_offsets_arcsec[j].append(o * rad_to_angle)
 
     # X-axis range: user xrange (arcsec or radii per xscaled) or from limb.
     explicit_xrange = xrange is not None and xrange > 0
@@ -263,7 +294,7 @@ def _run_tracker_impl(
 
     # FORTRAN caption text in current CGI behavior does not append empty
     # parentheses for non-spacecraft observers.
-    viewpoint_caption = (viewpoint or 'Earth').strip()
+    viewpoint_caption = (viewpoint_display or viewpoint or 'Earth').strip()
     if not viewpoint_caption or viewpoint_caption.lower() in ('earth', 'observatory'):
         viewpoint_caption = "Earth's center"
 
@@ -271,27 +302,8 @@ def _run_tracker_impl(
     lcaptions = ['Ephemeris:', 'Viewpoint:']
     rcaptions = [ephem_caption, viewpoint_caption]
 
-    # FORTRAN uses DOY format only for spacecraft observers (not Earth, JWST, HST).
-    # obs_isc==0 means Earth's center or ground-based observatory.
-    # The Python viewpoint string is "observatory", "latlon", "Earth", or a spacecraft name.
-    from ephemeris_tools.constants import SPACECRAFT_IDS, SPACECRAFT_NAMES
-
-    obs_is_spacecraft = False
-    obs_vp = (viewpoint or '').strip()
-    if obs_vp.lower() not in ('', 'earth', 'observatory', 'latlon'):
-        # Check if it matches a known spacecraft name/ID
-        for sc_name in SPACECRAFT_NAMES:
-            if obs_vp.lower() == sc_name.lower():
-                obs_is_spacecraft = True
-                break
-        if not obs_is_spacecraft:
-            for sc_id in SPACECRAFT_IDS:
-                if obs_vp.upper() == sc_id:
-                    obs_is_spacecraft = True
-                    break
-    use_doy_format = (
-        obs_is_spacecraft and 'JWST' not in obs_vp.upper() and 'HST' not in obs_vp.upper()
-    )
+    # FORTRAN uses DOY format for spacecraft observers (not Earth, JWST, HST).
+    use_doy_format = use_degrees
     if output_ps:
         draw_moon_tracks(
             output_ps,
@@ -315,7 +327,7 @@ def _run_tracker_impl(
             ncaptions=ncaptions,
             lcaptions=lcaptions,
             rcaptions=rcaptions,
-            align_loc=180.0,
+            align_loc=90.0 if use_doy_format else 180.0,
             filename=filename,
             use_doy_format=use_doy_format,
         )

@@ -803,6 +803,7 @@ class TrackerParams:
     ephem_display: str | None = None
     moons_display: list[str] | None = None
     rings_display: list[str] | None = None
+    viewpoint_display: str | None = None
 
 
 @dataclass

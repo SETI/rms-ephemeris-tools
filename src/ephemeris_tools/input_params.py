@@ -211,7 +211,11 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
             _w(stream, f'      Viewpoint: {observer_obj.name}')
         elif observer_obj.latitude_deg is not None or observer_obj.longitude_deg is not None:
             _w(stream, f'      Viewpoint: Lat = {observer_obj.latitude_deg} (deg)')
-            _w(stream, f'                 Lon = {observer_obj.longitude_deg} (deg east)')
+            lon_display = observer_obj.longitude_deg
+            lon_dir = (getattr(observer_obj, 'lon_dir', None) or 'east').strip().lower()
+            if lon_display is not None and lon_dir == 'west':
+                lon_display = abs(lon_display)
+            _w(stream, f'                 Lon = {lon_display} (deg {lon_dir})')
             _w(stream, f'                 Alt = {observer_obj.altitude_m} (m)')
         else:
             _w(stream, "      Viewpoint: Earth's center")
@@ -277,15 +281,16 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
                 _w(stream, ' Ring selection:')
         _w(stream, ' ')
 
-    # Plot options (xrange as integer when whole; xunit "radii" -> "Planet radii")
+    # Plot options (xrange as integer when whole; xunit matches FORTRAN raw CGI value)
     xrange_val = getattr(args, 'xrange', None)
     xunit = getattr(args, 'xunit', 'arcsec') or 'arcsec'
     if xrange_val is not None and xrange_val == int(xrange_val):
         xrange_s = str(int(xrange_val))
     else:
         xrange_s = (str(xrange_val).strip() if xrange_val is not None else ' ') or ' '
-    if xunit == 'radii' and planet in _PLANET_NAMES:
-        xunit_display = f'{_PLANET_NAMES[planet]} radii'
+    # CLI uses normalized 'arcsec'|'radii'; CGI preserves raw (e.g. "degrees", "Uranus radii")
+    if xunit in ('arcsec', 'radii'):
+        xunit_display = f'{_PLANET_NAMES[planet]} radii' if xunit == 'radii' else 'arcsec'
     else:
         xunit_display = xunit
     _w(stream, f'     Plot scale: {xrange_s} {xunit_display}')

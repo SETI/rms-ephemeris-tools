@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlencode
 
 from ephemeris_tools.planets import (
     JUPITER_CONFIG,
@@ -442,7 +442,16 @@ class RunSpec:
         # Required by getcgivars(): REQUEST_METHOD=GET and QUERY_STRING.
         env['REQUEST_METHOD'] = 'GET'
         if p.get('query_string'):
-            env['QUERY_STRING'] = str(p['query_string'])
+            qs = str(p['query_string'])
+            # FORTRAN tracker requires xrange and xunit (PLOT_SCALE); inject defaults if missing.
+            if self.tool == 'tracker':
+                parsed = parse_qs(qs, keep_blank_values=True)
+                if not parsed.get('xrange') or not (parsed['xrange'][0] or '').strip():
+                    parsed.setdefault('xrange', ['180'])
+                if not parsed.get('xunit') or not (parsed['xunit'][0] or '').strip():
+                    parsed.setdefault('xunit', ['arcsec'])
+                qs = urlencode(parsed, doseq=True)
+            env['QUERY_STRING'] = qs
         else:
             pairs = _query_pairs(p, self.tool)
             env['QUERY_STRING'] = '&'.join(

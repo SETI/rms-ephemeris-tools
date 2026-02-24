@@ -10,6 +10,7 @@ from typing import TextIO
 from ephemeris_tools.time_utils import (
     day_sec_from_tai,
     tai_from_day_sec,
+    yd_from_day,
     ymd_from_day,
 )
 
@@ -142,8 +143,9 @@ def _label_xaxis(
     xrange: float,
     xscaled: bool,
     planetstr: str,
+    use_degrees: bool = False,
 ) -> None:
-    """Draw x-axis labels and tick marks (port of RSPK_LabelXAxis)."""
+    """Draw x-axis labels and tick marks (port of RSPK_LabelXAxis / RSPK_LabelXAxisC)."""
     max_xstep = 2.0 * xrange / 3.0
     i = len(STEP1) - 1
     while i >= 1 and STEP1[i] > max_xstep:
@@ -163,6 +165,8 @@ def _label_xaxis(
         mark += mark2
     if xscaled:
         _emit(out, f'({planetstr} radii) Xlabel')
+    elif use_degrees:
+        _emit(out, '(Degree) Xlabel')
     else:
         _emit(out, '(Arcsec) Xlabel')
 
@@ -174,6 +178,7 @@ def _label_yaxis(
     dt: float,
     day_sec_from_tai: Callable[[float], tuple[int, float]],
     ymd_from_day: Callable[[int], tuple[int, int, int]],
+    yd_from_day_fn: Callable[[int], tuple[int, int]],
     tai_from_day_sec: Callable[[int, float], float],
     use_doy_format: bool = False,
 ) -> None:
@@ -194,17 +199,26 @@ def _label_yaxis(
         i -= 1
     mark1_imins = STEP1_MINS[i]
     mark2_imins = STEP2_MINS[i]
-    k2 = 16
-    if mark1_imins >= MINS_PER_DAY:
-        k2 = 11
-    if mark1_imins >= 31 * MINS_PER_DAY:
-        k2 = 8
+    # RSPK_LabelYAxis uses YMD; RSPK_LabelYAxisC uses DOY with different k2
+    if use_doy_format:
+        k2 = 13
+        if mark1_imins >= MINS_PER_DAY:
+            k2 = 8
+    else:
+        k2 = 16
+        if mark1_imins >= MINS_PER_DAY:
+            k2 = 11
+        if mark1_imins >= 31 * MINS_PER_DAY:
+            k2 = 8
     day1, _ = day_sec_from_tai(tai1)
     dutc_ref = day1
     if mark1_imins > MINS_PER_DAY:
-        # Align multi-day major ticks to an absolute day cadence.
-        mark1_days = mark1_imins // MINS_PER_DAY
-        dutc_ref = dutc_ref - (dutc_ref % mark1_days)
+        mark1_days = int(mark1_imins // MINS_PER_DAY)
+        if use_doy_format:
+            _, d_ref = yd_from_day_fn(dutc_ref)
+        else:
+            _, _, d_ref = ymd_from_day(dutc_ref)
+        dutc_ref = dutc_ref - ((d_ref - 1) % mark1_days)
     tick_imins = MINS_PER_DAY if mark2_imins > MINS_PER_DAY else mark2_imins
     iticks_per_day = MINS_PER_DAY // tick_imins
     secs_per_tick = 86400.0 / iticks_per_day
@@ -218,6 +232,7 @@ def _label_yaxis(
         secs = (tick - days * iticks_per_day) * secs_per_tick
         dutc = dutc_ref + days
         y, m, d = ymd_from_day(dutc)
+        doy = (date(y, m, d) - date(y, 1, 1)).days + 1 if use_doy_format else 0
         h = int(secs / 3600.0)
         tai = tai_from_day_sec(dutc, secs)
         if tai > tai2:
@@ -226,6 +241,11 @@ def _label_yaxis(
         if y != yprev:
             qmark1 = True
             k1 = 1
+        elif use_doy_format:
+            qmark1 = tick >= last_mark1_tick + iticks_per_mark1
+            qmark2 = tick >= last_mark2_tick + iticks_per_mark2
+            # FORTRAN: k1=1 for new doy (full label), k1=10 for same doy (hour only)
+            k1 = 1 if doy != dprev else 10
         elif m != mprev:
             qmark1 = True
             k1 = 6
@@ -233,7 +253,7 @@ def _label_yaxis(
             qmark1 = tick >= last_mark1_tick + iticks_per_mark1
             qmark2 = tick >= last_mark2_tick + iticks_per_mark2
             k1 = 10 if d != dprev else 13
-        yprev, mprev, dprev = y, m, d
+        yprev, mprev, dprev = y, m, (doy if use_doy_format else d)
         if qmark1:
             last_mark1_tick = last_mark2_tick = tick
         elif qmark2:
@@ -243,6 +263,8 @@ def _label_yaxis(
         if qmark1:
             k1_use = 1 if first_mark1 else k1
             first_mark1 = False
+            if k1_use > k2:
+                k1_use = 1
             if use_doy_format:
                 doy = (date(y, m, d) - date(y, 1, 1)).days + 1
                 label = f'{y:4d}-{doy:03d} {h:2d}h'
@@ -388,7 +410,11 @@ def draw_moon_tracks(
     _emit(output, '% shift origin')
     _emit(output, 'gsave I1 J1 translate')
 
-    _emit(output, f'{xrange:10.3f} {-xrange:10.3f} {ntimes:6d} 1 SetLimits gsave ClipBox')
+    # RSPK_TrackMoons uses f10.3; RSPK_TrackMoonC uses f12.2
+    if use_doy_format:
+        _emit(output, f'{xrange:12.2f} {-xrange:12.2f} {ntimes:6d} 1 SetLimits gsave ClipBox')
+    else:
+        _emit(output, f'{xrange:10.3f} {-xrange:10.3f} {ntimes:6d} 1 SetLimits gsave ClipBox')
 
     for i in range(nrings - 1, -1, -1):
         if ring_flags[i]:
@@ -425,7 +451,7 @@ def draw_moon_tracks(
 
     _emit(output, 'grestore DrawBox')
 
-    _label_xaxis(output, xrange, xscaled, planetstr)
+    _label_xaxis(output, xrange, xscaled, planetstr, use_degrees=use_doy_format)
     _label_yaxis(
         output,
         time1_tai,
@@ -433,6 +459,7 @@ def draw_moon_tracks(
         dt,
         day_sec_from_tai,
         ymd_from_day,
+        yd_from_day,
         tai_from_day_sec,
         use_doy_format,
     )
