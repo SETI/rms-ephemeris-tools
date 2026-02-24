@@ -92,6 +92,42 @@ EPHEM_DESCRIPTIONS_BY_PLANET: dict[int, str] = {
     9: 'PLU058 + DE440',
 }
 
+# Planet number → display name (for column descriptions).
+PLANET_NUM_TO_NAME: dict[int, str] = {
+    4: 'Mars',
+    5: 'Jupiter',
+    6: 'Saturn',
+    7: 'Uranus',
+    8: 'Neptune',
+    9: 'Pluto',
+}
+
+# General column ID → display template; use {planet} for planet-specific columns.
+COL_DISPLAY_TEMPLATES: dict[int, str] = {
+    1: 'Modified Julian Date',
+    2: 'Year, Month, Day, Hour, Minute',
+    3: 'Year, Month, Day, Hour, Minute, Second',
+    4: 'Year, DOY, Hour, Minute',
+    5: 'Year, DOY, Hour, Minute, Second',
+    6: 'Observer-{planet} distance',
+    7: 'Sun-{planet} distance',
+    8: '{planet} phase angle',
+    9: 'Ring plane opening angle to observer',
+    10: 'Ring plane opening angle to Sun',
+    11: 'Sub-observer inertial longitude',
+    12: 'Sub-solar inertial longitude',
+    13: 'Sub-observer latitude & rotating longitude',
+    14: 'Sub-solar latitude & rotating longitude',
+    15: '{planet} RA & Dec',
+    16: 'Earth RA & Dec',
+    17: 'Sun RA & Dec',
+    18: '{planet} projected equatorial radius',
+    19: '{planet} projected equatorial radius',
+    20: 'Lunar phase angle',
+    21: 'Sun-{planet} sky separation angle',
+    22: 'Lunar-{planet} sky separation angle',
+}
+
 # Moon column ID → display name (ephemeris Input Parameters section).
 MCOL_DISPLAY_BY_ID: dict[int, str] = {
     1: 'Observer-moon distance',

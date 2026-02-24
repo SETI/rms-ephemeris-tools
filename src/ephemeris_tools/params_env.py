@@ -131,6 +131,7 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
         mooncols=mooncols,
         moon_ids=moon_ids,
         ephem_display=_get_env('ephem') or None,
+        columns_display=_get_keys_env('columns') or None,
         mooncols_display=_get_keys_env('mooncols') or None,
         moons_display=_get_keys_env('moons') or None,
     )

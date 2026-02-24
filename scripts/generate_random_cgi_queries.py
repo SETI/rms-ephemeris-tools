@@ -132,6 +132,10 @@ MISSION_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
 
 # Observatory date limits for SPICE kernel availability (when observatory is used).
 OBSERVATORY_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
+    'HST': (
+        datetime(2000, 1, 1, tzinfo=timezone.utc),
+        datetime(2024, 12, 31, tzinfo=timezone.utc),
+    ),
     'JWST': (
         datetime(2022, 1, 1, tzinfo=timezone.utc),
         datetime(2025, 12, 31, tzinfo=timezone.utc),

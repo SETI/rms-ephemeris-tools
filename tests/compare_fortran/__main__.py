@@ -271,8 +271,7 @@ def _execute_spec(
     out_dir: Path,
     fort_cmd: list[str] | None,
     float_tol: int | None,
-    numeric_tol: float | None,
-    distance_tol: float | None = None,
+    lsd_tol: float | None,
 ) -> tuple[bool, list[str], float | None]:
     """Execute one comparison spec and return (passed, detail lines, max_table_abs_diff).
 
@@ -341,14 +340,27 @@ def _execute_spec(
         details.append((result_fort.stderr or fort_stdout or '').strip())
         return (False, details, None)
 
-    all_ok = True
+    # Compare printed output (stdout: Input Parameters section)
+    py_stdout_path = out_dir / 'python_stdout.txt'
+    fort_stdout_path = out_dir / 'fortran_stdout.txt'
+    py_stdout_path.write_text(result_py.stdout or '')
+    fort_stdout_path.write_text(result_fort.stdout or '')
+    res_stdout = compare_tables(
+        py_stdout_path,
+        fort_stdout_path,
+        float_tolerance=float_tol,
+        lsd_tolerance=lsd_tol,
+    )
+    details.append(f'stdout: {res_stdout.message}')
+    details.extend(res_stdout.details)
+    all_ok = res_stdout.same
+
     if py_table_use and fort_table_use:
         res = compare_tables(
             py_table_use,
             fort_table_use,
             float_tolerance=float_tol,
-            abs_tolerance=numeric_tol,
-            distance_tolerance=distance_tol,
+            lsd_tolerance=lsd_tol,
             ignore_column_suffixes=('_orbit', '_open'),
         )
         details.append(f'table: {res.message}')
@@ -365,8 +377,7 @@ def _execute_spec(
             py_txt_use,
             fort_txt_use,
             float_tolerance=float_tol,
-            abs_tolerance=numeric_tol,
-            distance_tolerance=distance_tol,
+            lsd_tolerance=lsd_tol,
         )
         details.append(f'text: {res.message}')
         details.extend(res.details)
@@ -485,17 +496,12 @@ def main() -> int:
         help='Compare numeric table fields to this many significant digits (0 = exact)',
     )
     parser.add_argument(
-        '--numeric-tol',
+        '--lsd-tol',
         type=float,
-        default=0.0015,
-        help='Absolute numeric tolerance for table/text comparisons.',
-    )
-    parser.add_argument(
-        '--distance-tol',
-        type=float,
-        default=2.0,
-        help='Tolerance for distance columns (obs_dist, *_dist). Default 2.0 allows '
-        '±1 km from rounding. Set 0 for exact.',
+        default=1.0,
+        help='Tolerance in least-significant-digit units. Values match when |a-b| <= '
+        'lsd_tol * lsd, where lsd is inferred from the printed form. E.g. 1.001 with '
+        'lsd_tol=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1. Set 0 for exact.',
     )
     args = parser.parse_args()
 
@@ -522,13 +528,13 @@ def main() -> int:
             else:
                 derived = _default_fortran_binary(spec.tool, planet, repo_root)
                 case_fort_cmd = [str(derived)] if derived is not None else None
+            case_dir.mkdir(parents=True, exist_ok=True)
             ok, details, case_max_diff = _execute_spec(
                 spec=spec,
                 out_dir=case_dir,
                 fort_cmd=case_fort_cmd,
                 float_tol=(args.float_tol if args.float_tol > 0 else None),
-                numeric_tol=args.numeric_tol,
-                distance_tol=args.distance_tol,
+                lsd_tol=(args.lsd_tol if args.lsd_tol > 0 else None),
             )
             (case_dir / 'comparison.txt').write_text('\n'.join(details) + '\n')
             all_details_lines.append(f'## case {idx}')
@@ -689,18 +695,34 @@ def main() -> int:
             return 1
         print('FORTRAN OK.', flush=True)
 
+        # Compare printed output (stdout: Input Parameters section)
+        py_stdout_path = out_dir / 'python_stdout.txt'
+        fort_stdout_path = out_dir / 'fortran_stdout.txt'
+        py_stdout_path.write_text(result_py.stdout or '')
+        fort_stdout_path.write_text(result_fort.stdout or '')
+        res_stdout = compare_tables(
+            py_stdout_path,
+            fort_stdout_path,
+            float_tolerance=(args.float_tol if args.float_tol > 0 else None),
+            lsd_tolerance=(args.lsd_tol if args.lsd_tol > 0 else None),
+        )
+        print('Printed output (stdout):', res_stdout.message)
+        for d in res_stdout.details:
+            print(d)
         exit_code = 0
+        if not res_stdout.same:
+            exit_code = 1
+
         if py_table_use and fort_table_use:
             # Ignore *_orbit and *_open columns: known FORTRAN bug in RSPK_OrbitOpen.
             res = compare_tables(
                 py_table_use,
                 fort_table_use,
                 float_tolerance=(args.float_tol if args.float_tol > 0 else None),
-                abs_tolerance=args.numeric_tol,
-                distance_tolerance=args.distance_tol,
+                lsd_tolerance=(args.lsd_tol if args.lsd_tol > 0 else None),
                 ignore_column_suffixes=('_orbit', '_open'),
             )
-            print(res.message)
+            print('Table:', res.message)
             for d in res.details:
                 print(d)
             if not res.same:
@@ -710,8 +732,7 @@ def main() -> int:
                 py_txt_use,
                 fort_txt_use,
                 float_tolerance=(args.float_tol if args.float_tol > 0 else None),
-                abs_tolerance=args.numeric_tol,
-                distance_tolerance=args.distance_tol,
+                lsd_tolerance=(args.lsd_tol if args.lsd_tol > 0 else None),
             )
             print(f'Text table ({spec.tool}):', res.message)
             for d in res.details:

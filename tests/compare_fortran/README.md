@@ -90,18 +90,11 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
 - `--float-tol`: significant-digit tolerance for numeric comparisons.
   - Default: `6`
   - `0` means exact (disables significant-digit tolerance)
-- `--numeric-tol`: absolute numeric tolerance for table/text comparisons.
-  - Default: `2.0` (allows ±1 km in obs_dist due to rounding at 0.5 boundary)
+- `--lsd-tol`: tolerance in least-significant-digit units. Values match when
+  `|a-b| <= lsd_tol * lsd`, where `lsd` is inferred from the printed form.
+  - Default: `1.0`
+  - E.g. 1.001 with lsd_tol=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1
   - Set `0` for exact numeric comparison
-
-How the two options interact: `--float-tol` (significant-digit relative tolerance) is applied to
-comparisons that use significant-digit semantics (e.g., formatted floating-point fields and
-relative comparisons). `--numeric-tol` (absolute tolerance) is applied to plain numeric/text/table
-cell comparisons as an absolute difference. When both are relevant to a value, the comparison
-must pass both checks (it must satisfy the significant-digit criterion and have absolute
-difference ≤ `--numeric-tol`). Recommended workflow: use `--float-tol` for relative/scale-invariant
-checks (scientific notation, percentages) and `--numeric-tol` for fixed-scale absolute checks
-(counts, thresholds); keep defaults unless you need stricter absolute or relative behavior.
 
 ### Arguments and environment
 
@@ -121,25 +114,28 @@ checks (scientific notation, percentages) and `--numeric-tol` for fixed-scale ab
 
 With `-o /tmp/compare`:
 
-| Tool      | Python outputs           | FORTRAN outputs (when binary used)         |
-|-----------|--------------------------|--------------------------------------------|
-| ephemeris | `python_table.txt`       | `fortran_table.txt`                        |
-| tracker   | `python.ps`, `python_tracker.txt` | `fortran.ps`, `fortran_tracker.txt` |
-| viewer    | `python.ps`, `python_viewer.txt` (FOV table) | `fortran.ps`, `fortran_viewer.txt` |
+| Tool      | Python outputs                                | FORTRAN outputs (when binary used)                 |
+|-----------|-----------------------------------------------|----------------------------------------------------|
+| ephemeris | `python_stdout.txt`, `python_table.txt`       | `fortran_stdout.txt`, `fortran_table.txt`          |
+| tracker   | `python_stdout.txt`, `python.ps`, `python_tracker.txt` | `fortran_stdout.txt`, `fortran.ps`, `fortran_tracker.txt` |
+| viewer    | `python_stdout.txt`, `python.ps`, `python_viewer.txt` | `fortran_stdout.txt`, `fortran.ps`, `fortran_viewer.txt` |
 
 Comparison runs when a FORTRAN binary is available (auto-detected from `fortran/Tools/` or set via `--fortran-cmd`). Exit code 0 if all outputs match; 1 if any differ or a run failed.
 
 ## Comparison rules
 
+- **Printed output (stdout)**: The "Input Parameters" section printed to stdout by both
+  Python and FORTRAN is captured to `python_stdout.txt` and `fortran_stdout.txt` and
+  compared (same normalization and tolerance as tables).
 - **Tables**:
   - lines are normalized (strip, collapse whitespace);
   - FORTRAN overflow markers (`*****`) are ignored at the individual field/cell level
     (only that field is excluded from numeric comparison; the row remains in the output
-    and counts as a skipped-field for `--float-tol`/`--numeric-tol`; the row is not
-    dropped entirely). Skipped overflow fields are reflected in the diff summary and
-    exit code where applicable;
+    and counts as a skipped-field for `--float-tol`/`--lsd-tol`; the row is not dropped
+    entirely). Skipped overflow fields are reflected in the diff summary and exit code
+    where applicable;
   - numeric fields can be compared with `--float-tol` (significant digits) and/or
-    `--numeric-tol` (absolute tolerance).
+    `--lsd-tol` (least-significant-digit tolerance).
 - **PostScript**: Variable headers such as `%%Creator` and `%%CreationDate` are ignored so only structural and drawing differences are reported.
 
 In `--test-file` batch mode, `summary.txt` includes `largest_table_abs_diff=<value>`
@@ -164,6 +160,6 @@ spec = RunSpec("ephemeris", {"planet": 6, "start": "2022-01-01", "stop": "2022-0
 out = Path("/tmp/compare")
 run_python(spec, out_table=out / "py.txt")
 run_fortran(spec, ["/path/to/fortran/Tools/ephem3_xxx.bin"], out_table=out / "fort.txt")
-result = compare_tables(out / "py.txt", out / "fort.txt", float_tolerance=6)
+result = compare_tables(out / "py.txt", out / "fort.txt", lsd_tolerance=1)
 print(result.same, result.message)
 ```

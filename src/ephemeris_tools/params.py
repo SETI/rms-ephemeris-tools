@@ -828,6 +828,7 @@ class EphemerisParams:
     moon_ids: list[int] = field(default_factory=list)
     output: TextIO | None = None
     ephem_display: str | None = None
+    columns_display: list[str] | None = None
     mooncols_display: list[str] | None = None
     moons_display: list[str] | None = None
 

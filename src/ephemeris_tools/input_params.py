@@ -31,7 +31,12 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         stream: Output text stream.
         params: Ephemeris parameters to summarize.
     """
-    from ephemeris_tools.constants import EPHEM_DESCRIPTIONS_BY_PLANET, MCOL_DISPLAY_BY_ID
+    from ephemeris_tools.constants import (
+        COL_DISPLAY_TEMPLATES,
+        EPHEM_DESCRIPTIONS_BY_PLANET,
+        MCOL_DISPLAY_BY_ID,
+        PLANET_NUM_TO_NAME,
+    )
     from ephemeris_tools.planets import get_moon_display_name
 
     _w(stream, 'Input Parameters')
@@ -46,17 +51,18 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
 
     interval_s = str(params.interval).strip() if params.interval is not None else '1'
     try:
-        resolved_interval = int(float(interval_s))
+        interval_val = float(interval_s)
     except (TypeError, ValueError):
-        resolved_interval = 1
+        interval_val = 1.0
     time_unit = params.time_unit or 'hour'
-    if time_unit == 'hour' and resolved_interval != 1:
+    plural = interval_val != 1.0
+    if time_unit == 'hour' and plural:
         time_unit_display = 'hours'
-    elif time_unit == 'day' and resolved_interval != 1:
+    elif time_unit == 'day' and plural:
         time_unit_display = 'days'
-    elif time_unit == 'min' and resolved_interval != 1:
+    elif time_unit == 'min' and plural:
         time_unit_display = 'minutes'
-    elif time_unit == 'sec' and resolved_interval != 1:
+    elif time_unit == 'sec' and plural:
         time_unit_display = 'seconds'
     else:
         time_unit_display = time_unit
@@ -77,7 +83,11 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
     ):
         lat = params.latitude_deg if params.latitude_deg is not None else ''
         _w(stream, f'      Viewpoint: Lat = {lat} (deg)')
-        lon = params.longitude_deg if params.longitude_deg is not None else ''
+        # FORTRAN prints raw CGI value (positive for west); Python stores negated for SPICE.
+        lon_deg = params.longitude_deg
+        if lon_deg is not None and (params.lon_dir or '').lower() == 'west':
+            lon_deg = abs(lon_deg)
+        lon = lon_deg if lon_deg is not None else ''
         _w(stream, f'                 Lon = {lon} (deg {params.lon_dir})')
         alt = params.altitude_m if params.altitude_m is not None else ''
         _w(stream, f'                 Alt = {alt} (m)')
@@ -92,10 +102,18 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
     _w(stream, ' ')
 
     # General columns
-    if params.columns:
-        for i, c in enumerate(params.columns):
+    planet_name = PLANET_NUM_TO_NAME.get(params.planet_num, 'planet')
+    if params.columns_display and len(params.columns_display) > 0:
+        for i, col_str in enumerate(params.columns_display):
+            s = _strip_cgi_code(col_str)
             prefix = 'General columns: ' if i == 0 else '                 '
-            _w(stream, f'{prefix}{c}')
+            _w(stream, f'{prefix}{s}')
+    elif params.columns:
+        for i, c in enumerate(params.columns):
+            tpl = COL_DISPLAY_TEMPLATES.get(c)
+            s = tpl.format(planet=planet_name) if tpl else str(c)
+            prefix = 'General columns: ' if i == 0 else '                 '
+            _w(stream, f'{prefix}{s}')
     else:
         _w(stream, 'General columns:')
     _w(stream, ' ')
@@ -160,17 +178,18 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
     else:
         interval_s = str(interval).strip() if interval is not None else '1'
     try:
-        resolved_interval = int(float(interval_s))
+        interval_val = float(interval_s)
     except (TypeError, ValueError):
-        resolved_interval = 1
+        interval_val = 1.0
     time_unit = getattr(args, 'time_unit', 'hour') or 'hour'
-    if time_unit == 'hour' and resolved_interval != 1:
+    plural = interval_val != 1.0
+    if time_unit == 'hour' and plural:
         time_unit_display = 'hours'
-    elif time_unit == 'day' and resolved_interval != 1:
+    elif time_unit == 'day' and plural:
         time_unit_display = 'days'
-    elif time_unit == 'min' and resolved_interval != 1:
+    elif time_unit == 'min' and plural:
         time_unit_display = 'minutes'
-    elif time_unit == 'sec' and resolved_interval != 1:
+    elif time_unit == 'sec' and plural:
         time_unit_display = 'seconds'
     else:
         time_unit_display = time_unit

@@ -124,9 +124,10 @@ def test_compare_tables_different() -> None:
         path_b.unlink()
 
 
-def test_compare_tables_abs_tolerance_allows_small_numeric_deltas() -> None:
-    """compare_tables can treat tiny numeric roundoff as equal."""
+def test_compare_tables_lsd_tolerance_scales_with_printed_precision() -> None:
+    """compare_tables LSD tolerance: |a-b| <= lsd_tol * lsd, where lsd from printed form."""
 
+    # 12.270 vs 12.269: diff=0.001, LSD from "12.270"=0.001, so lsd_tol=1 allows ±0.001
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         f.write('a 12.270 -6.432\n')
         path_a = Path(f.name)
@@ -136,19 +137,18 @@ def test_compare_tables_abs_tolerance_allows_small_numeric_deltas() -> None:
     try:
         strict = compare_tables(path_a, path_b)
         assert strict.same is False
-        tolerant = compare_tables(path_a, path_b, abs_tolerance=0.0015)
+        tolerant = compare_tables(path_a, path_b, lsd_tolerance=1.0)
         assert tolerant.same is True
     finally:
         path_a.unlink()
         path_b.unlink()
 
 
-def test_compare_tables_distance_tolerance_for_dist_columns() -> None:
-    """Distance columns (obs_dist, *_dist) use distance_tolerance; others use abs_tolerance."""
-    # 1.5 km delta in obs_dist fails with abs_tolerance=0.0015, passes with distance_tolerance=2.0
-    header = 'mjd obs_dist ra\n'
-    table_a = header + '1.0 50000.0 0.5\n'
-    table_b = header + '1.0 50001.5 0.5\n'
+def test_compare_tables_lsd_tolerance_integer_column() -> None:
+    """LSD from integer (e.g. 7) is 1; 7 vs 9 has diff=2, fails lsd_tol=1, passes lsd_tol=2."""
+    header = 'hr mi\n'
+    table_a = header + '7 30\n'
+    table_b = header + '9 30\n'
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         f.write(table_a)
         path_a = Path(f.name)
@@ -157,15 +157,15 @@ def test_compare_tables_distance_tolerance_for_dist_columns() -> None:
         path_b = Path(f.name)
     try:
         strict = compare_tables(
-            path_a, path_b, abs_tolerance=0.0015,
-            ignore_column_suffixes=('_nonexistent',),  # Force column-aware path
+            path_a, path_b,
+            ignore_column_suffixes=('_nonexistent',),
         )
         assert strict.same is False
+        # diff=2, LSD from "7"=1, lsd_tol=2 allows ±2
         tolerant = compare_tables(
             path_a, path_b,
-            abs_tolerance=0.0015,
-            distance_tolerance=2.0,
-            ignore_column_suffixes=('_nonexistent',),  # Force column-aware path
+            lsd_tolerance=2.0,
+            ignore_column_suffixes=('_nonexistent',),
         )
         assert tolerant.same is True
     finally:

@@ -232,11 +232,10 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     moon_ids = list(params.moon_ids)
     planet_id = PLANET_NUM_TO_ID.get(params.planet_num, 100 * params.planet_num + 99)
 
+    # Match FORTRAN's time = time1 - 2*dsec; do irec=0,ntimes; time = time + dsec
+    tai = tai1 - 2.0 * dsec
     for irec in range(ntimes + 1):
-        if irec == 0:
-            tai = tai1 - dsec
-        else:
-            tai = tai1 + (irec - 1) * dsec
+        tai = tai + dsec
         et = tdb_from_tai(tai) if irec > 0 else 0.0
 
         if irec > 0:
@@ -471,10 +470,11 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                         ra, dec = body_radec(et, mid)
                         ddec = DPR * (dec - planet_dec)
                         dra = DPR * (ra - planet_ra)
+                        # Match FORTRAN ephem3_xxx.f: wrap by 180, not 360
                         if dra < -180.0:
-                            dra += 360.0
+                            dra += 180.0
                         if dra > 180.0:
-                            dra -= 360.0
+                            dra -= 180.0
                         dra *= cosdec
                         rec.append(f'{dra:9.5f}{ddec:10.5f}')
                 elif mcol == MCOL_ORBLON:

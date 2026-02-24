@@ -39,19 +39,44 @@ def _is_fortran_overflow_token(token: str) -> bool:
     return bool(token) and set(token) == {'*'}
 
 
+def _lsd_from_printed(s: str) -> float:
+    """Infer least-significant-digit magnitude from the printed form.
+
+    E.g. "1.001" -> 0.001, "10.5" -> 0.1, "7" -> 1, "5.0523E+09" -> 100000.
+    Used for LSD-based tolerance: values match if |a-b| <= lsd_units * lsd.
+    """
+    s = s.strip()
+    sci = re.match(r'^([+-]?\d*\.?\d+)[eE]([+-]?\d+)$', s)
+    if sci:
+        mantissa = sci.group(1)
+        exponent = int(sci.group(2))
+        if '.' in mantissa:
+            dec_places = len(mantissa.split('.')[1])
+        else:
+            dec_places = 0
+        return 10.0 ** (exponent - dec_places)
+    if '.' in s:
+        dec_places = len(s.split('.')[1])
+        return 10.0 ** (-dec_places)
+    return 1.0
+
+
 def _fields_match(
     field_a: str,
     field_b: str,
     *,
     float_tolerance: int | None,
     abs_tolerance: float | None,
+    lsd_tolerance: float | None,
 ) -> bool:
     """Compare one normalized table field.
 
     The second field is treated as FORTRAN output. If it is an overflow token
     (all asterisks), the field is considered uncomparable and therefore ignored.
-    """
 
+    When lsd_tolerance is set, values match if |a-b| <= lsd_tolerance * lsd, where
+    lsd is inferred from the printed form (e.g. 1.001 -> lsd=0.001, 10.5 -> 0.1).
+    """
     if _is_fortran_overflow_token(field_b):
         return True
     if field_a == field_b:
@@ -61,6 +86,12 @@ def _fields_match(
         fb = float(field_b)
     except ValueError:
         return False
+    if lsd_tolerance is not None:
+        lsd = _lsd_from_printed(field_a)
+        threshold = lsd_tolerance * lsd
+        # Add tiny epsilon to absorb float representation noise (e.g. 12.27-12.269)
+        if abs(fa - fb) <= threshold + 1e-12 * max(abs(fa), abs(fb), 1.0):
+            return True
     if abs_tolerance is not None and abs(fa - fb) <= abs_tolerance:
         return True
     if float_tolerance is not None:
@@ -74,6 +105,7 @@ def _lines_match_fields(
     *,
     float_tolerance: int | None,
     abs_tolerance: float | None,
+    lsd_tolerance: float | None = None,
 ) -> bool:
     """Compare normalized lines field-by-field with FORTRAN overflow handling."""
 
@@ -87,6 +119,7 @@ def _lines_match_fields(
             field_b,
             float_tolerance=float_tolerance,
             abs_tolerance=abs_tolerance,
+            lsd_tolerance=lsd_tolerance,
         ):
             return False
     return True
@@ -98,7 +131,7 @@ def compare_tables(
     ignore_blank: bool = True,
     float_tolerance: int | None = None,
     abs_tolerance: float | None = None,
-    distance_tolerance: float | None = None,
+    lsd_tolerance: float | None = None,
     ignore_column_suffixes: tuple[str, ...] | None = None,
 ) -> CompareResult:
     """Compare two table (text) files line-by-line.
@@ -107,12 +140,13 @@ def compare_tables(
     to that many significant digits. Otherwise exact string match after
     normalization (strip, collapse whitespace).
 
-    If abs_tolerance is set, numeric fields are considered equal when their
-    absolute difference is <= abs_tolerance.
+    If lsd_tolerance is set (e.g. 1), numeric fields match when their
+    difference is <= lsd_tolerance * lsd, where lsd is the magnitude of
+    the least significant digit in the printed form. E.g. 1.001 with
+    lsd_tolerance=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1.
 
-    If distance_tolerance is set, columns whose name contains "dist" (e.g.
-    obs_dist, STYX_dist) use this tolerance instead of abs_tolerance. Use
-    to allow ±1 km from rounding at the 0.5 boundary.
+    If abs_tolerance is set (and lsd_tolerance is not), numeric fields
+    match when |a-b| <= abs_tolerance. Kept for backward compatibility.
 
     If ignore_column_suffixes is set (e.g. ("_orbit", "_open")), the first
     line is treated as a header; when comparing data lines, fields whose
@@ -143,7 +177,7 @@ def compare_tables(
             ignore_column_suffixes,
             float_tolerance,
             abs_tolerance,
-            distance_tolerance,
+            lsd_tolerance,
             details,
         )
     else:
@@ -160,6 +194,7 @@ def compare_tables(
                     lb,
                     float_tolerance=float_tolerance,
                     abs_tolerance=abs_tolerance,
+                    lsd_tolerance=lsd_tolerance,
                 ):
                     continue
                 if la != lb:
@@ -187,7 +222,7 @@ def _compare_tables_column_aware(
     ignore_suffixes: tuple[str, ...],
     float_tolerance: int | None,
     abs_tolerance: float | None,
-    distance_tolerance: float | None,
+    lsd_tolerance: float | None,
     details: list[str],
 ) -> tuple[int, list[str], float | None]:
     """Compare tables line-by-line, ignoring columns whose header ends with given suffixes."""
@@ -228,15 +263,12 @@ def _compare_tables_column_aware(
             diff = _field_abs_diff(fields_a[j], fields_b[j])
             if diff is not None:
                 max_abs_diff = diff if max_abs_diff is None else max(max_abs_diff, diff)
-            # Use distance_tolerance for distance columns (obs_dist, *_dist)
-            field_abs_tol = abs_tolerance
-            if distance_tolerance is not None and 'dist' in header_a[j].lower():
-                field_abs_tol = distance_tolerance
             if not _fields_match(
                 fields_a[j],
                 fields_b[j],
                 float_tolerance=float_tolerance,
-                abs_tolerance=field_abs_tol,
+                abs_tolerance=abs_tolerance,
+                lsd_tolerance=lsd_tolerance,
             ):
                 num_diffs += 1
                 if len(details) < 50:
