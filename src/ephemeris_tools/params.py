@@ -466,11 +466,11 @@ def parse_observer(tokens: list[str]) -> Observer:
         ValueError: If the input looks numeric but is not a valid triplet.
     """
     if len(tokens) == 0:
-        return Observer(name="Earth's Center")
+        return Observer(name="Earth's center")
 
     normalized = [tok.strip() for tok in tokens if tok.strip()]
     if len(normalized) == 0:
-        return Observer(name="Earth's Center")
+        return Observer(name="Earth's center")
 
     if len(normalized) == 3:
         try:
@@ -494,7 +494,7 @@ def parse_observer(tokens: list[str]) -> Observer:
 
     name = ' '.join(normalized)
     if name.lower() in {'earth', "earth's center", 'earths center'}:
-        name = "Earth's Center"
+        name = "Earth's center"
     return Observer(name=name)
 
 
@@ -817,7 +817,7 @@ class EphemerisParams:
     ephem_version: int = 0
     observer: Observer = field(default_factory=Observer)
     viewpoint: str = 'Earth'
-    observatory: str = "Earth's Center"
+    observatory: str = "Earth's center"
     latitude_deg: float | None = None
     longitude_deg: float | None = None
     lon_dir: str = 'east'
@@ -827,6 +827,9 @@ class EphemerisParams:
     mooncols: list[int] = field(default_factory=list)
     moon_ids: list[int] = field(default_factory=list)
     output: TextIO | None = None
+    ephem_display: str | None = None
+    mooncols_display: list[str] | None = None
+    moons_display: list[str] | None = None
 
 
 def _safe_float(value: str, default: float) -> float:

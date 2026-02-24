@@ -31,7 +31,7 @@ _FOV_UNIT_TO_FORTRAN: dict[str, str] = {
 }
 
 _OBSERVATORY_TO_FORTRAN: dict[str, str] = {
-    "Earth's Center": "Earth's center",  # FORTRAN checks first 5 chars only
+    "Earth's center": "Earth's center",  # FORTRAN checks first 5 chars only
 }
 
 # Planet number → PlanetConfig for building moon CGI maps.
@@ -52,6 +52,18 @@ _PLANET_LETTER: dict[int, str] = {
     7: 'U',
     8: 'N',
     9: 'P',
+}
+
+# Three-letter abbreviation → planet number (matches web/cgi-bin/tools/parse_cgi.sh
+# abbrev_to_planet). Used when building CGI-style env from a query string so NPLANET
+# is set the same way the shell scripts do (form sends abbrev=, shell exports NPLANET).
+ABBREV_TO_PLANET: dict[str, int] = {
+    'mar': 4,
+    'jup': 5,
+    'sat': 6,
+    'ura': 7,
+    'nep': 8,
+    'plu': 9,
 }
 
 # Valid FORTRAN viewer RING_SELECTION form values per planet (from VIEWER3_FORM_*.shtml).
@@ -438,6 +450,8 @@ class RunSpec:
             )
 
         # Variables read via WWW_GetEnv (real env vars, not QUERY_STRING).
+        from ephemeris_tools.config import get_spice_path
+        env['SPICE_PATH'] = get_spice_path()
         if 'planet' in p:
             env['NPLANET'] = str(int(p['planet']))
         if self.tool == 'ephemeris' and table_path:

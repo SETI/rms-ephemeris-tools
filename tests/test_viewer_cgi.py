@@ -16,7 +16,7 @@ def test_viewer_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('center', 'body')
     monkeypatch.setenv('center_body', 'Neptune')
     monkeypatch.setenv('viewpoint', 'observatory')
-    monkeypatch.setenv('observatory', "Earth's Center")
+    monkeypatch.setenv('observatory', "Earth's center")
     monkeypatch.setenv('moons', '802 Triton & Nereid')
     monkeypatch.setenv('rings', 'LeVerrier, Adams')
     params = viewer_params_from_env()

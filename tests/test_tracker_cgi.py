@@ -15,7 +15,7 @@ def test_tracker_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('interval', '1')
     monkeypatch.setenv('time_unit', 'hours')
     monkeypatch.setenv('viewpoint', 'observatory')
-    monkeypatch.setenv('observatory', "Earth's Center")
+    monkeypatch.setenv('observatory', "Earth's center")
     monkeypatch.setenv('moons', '001 Mimas (S1)')
     monkeypatch.setenv('rings', '061 Main Rings')
     monkeypatch.setenv('xrange', '180')

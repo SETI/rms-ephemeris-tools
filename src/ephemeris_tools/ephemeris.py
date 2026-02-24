@@ -80,10 +80,14 @@ SPR = DPR * 3600.0
 MAXSECS = 360.0 * 60.0 * 60.0
 
 
-def _set_observer_from_params(params: EphemerisParams) -> None:
+def _set_observer_from_params(
+    params: EphemerisParams, *, sc_loaded_early: bool = False
+) -> None:
     """Set SPICE observer from params (ephem3_xxx.f observer setup).
 
     Uses latlon if viewpoint is latlon; else observatory name or Earth.
+    When sc_loaded_early is True, spacecraft kernels were already loaded in
+    generate_ephemeris; only set_observer_id is needed (load_spice_files resets it).
     """
     if (
         params.viewpoint == 'latlon'
@@ -93,9 +97,12 @@ def _set_observer_from_params(params: EphemerisParams) -> None:
         alt = params.altitude_m if params.altitude_m is not None else 0.0
         set_observer_location(params.latitude_deg, params.longitude_deg, alt)
         return
-    if params.observatory and params.observatory != "Earth's Center":
+    if params.observatory and params.observatory != "Earth's center":
         code = spacecraft_name_to_code(params.observatory)
         if code is not None:
+            if sc_loaded_early:
+                set_observer_id(code)
+                return
             sc_id = spacecraft_code_to_id(code)
             if sc_id:
                 load_spacecraft(
@@ -193,10 +200,27 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     if ntimes > 100000:
         raise ValueError('Number of time steps exceeds limit of 100000')
 
+    # Match FORTRAN ephem3 load order: spacecraft first (RSPK_LoadSC), then planet
+    # (RSPK_LoadFiles). Kernel load order affects which segments are used when
+    # multiple kernels cover the same body; matching FORTRAN avoids observer-state
+    # discrepancies. Must not call load_spacecraft again in _set_observer_from_params,
+    # or the pool order changes and observer positions differ.
+    sc_loaded_early = False
+    if params.observatory and params.observatory != "Earth's center":
+        code = spacecraft_name_to_code(params.observatory)
+        if code is not None:
+            sc_id = spacecraft_code_to_id(code)
+            if sc_id and load_spacecraft(
+                sc_id,
+                params.planet_num,
+                params.sc_trajectory,
+                set_obs=True,
+            ):
+                sc_loaded_early = True
     ok, reason = load_spice_files(params.planet_num, params.ephem_version)
     if not ok:
         raise RuntimeError(f'Failed to load SPICE kernels: {reason}')
-    _set_observer_from_params(params)
+    _set_observer_from_params(params, sc_loaded_early=sc_loaded_early)
 
     rec = Record()
     columns = list(params.columns)

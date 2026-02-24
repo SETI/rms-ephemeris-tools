@@ -74,7 +74,9 @@ def body_ranges(et: float, body_id: int) -> tuple[float, float]:
     body_time = et - dt
     body_pv = cspyce.spkssb(body_id, body_time, 'J2000')
     sun_dpv, _ = cspyce.spkapp(SUN_ID, body_time, 'J2000', body_pv[:6], 'LT+S')
-    return (cspyce.vnorm(sun_dpv[:3]), cspyce.vnorm(body_dpv[:3]))
+    sun_dist = cspyce.vnorm(sun_dpv[:3])
+    obs_dist = cspyce.vnorm(body_dpv[:3])
+    return (sun_dist, obs_dist)
 
 
 def planet_phase(et: float) -> float:

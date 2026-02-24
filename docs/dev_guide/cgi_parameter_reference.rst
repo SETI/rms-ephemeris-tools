@@ -4,7 +4,7 @@ CGI Parameter Reference
 This document catalogs every CGI environment variable that the web forms
 can send to the three tools (Viewer, Tracker, Ephemeris Generator), with
 every possible value listed explicitly.  It is derived from the SHTML
-form definitions in ``web/old/tools/``.
+form definitions in ``web/tools/``.
 
 The Perl ``newcgi.pm`` module parses the query string and exports each
 ``key=value`` pair as an environment variable.  The FORTRAN binary (or,
@@ -24,6 +24,55 @@ whether PREFIX is empty or set (e.g. ``xunit`` and body lists).
 .. contents:: Table of Contents
    :local:
    :depth: 2
+
+
+General Notes
+-------------
+
+Whitespace in ``<option>`` values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Many ``<select>`` options in the SHTML forms include leading whitespace
+before the display text (e.g. ``<option> arcsec``).  Because ``<option>``
+elements without an explicit ``value`` attribute use their text content
+as the submitted value, browsers may send values with variable leading
+whitespace.  The ``newcgi.pm`` CGI wrapper and/or the backend should
+strip leading/trailing whitespace before interpreting values.  In this
+document, values for ``<select>`` parameters include a single leading
+space when the original HTML has at least one space after the
+``<option>`` tag.  Some values (e.g. ``time_unit``) are listed without
+the space for readability; the backend should handle both forms.
+
+HTML input constraints
+~~~~~~~~~~~~~~~~~~~~~~
+
+The HTML ``maxlength`` attribute on text inputs limits client-side
+entry length.  These are **not** enforced by the backend but represent
+the expected input size:
+
+- **50** characters: ``start``, ``stop``, ``interval``, ``time``,
+  ``fov``, ``center_ra``, ``center_dec``, ``center_star``,
+  ``latitude``, ``longitude``, ``altitude``, ``moonpts``,
+  ``peripts``, ``arcpts``, ``extra_ra``, ``extra_dec``,
+  ``extra_name``
+- **60** characters: ``title``
+- **20** characters: ``xrange``, ``torus_inc``, ``torus_rad``
+
+Output line limit
+~~~~~~~~~~~~~~~~~
+
+The ephemeris generator enforces a maximum of **10,000 output lines**
+per request (noted in the help pages for all planets).
+
+Multi-valued parameters
+~~~~~~~~~~~~~~~~~~~~~~~
+
+When multiple checkboxes share the same ``name`` attribute (e.g.
+``moons``, ``columns``, ``mooncols``, ``rings``, ``other``), the
+``newcgi.pm`` CGI wrapper joins their values with ``#`` into a single
+environment variable.  For example, selecting Io and Europa produces
+``moons=001 Io (J1)#002 Europa (J2)``.
+
 
 Viewer Parameters
 -----------------
@@ -347,9 +396,18 @@ Viewpoint
    - ``"JUICE"``
    - ``"Europa Clipper"``
 
-   When PREFIX is empty (Earth-based forms), this is a select with:
+   When PREFIX is empty (Earth-based forms), this is a select. The shared
+   ``VIEWPOINT.shtml`` include is used only by the viewer for Jupiter,
+   Saturn, Uranus, and Neptune. The ephemeris and tracker forms use the
+   same include but with a different TOOL value, so the spacecraft block
+   is not rendered—they show only Earth-based observatories. The Mars and
+   Pluto viewer forms define their own viewpoint section (do not use
+   ``VIEWPOINT.shtml``) and have no spacecraft options except Pluto, which
+   includes New Horizons.
 
-   - ``" Earth's Center"`` (form may send with leading space; normalized to this)
+   Common options (all Earth-based forms):
+
+   - ``" Earth's center"`` (form may send with leading space; normalized to this)
    - ``" HST"``
    - ``" JWST"``
    - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
@@ -362,17 +420,13 @@ Viewpoint
    - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
    - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
 
-   Plus spacecraft options when the viewer TOOL is ``viewer3`` and PREFIX
-   is empty:
-
-   - ``" Voyager 1"`` (Jupiter, Saturn)
-   - ``" Voyager 2"`` (Jupiter, Saturn, Uranus, Neptune)
-   - ``" Galileo"`` (Jupiter)
-   - ``" Cassini"`` (Jupiter, Saturn)
-   - ``" New Horizons"`` (Jupiter, Pluto)
-   - ``" Juno"`` (Jupiter)
-   - ``" JUICE"`` (Jupiter)
-   - ``" Europa Clipper"`` (Jupiter)
+   Spacecraft as observatory options appear only in the Jupiter, Saturn,
+   Uranus, and Neptune viewer forms (via ``VIEWPOINT.shtml`` with
+   ``TOOL=viewer3``): Jupiter has Voyager 1, Voyager 2, Galileo, Cassini,
+   New Horizons, Juno, JUICE, Europa Clipper; Saturn has Voyager 1,
+   Voyager 2, Cassini; Uranus and Neptune have Voyager 2. Mars viewer has
+   no spacecraft. Pluto viewer uses its own viewpoint section and
+   includes only ``" New Horizons"`` in addition to the common list.
 
 ``latitude`` (text, when viewpoint="latlon")
    Observer latitude in degrees.  Free-text numeric.
@@ -687,16 +741,23 @@ Metadata
 
    Possible values:
 
-   - ``"sat"``
+   - ``"mar"``
    - ``"jup"``
+   - ``"sat"``
    - ``"ura"``
    - ``"nep"``
-   - ``"satc"``
-   - ``"jupc"``
+   - ``"plu"``
    - ``"jupj"``
    - ``"jupjc"``
-   - ``"jupnh"``
    - ``"jupec"``
+   - ``"satc"``
+   - ``"plunh"``
+
+   Note: ``tracker3_jupc.shtml`` and ``tracker3_jupnh.shtml`` set
+   ABBREV to ``"jup"`` (not ``"jupc"`` or ``"jupnh"``), so the Cassini
+   and New Horizons Jupiter trackers send the same abbrev as the
+   plain Jupiter tracker; they differ only in PREFIX, which controls
+   the viewpoint hidden fields.
 
 ``version`` (hidden)
    Form version string.
@@ -727,13 +788,13 @@ Ephemeris Selection
 
    Possible values:
 
+   - ``"000 MAR097 + DE440"`` (Mars)
    - ``"000 JUP365 + DE440"`` (Jupiter, non-New-Horizons)
    - ``"000 JUP344 + JUP365 + DE440"`` (Jupiter, New Horizons)
    - ``"000 SAT415 + SAT441 + DE440"`` (Saturn)
    - ``"000 URA111 + URA115 + DE440"`` (Uranus)
    - ``"000 NEP095 + NEP097 + NEP101 + DE440"`` (Neptune)
-
-   Note: Mars and Pluto do not have tracker forms.
+   - ``"000 PLU058 + DE440"`` (Pluto)
 
 Time Range
 ~~~~~~~~~~
@@ -784,7 +845,7 @@ Viewpoint
 
    When PREFIX is empty (Earth-based forms), this is a select with:
 
-   - ``" Earth's Center"`` (form may send with leading space; normalized to this)
+   - ``" Earth's center"`` (form may send with leading space; normalized to this)
    - ``" HST"``
    - ``" JWST"``
    - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
@@ -797,8 +858,10 @@ Viewpoint
    - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
    - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
 
-   Note: spacecraft observatory options (Voyager, etc.) only appear
-   for the viewer tool, not the tracker.
+   The tracker form includes ``VIEWPOINT.shtml`` with ``TOOL=tracker3``,
+   so the spacecraft block in that include is not rendered. The tracker
+   observatory select has no spacecraft options—only Earth-based
+   observatories.
 
 ``latitude`` (text, when viewpoint="latlon")
    Observer latitude in degrees.  Free-text numeric.
@@ -938,9 +1001,10 @@ Ring Selection
 
    - ``"081 Adams Ring"``
 
-   Mars and Pluto do not have tracker forms (see Tracker ``abbrev`` and
-   Ephemeris Selection above), so this ring selection section applies only
-   to Jupiter, Saturn, Uranus, and Neptune.
+   Mars and Pluto tracker forms do not include ring checkboxes (the
+   ``TRACKER3_FORM.shtml`` ring conditional only covers Jupiter,
+   Saturn, Uranus, and Neptune), so this ring selection section applies
+   only to those four planets.
 
 Plot Options
 ~~~~~~~~~~~~
@@ -953,19 +1017,22 @@ Plot Options
 
    Possible values (when PREFIX is empty):
 
-   - ``"arcsec"``
-   - ``"Jupiter radii"`` (Jupiter)
-   - ``"Saturn radii"`` (Saturn)
-   - ``"Uranus radii"`` (Uranus)
-   - ``"Neptune radii"`` (Neptune)
+   - ``" arcsec"``
+   - ``" Mars radii"`` (Mars)
+   - ``" Jupiter radii"`` (Jupiter)
+   - ``" Saturn radii"`` (Saturn)
+   - ``" Uranus radii"`` (Uranus)
+   - ``" Neptune radii"`` (Neptune)
+   - ``" Pluto radii"`` (Pluto)
 
    Possible values (when PREFIX is set):
 
-   - ``"degrees"``
-   - ``"Jupiter radii"`` (Jupiter)
-   - ``"Saturn radii"`` (Saturn)
-   - ``"Uranus radii"`` (Uranus)
-   - ``"Neptune radii"`` (Neptune)
+   - ``" degrees"``
+   - ``" Jupiter radii"`` (Jupiter)
+   - ``" Saturn radii"`` (Saturn)
+   - ``" Uranus radii"`` (Uranus)
+   - ``" Neptune radii"`` (Neptune)
+   - ``" Pluto radii"`` (Pluto)
 
 ``title`` (text)
    Plot title.  Free text, max 60 characters.
@@ -1081,7 +1148,7 @@ Viewpoint
 
    When PREFIX is empty (Earth-based forms), this is a select with:
 
-   - ``" Earth's Center"`` (form may send with leading space; normalized to this)
+   - ``" Earth's center"`` (form may send with leading space; normalized to this)
    - ``" HST"``
    - ``" JWST"``
    - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
@@ -1094,8 +1161,10 @@ Viewpoint
    - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
    - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
 
-   Note: spacecraft observatory options (Voyager, etc.) do not appear
-   for the ephemeris tool.
+   The ephemeris form includes ``VIEWPOINT.shtml`` with ``TOOL=ephem3``,
+   so the spacecraft block in that include is not rendered. The ephemeris
+   observatory select has no spacecraft options—only Earth-based
+   observatories.
 
 ``latitude`` (text, when viewpoint="latlon")
    Observer latitude in degrees.  Free-text numeric.

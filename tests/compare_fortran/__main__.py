@@ -125,7 +125,9 @@ def spec_from_query_input(url_or_query: str) -> RunSpec:
         if tool_key in {'ephemeris', 'tracker', 'viewer'}:
             tool = tool_key
     abbrev = qs.get('abbrev', ['sat'])[0].strip().lower()
-    planet = _ABBREV_TO_PLANET.get(abbrev, 6)
+    # Match parse_cgi.sh: planet from first 3 chars (jup,sat,plu); jupec->jup->5, satc->sat->6
+    short = abbrev[:3] if len(abbrev) >= 3 else abbrev
+    planet = _ABBREV_TO_PLANET.get(short, 6)
     params: dict[str, Any] = {'planet': planet, 'query_string': raw_query}
 
     ephem_vals = qs.get('ephem')
@@ -183,7 +185,7 @@ def spec_from_query_input(url_or_query: str) -> RunSpec:
         params['title'] = qs.get('title', [''])[0]
 
     params['viewpoint'] = qs.get('viewpoint', ['observatory'])[0]
-    params['observatory'] = qs.get('observatory', ["Earth's Center"])[0]
+    params['observatory'] = qs.get('observatory', ["Earth's center"])[0]
     params['lon_dir'] = qs.get('lon_dir', ['east'])[0]
     for key in ('latitude', 'longitude', 'altitude'):
         raw = qs.get(key, [''])[0]
@@ -270,6 +272,7 @@ def _execute_spec(
     fort_cmd: list[str] | None,
     float_tol: int | None,
     numeric_tol: float | None,
+    distance_tol: float | None = None,
 ) -> tuple[bool, list[str], float | None]:
     """Execute one comparison spec and return (passed, detail lines, max_table_abs_diff).
 
@@ -286,10 +289,10 @@ def _execute_spec(
 
     py_table = out_dir / 'python_table.txt'
     py_ps = out_dir / 'python.ps'
-    py_txt = out_dir / 'python_tracker.txt'
+    py_txt = out_dir / f'python_{spec.tool}.txt'
     fort_table = out_dir / 'fortran_table.txt'
     fort_ps = out_dir / 'fortran.ps'
-    fort_txt = out_dir / 'fortran_tracker.txt'
+    fort_txt = out_dir / f'fortran_{spec.tool}.txt'
 
     if spec.tool == 'ephemeris':
         py_table_use = py_table
@@ -345,6 +348,7 @@ def _execute_spec(
             fort_table_use,
             float_tolerance=float_tol,
             abs_tolerance=numeric_tol,
+            distance_tolerance=distance_tol,
             ignore_column_suffixes=('_orbit', '_open'),
         )
         details.append(f'table: {res.message}')
@@ -362,6 +366,7 @@ def _execute_spec(
             fort_txt_use,
             float_tolerance=float_tol,
             abs_tolerance=numeric_tol,
+            distance_tolerance=distance_tol,
         )
         details.append(f'text: {res.message}')
         details.extend(res.details)
@@ -437,7 +442,7 @@ def main() -> int:
         '--ephem', type=int, default=0, help='Ephemeris version (0=latest, matches web/FORTRAN)'
     )
     parser.add_argument('--viewpoint', type=str, default='observatory')
-    parser.add_argument('--observatory', type=str, default="Earth's Center")
+    parser.add_argument('--observatory', type=str, default="Earth's center")
     parser.add_argument('--latitude', type=float, default=None)
     parser.add_argument('--longitude', type=float, default=None)
     parser.add_argument('--lon-dir', type=str, default='east', choices=['east', 'west'])
@@ -483,7 +488,14 @@ def main() -> int:
         '--numeric-tol',
         type=float,
         default=0.0015,
-        help='Absolute numeric tolerance for table/text comparisons (set 0 for exact).',
+        help='Absolute numeric tolerance for table/text comparisons.',
+    )
+    parser.add_argument(
+        '--distance-tol',
+        type=float,
+        default=2.0,
+        help='Tolerance for distance columns (obs_dist, *_dist). Default 2.0 allows '
+        '±1 km from rounding. Set 0 for exact.',
     )
     args = parser.parse_args()
 
@@ -516,6 +528,7 @@ def main() -> int:
                 fort_cmd=case_fort_cmd,
                 float_tol=(args.float_tol if args.float_tol > 0 else None),
                 numeric_tol=args.numeric_tol,
+                distance_tol=args.distance_tol,
             )
             (case_dir / 'comparison.txt').write_text('\n'.join(details) + '\n')
             all_details_lines.append(f'## case {idx}')
@@ -619,10 +632,10 @@ def main() -> int:
 
     py_table = out_dir / 'python_table.txt'
     py_ps = out_dir / 'python.ps'
-    py_txt = out_dir / 'python_tracker.txt'
+    py_txt = out_dir / f'python_{spec.tool}.txt'
     fort_table = out_dir / 'fortran_table.txt'
     fort_ps = out_dir / 'fortran.ps'
-    fort_txt = out_dir / 'fortran_tracker.txt'
+    fort_txt = out_dir / f'fortran_{spec.tool}.txt'
 
     if spec.tool == 'ephemeris':
         py_table_use = py_table
@@ -684,6 +697,7 @@ def main() -> int:
                 fort_table_use,
                 float_tolerance=(args.float_tol if args.float_tol > 0 else None),
                 abs_tolerance=args.numeric_tol,
+                distance_tolerance=args.distance_tol,
                 ignore_column_suffixes=('_orbit', '_open'),
             )
             print(res.message)
@@ -697,8 +711,9 @@ def main() -> int:
                 fort_txt_use,
                 float_tolerance=(args.float_tol if args.float_tol > 0 else None),
                 abs_tolerance=args.numeric_tol,
+                distance_tolerance=args.distance_tol,
             )
-            print('Tracker text table:', res.message)
+            print(f'Text table ({spec.tool}):', res.message)
             for d in res.details:
                 print(d)
             if not res.same:

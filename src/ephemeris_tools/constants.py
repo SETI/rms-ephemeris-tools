@@ -92,6 +92,19 @@ EPHEM_DESCRIPTIONS_BY_PLANET: dict[int, str] = {
     9: 'PLU058 + DE440',
 }
 
+# Moon column ID → display name (ephemeris Input Parameters section).
+MCOL_DISPLAY_BY_ID: dict[int, str] = {
+    1: 'Observer-moon distance',
+    2: 'Moon phase angle',
+    3: 'Sub-observer latitude & rotating longitude',
+    4: 'Sub-solar latitude & rotating longitude',
+    5: 'RA & Dec',
+    6: 'Offset RA & Dec from the moon',
+    7: 'Offset RA & Dec from the moon',
+    8: 'Orbital longitude relative to observer',
+    9: 'Orbit plane opening angle to observer',
+}
+
 
 def spacecraft_code_to_id(sc_code: int) -> str | None:
     """Return spacecraft abbreviation for NAIF code (port of RSPK_GetSCID inverse).

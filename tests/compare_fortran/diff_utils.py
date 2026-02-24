@@ -98,6 +98,7 @@ def compare_tables(
     ignore_blank: bool = True,
     float_tolerance: int | None = None,
     abs_tolerance: float | None = None,
+    distance_tolerance: float | None = None,
     ignore_column_suffixes: tuple[str, ...] | None = None,
 ) -> CompareResult:
     """Compare two table (text) files line-by-line.
@@ -108,6 +109,10 @@ def compare_tables(
 
     If abs_tolerance is set, numeric fields are considered equal when their
     absolute difference is <= abs_tolerance.
+
+    If distance_tolerance is set, columns whose name contains "dist" (e.g.
+    obs_dist, STYX_dist) use this tolerance instead of abs_tolerance. Use
+    to allow ±1 km from rounding at the 0.5 boundary.
 
     If ignore_column_suffixes is set (e.g. ("_orbit", "_open")), the first
     line is treated as a header; when comparing data lines, fields whose
@@ -138,6 +143,7 @@ def compare_tables(
             ignore_column_suffixes,
             float_tolerance,
             abs_tolerance,
+            distance_tolerance,
             details,
         )
     else:
@@ -181,6 +187,7 @@ def _compare_tables_column_aware(
     ignore_suffixes: tuple[str, ...],
     float_tolerance: int | None,
     abs_tolerance: float | None,
+    distance_tolerance: float | None,
     details: list[str],
 ) -> tuple[int, list[str], float | None]:
     """Compare tables line-by-line, ignoring columns whose header ends with given suffixes."""
@@ -221,11 +228,15 @@ def _compare_tables_column_aware(
             diff = _field_abs_diff(fields_a[j], fields_b[j])
             if diff is not None:
                 max_abs_diff = diff if max_abs_diff is None else max(max_abs_diff, diff)
+            # Use distance_tolerance for distance columns (obs_dist, *_dist)
+            field_abs_tol = abs_tolerance
+            if distance_tolerance is not None and 'dist' in header_a[j].lower():
+                field_abs_tol = distance_tolerance
             if not _fields_match(
                 fields_a[j],
                 fields_b[j],
                 float_tolerance=float_tolerance,
-                abs_tolerance=abs_tolerance,
+                abs_tolerance=field_abs_tol,
             ):
                 num_diffs += 1
                 if len(details) < 50:

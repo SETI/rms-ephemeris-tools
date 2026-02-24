@@ -6,9 +6,15 @@ from ephemeris_tools.planets import parse_moon_spec
 
 
 def test_parse_moons_accepts_naif_id() -> None:
-    """NAIF IDs are accepted directly."""
+    """NAIF ID that is not a CGI group code returns that moon only."""
+    moons = parse_moon_spec(8, ['803'])
+    assert moons == [803]
+
+
+def test_parse_moons_cgi_group_802_neptune() -> None:
+    """Neptune CGI group 802 (Triton & Nereid) returns both moons."""
     moons = parse_moon_spec(8, ['802'])
-    assert moons == [802]
+    assert moons == [801, 802]
 
 
 def test_parse_moons_accepts_name_case_insensitive() -> None:
@@ -75,3 +81,9 @@ def test_parse_moons_accepts_cgi_group_code_with_label_mars() -> None:
     """Mars CGI group tokens map to both moons, not NAIF-402 only."""
     moons = parse_moon_spec(4, ['402 Phobos, Deimos (M1-M2)'])
     assert moons == [401, 402]
+
+
+def test_parse_moons_cgi_group_code_without_trailing_text_saturn() -> None:
+    """Saturn CGI group code 609 without trailing text maps to S1-S9 (match FORTRAN)."""
+    moons = parse_moon_spec(6, ['609'])
+    assert moons == [601, 602, 603, 604, 605, 606, 607, 608, 609]

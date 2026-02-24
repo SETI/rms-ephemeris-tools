@@ -2,6 +2,8 @@
 
 These scripts run `ephemeris-tools` many times, varying one parameter (and some combinations), and write outputs to obviously-named files for validation.
 
+**Random URL generator:** `generate_random_cgi_queries.py` produces random full CGI URLs (one per line) for viewer/tracker/ephemeris using host `pds-rings.seti.org`. Example: `python scripts/generate_random_cgi_queries.py -n 100 -o urls.txt` (see script docstring for options).
+
 ## Scripts
 
 | Script | Tool | Output | PS→PNG |

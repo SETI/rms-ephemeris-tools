@@ -41,7 +41,7 @@ Viewpoint and observatory (``--viewpoint``, ``--observatory``)
 The ``--viewpoint`` argument selects the *type* of observer position:
 
 - ``observatory`` (default): Observe from a named observatory or spacecraft.
-  The specific name is given by ``--observatory`` (default: ``"Earth's Center"``).
+  The specific name is given by ``--observatory`` (default: ``"Earth's center"``).
 - ``latlon``: Observe from a geographic position on Earth, specified with
   ``--latitude``, ``--longitude``, ``--lon-dir`` (east/west), and ``--altitude``.
 
@@ -55,7 +55,7 @@ the following spacecraft names or abbreviations (case-insensitive):
    * - Full Name
      - Abbreviation
      - NAIF Code
-   * - Earth's Center
+   * - Earth's center
      - (default)
      -
    * - Voyager 1

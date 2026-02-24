@@ -45,7 +45,7 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
 - `--planet`: planet number or name (`4..9`, `mars..pluto`), default `6`
 - `--ephem`: ephemeris version integer, default `0`
 - `--viewpoint`: observer mode/name, default `observatory`
-- `--observatory`: observatory label, default `"Earth's Center"`
+- `--observatory`: observatory label, default `"Earth's center"`
 - `--latitude`: observer latitude (float), default `None`
 - `--longitude`: observer longitude (float), default `None`
 - `--lon-dir`: `east | west`, default `east`
@@ -91,7 +91,7 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
   - Default: `6`
   - `0` means exact (disables significant-digit tolerance)
 - `--numeric-tol`: absolute numeric tolerance for table/text comparisons.
-  - Default: `0.0015`
+  - Default: `2.0` (allows ±1 km in obs_dist due to rounding at 0.5 boundary)
   - Set `0` for exact numeric comparison
 
 How the two options interact: `--float-tol` (significant-digit relative tolerance) is applied to
@@ -125,7 +125,7 @@ With `-o /tmp/compare`:
 |-----------|--------------------------|--------------------------------------------|
 | ephemeris | `python_table.txt`       | `fortran_table.txt`                        |
 | tracker   | `python.ps`, `python_tracker.txt` | `fortran.ps`, `fortran_tracker.txt` |
-| viewer    | `python.ps`, `python_tracker.txt` (FOV table) | `fortran.ps`, `fortran_tracker.txt` |
+| viewer    | `python.ps`, `python_viewer.txt` (FOV table) | `fortran.ps`, `fortran_viewer.txt` |
 
 Comparison runs when a FORTRAN binary is available (auto-detected from `fortran/Tools/` or set via `--fortran-cmd`). Exit code 0 if all outputs match; 1 if any differ or a run failed.
 

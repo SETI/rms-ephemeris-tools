@@ -67,9 +67,9 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
         ephem_version = 0
 
     viewpoint = _get_env('viewpoint', 'observatory')
-    observatory = _get_env('observatory', "Earth's Center")
+    observatory = _get_env('observatory', "Earth's center")
     if observatory.strip().lower() == "earth's center":
-        observatory = "Earth's Center"
+        observatory = "Earth's center"
     lat_s = _get_env('latitude')
     lon_s = _get_env('longitude')
     alt_s = _get_env('altitude')
@@ -130,6 +130,9 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
         columns=columns,
         mooncols=mooncols,
         moon_ids=moon_ids,
+        ephem_display=_get_env('ephem') or None,
+        mooncols_display=_get_keys_env('mooncols') or None,
+        moons_display=_get_keys_env('moons') or None,
     )
 
 
@@ -192,7 +195,7 @@ def viewer_params_from_env() -> ViewerParams | None:
         center = ViewerCenter(mode='body', body_name=_get_env('center_body') or None)
 
     viewpoint = _get_env('viewpoint', 'observatory')
-    observer = Observer(name="Earth's Center")
+    observer = Observer(name="Earth's center")
     viewpoint_display: str | None = None
     if viewpoint == 'latlon':
         lat_s = _get_env('latitude')
@@ -218,9 +221,9 @@ def viewer_params_from_env() -> ViewerParams | None:
             # FORTRAN captions preserve original CGI precision for lat/lon/alt text.
             viewpoint_display = f'({lat_s}, {lon_s} {lon_dir}, {alt_s})'
     elif viewpoint == 'observatory':
-        obs_name = _get_env('observatory', "Earth's Center")
+        obs_name = _get_env('observatory', "Earth's center")
         if obs_name.strip().lower() == "earth's center":
-            obs_name = "Earth's Center"
+            obs_name = "Earth's center"
         coords = _parse_observatory_coords(obs_name)
         if coords is None:
             observer = Observer(name=obs_name)
@@ -364,11 +367,11 @@ def tracker_params_from_env() -> TrackerParams | None:
         interval = DEFAULT_INTERVAL
     time_unit = _normalize_time_unit(_get_env('time_unit', 'hour'))
     viewpoint = _get_env('viewpoint', 'observatory')
-    observer = Observer(name="Earth's Center")
+    observer = Observer(name="Earth's center")
     if viewpoint == 'observatory':
-        obs_name = _get_env('observatory', "Earth's Center")
+        obs_name = _get_env('observatory', "Earth's center")
         if obs_name.strip().lower() == "earth's center":
-            obs_name = "Earth's Center"
+            obs_name = "Earth's center"
         coords = _parse_observatory_coords(obs_name)
         if coords is None:
             observer = Observer(name=obs_name)

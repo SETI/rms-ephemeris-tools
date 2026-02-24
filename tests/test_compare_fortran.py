@@ -10,11 +10,34 @@ import pytest
 
 from ephemeris_tools.params import RING_NAME_TO_CODE
 from tests.compare_fortran import RunSpec, compare_postscript, compare_tables, run_python
+from tests.compare_fortran.runner import _env_from_query_string
 from tests.compare_fortran.spec import (
     VIEWER_DEFAULT_RINGS,
     VIEWER_RING_CODE_TO_FORM,
     VIEWER_VALID_RING_FORMS,
 )
+
+
+def test_env_from_query_string_multi_value_joined() -> None:
+    """Env from query string uses #-joined multi-values to match parse_cgi.sh."""
+    env = _env_from_query_string('columns=1&columns=2&columns=3')
+    assert env['columns'] == '1#2#3'
+
+
+def test_env_from_query_string_empty_value_exported() -> None:
+    """Env from query string exports keys with empty values (match real CGI)."""
+    env = _env_from_query_string('title=&start=2022-01-01 00:00')
+    assert 'title' in env
+    assert env['title'] == ''
+    assert env['start'] == '2022-01-01 00:00'
+
+
+def test_env_from_query_string_abbrev_in_query() -> None:
+    """Query params including abbrev are in env so runner can set NPLANET from abbrev."""
+    env = _env_from_query_string('abbrev=sat&start=2022-01-01&stop=2022-01-02')
+    assert env['abbrev'] == 'sat'
+    assert env['start'] == '2022-01-01'
+    assert env['stop'] == '2022-01-02'
 
 
 def test_run_spec_env_and_cli() -> None:
@@ -114,6 +137,36 @@ def test_compare_tables_abs_tolerance_allows_small_numeric_deltas() -> None:
         strict = compare_tables(path_a, path_b)
         assert strict.same is False
         tolerant = compare_tables(path_a, path_b, abs_tolerance=0.0015)
+        assert tolerant.same is True
+    finally:
+        path_a.unlink()
+        path_b.unlink()
+
+
+def test_compare_tables_distance_tolerance_for_dist_columns() -> None:
+    """Distance columns (obs_dist, *_dist) use distance_tolerance; others use abs_tolerance."""
+    # 1.5 km delta in obs_dist fails with abs_tolerance=0.0015, passes with distance_tolerance=2.0
+    header = 'mjd obs_dist ra\n'
+    table_a = header + '1.0 50000.0 0.5\n'
+    table_b = header + '1.0 50001.5 0.5\n'
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write(table_a)
+        path_a = Path(f.name)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write(table_b)
+        path_b = Path(f.name)
+    try:
+        strict = compare_tables(
+            path_a, path_b, abs_tolerance=0.0015,
+            ignore_column_suffixes=('_nonexistent',),  # Force column-aware path
+        )
+        assert strict.same is False
+        tolerant = compare_tables(
+            path_a, path_b,
+            abs_tolerance=0.0015,
+            distance_tolerance=2.0,
+            ignore_column_suffixes=('_nonexistent',),  # Force column-aware path
+        )
         assert tolerant.same is True
     finally:
         path_a.unlink()

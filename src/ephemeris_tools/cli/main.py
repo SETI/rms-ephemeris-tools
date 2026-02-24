@@ -80,13 +80,22 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         if not args.output:
             args.output = os.environ.get('EPHEM_FILE', None)
     else:
+        start = (args.start or '').strip() or os.environ.get('start', '') or os.environ.get('START_TIME', '')
+        stop = (args.stop or '').strip() or os.environ.get('stop', '') or os.environ.get('STOP_TIME', '')
+        if not start or not stop:
+            parser.error(
+                '--start and --stop are required when not using --cgi '
+                '(or set start/stop via env: start, START_TIME, stop, STOP_TIME).'
+            )
+        args.start = start.strip()
+        args.stop = stop.strip()
         moons_raw = args.moons or []
         moon_ids = parse_moon_spec(args.planet, [str(x) for x in moons_raw])
-        observer = Observer(name="Earth's Center")
+        observer = Observer(name="Earth's center")
         if args.observer is not None:
             observer = parse_observer(args.observer)
         viewpoint = (args.viewpoint or 'observatory').strip() or 'observatory'
-        observatory = (args.observatory or "Earth's Center").strip() or "Earth's Center"
+        observatory = (args.observatory or "Earth's center").strip() or "Earth's center"
         if viewpoint == 'latlon' and (args.latitude is not None or args.longitude is not None):
             lon = args.longitude
             if lon is not None and args.lon_dir == 'west':
@@ -114,7 +123,7 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
             mooncols=parse_mooncol_spec([str(x) for x in (args.mooncols or [])]) or [5, 6, 8, 9],
             moon_ids=moon_ids,
         )
-        if viewpoint != 'latlon' and args.viewpoint and args.viewpoint != "Earth's Center":
+        if viewpoint != 'latlon' and args.viewpoint and args.viewpoint != "Earth's center":
             params.observatory = args.viewpoint or observatory
 
     write_input_parameters_ephemeris(sys.stdout, params)
@@ -159,10 +168,10 @@ def main() -> int:
         help='Planet number or name (4=mars..9=pluto); env: NPLANET',
     )
     ephem_parser.add_argument(
-        '--start', type=str, required=True, help='Start time; env: start, START_TIME'
+        '--start', type=str, required=False, help='Start time; env: start, START_TIME'
     )
     ephem_parser.add_argument(
-        '--stop', type=str, required=True, help='Stop time; env: stop, STOP_TIME'
+        '--stop', type=str, required=False, help='Stop time; env: stop, STOP_TIME'
     )
     ephem_parser.add_argument(
         '--interval', type=float, default=DEFAULT_INTERVAL, help='Time step; env: interval'
@@ -181,7 +190,7 @@ def main() -> int:
         '--viewpoint',
         type=str,
         default='',
-        help="observatory, latlon, or Earth's Center; env: viewpoint",
+        help="observatory, latlon, or Earth's center; env: viewpoint",
     )
     ephem_parser.add_argument(
         '--observer',
@@ -254,8 +263,8 @@ def main() -> int:
     track_parser.add_argument(
         '--planet', type=parse_planet, default=6, help='Planet number or name; env: NPLANET'
     )
-    track_parser.add_argument('--start', type=str, required=True, help='Start time; env: start')
-    track_parser.add_argument('--stop', type=str, required=True, help='Stop time; env: stop')
+    track_parser.add_argument('--start', type=str, required=False, help='Start time; env: start')
+    track_parser.add_argument('--stop', type=str, required=False, help='Stop time; env: stop')
     track_parser.add_argument(
         '--interval', type=float, default=DEFAULT_INTERVAL, help='Time step; env: interval'
     )
@@ -280,7 +289,7 @@ def main() -> int:
         '--viewpoint',
         type=str,
         default='',
-        help="observatory, latlon, or Earth's Center; env: viewpoint",
+        help="observatory, latlon, or Earth's center; env: viewpoint",
     )
     track_parser.add_argument(
         '--observatory',
@@ -399,7 +408,7 @@ def main() -> int:
         '--viewpoint',
         type=str,
         default='',
-        help="observatory, latlon, or Earth's Center; env: viewpoint",
+        help="observatory, latlon, or Earth's center; env: viewpoint",
     )
     view_parser.add_argument(
         '--observer',
@@ -561,12 +570,22 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
                 print(f'Error: {e}', file=sys.stderr)
                 return 1
 
+    start = (args.start or '').strip() or os.environ.get('start', '') or os.environ.get('START_TIME', '')
+    stop = (args.stop or '').strip() or os.environ.get('stop', '') or os.environ.get('STOP_TIME', '')
+    if not start or not stop:
+        parser.error(
+            '--start and --stop are required when not using --cgi '
+            '(or set start/stop via env: start, START_TIME, stop, STOP_TIME).'
+        )
+    args.start = start.strip()
+    args.stop = stop.strip()
+
     moons_raw = args.moons or []
     moon_ids = parse_moon_spec(args.planet, [str(x) for x in moons_raw])
     if args.observer is not None:
         observer = parse_observer(args.observer)
     else:
-        observer_name = (args.observatory or "Earth's Center").strip() or "Earth's Center"
+        observer_name = (args.observatory or "Earth's center").strip() or "Earth's center"
         lat = getattr(args, 'latitude', None)
         lon = getattr(args, 'longitude', None)
         lon_dir = (getattr(args, 'lon_dir', None) or 'east').strip().lower()
@@ -673,7 +692,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
                 altitude_m=alt,
             )
         else:
-            observer_name = (args.observatory or "Earth's Center").strip() or "Earth's Center"
+            observer_name = (args.observatory or "Earth's center").strip() or "Earth's center"
             observer = parse_observer([observer_name])
         center_tokens = args.center
         if center_tokens:

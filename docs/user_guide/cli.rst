@@ -121,7 +121,7 @@ Example:
 
 ``--observatory``
    Observatory or spacecraft name (used when ``--viewpoint`` is ``observatory``).
-   Default: ``"Earth's Center"``.
+   Default: ``"Earth's center"``.
    Accepted spacecraft names (case-insensitive): ``Voyager 1`` (``VG1``),
    ``Voyager 2`` (``VG2``), ``Galileo`` (``GLL``), ``Cassini`` (``CAS``),
    ``New Horizons`` (``NH``), ``Juno`` (``JNO``), ``Europa Clipper`` (``EC``),
@@ -130,7 +130,7 @@ Example:
 
    .. code-block:: bash
 
-      --observatory "Earth's Center"
+      --observatory "Earth's center"
       --observatory Cassini
 
 ``--latitude``

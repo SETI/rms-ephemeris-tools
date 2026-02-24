@@ -52,7 +52,7 @@ You can call the core functions from Python instead of the CLI:
        interval=1.0,
        time_unit="hour",
        viewpoint="observatory",
-       observatory="Earth's Center",
+       observatory="Earth's center",
        columns=[1, 2, 3, 15, 8],
        mooncols=[5, 6, 8, 9],
        moon_ids=[],

@@ -11,6 +11,14 @@ if TYPE_CHECKING:
     from ephemeris_tools.params import EphemerisParams, TrackerParams, ViewerParams
 
 
+def _strip_cgi_code(s: str) -> str:
+    """Strip leading 'NNN ' (digits + space) from CGI form value; return rest."""
+    s = (s or '').strip()
+    if len(s) >= 4 and s[:4].replace(' ', '').isdigit():
+        return s[4:].lstrip()
+    return s
+
+
 def _w(stream: TextIO, line: str) -> None:
     """Write a line to the stream (helper for input parameters section)."""
     stream.write(line + '\n')
@@ -23,6 +31,9 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         stream: Output text stream.
         params: Ephemeris parameters to summarize.
     """
+    from ephemeris_tools.constants import EPHEM_DESCRIPTIONS_BY_PLANET, MCOL_DISPLAY_BY_ID
+    from ephemeris_tools.planets import get_moon_display_name
+
     _w(stream, 'Input Parameters')
     _w(stream, '----------------')
     _w(stream, ' ')
@@ -34,8 +45,31 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
     _w(stream, f'      Stop time: {stop}')
 
     interval_s = str(params.interval).strip() if params.interval is not None else '1'
-    _w(stream, f'       Interval: {interval_s} {params.time_unit}')
-    _w(stream, f'      Ephemeris: {params.ephem_version}')
+    try:
+        resolved_interval = int(float(interval_s))
+    except (TypeError, ValueError):
+        resolved_interval = 1
+    time_unit = params.time_unit or 'hour'
+    if time_unit == 'hour' and resolved_interval != 1:
+        time_unit_display = 'hours'
+    elif time_unit == 'day' and resolved_interval != 1:
+        time_unit_display = 'days'
+    elif time_unit == 'min' and resolved_interval != 1:
+        time_unit_display = 'minutes'
+    elif time_unit == 'sec' and resolved_interval != 1:
+        time_unit_display = 'seconds'
+    else:
+        time_unit_display = time_unit
+    _w(stream, f'       Interval: {interval_s} {time_unit_display}')
+
+    if params.ephem_display and str(params.ephem_display).strip():
+        ephem_s = _strip_cgi_code(params.ephem_display.strip())
+        _w(stream, f'      Ephemeris: {ephem_s}')
+    else:
+        ephem_s = EPHEM_DESCRIPTIONS_BY_PLANET.get(
+            params.planet_num, str(params.ephem_version)
+        )
+        _w(stream, f'      Ephemeris: {ephem_s}')
 
     # Viewpoint
     if params.viewpoint == 'latlon' and (
@@ -48,9 +82,9 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         alt = params.altitude_m if params.altitude_m is not None else ''
         _w(stream, f'                 Alt = {alt} (m)')
     else:
-        vp = (params.observatory or "Earth's Center").strip()
+        vp = (params.observatory or "Earth's center").strip()
         if len(vp) == 0:
-            vp = "Earth's Center"
+            vp = "Earth's center"
         if params.sc_trajectory:
             vp = f'{vp} ({params.sc_trajectory})'
         _w(stream, f'      Viewpoint: {vp}')
@@ -67,19 +101,31 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
     _w(stream, ' ')
 
     # Moon columns
-    if params.mooncols:
-        for i, c in enumerate(params.mooncols):
+    if params.mooncols_display and len(params.mooncols_display) > 0:
+        for i, m in enumerate(params.mooncols_display):
+            s = _strip_cgi_code(m)
             prefix = '   Moon columns: ' if i == 0 else '                 '
-            _w(stream, f'{prefix}{c}')
+            _w(stream, f'{prefix}{s}')
+    elif params.mooncols:
+        for i, c in enumerate(params.mooncols):
+            s = MCOL_DISPLAY_BY_ID.get(c, str(c))
+            prefix = '   Moon columns: ' if i == 0 else '                 '
+            _w(stream, f'{prefix}{s}')
     else:
         _w(stream, '   Moon columns:')
     _w(stream, ' ')
 
     # Moon selection
-    if params.moon_ids:
-        for i, mid in enumerate(params.moon_ids):
+    if params.moons_display and len(params.moons_display) > 0:
+        for i, m in enumerate(params.moons_display):
+            s = _strip_cgi_code(m)
             prefix = ' Moon selection: ' if i == 0 else '                 '
-            _w(stream, f'{prefix}{mid}')
+            _w(stream, f'{prefix}{s}')
+    elif params.moon_ids:
+        for i, mid in enumerate(params.moon_ids):
+            s = get_moon_display_name(params.planet_num, mid)
+            prefix = ' Moon selection: ' if i == 0 else '                 '
+            _w(stream, f'{prefix}{s or mid}')
     else:
         _w(stream, ' Moon selection:')
     _w(stream, ' ')
@@ -149,7 +195,7 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
             _w(stream, f'                 Lon = {observer_obj.longitude_deg} (deg east)')
             _w(stream, f'                 Alt = {observer_obj.altitude_m} (m)')
         else:
-            _w(stream, "      Viewpoint: Earth's Center")
+            _w(stream, "      Viewpoint: Earth's center")
     elif viewpoint == 'latlon':
         lat = getattr(args, 'latitude', None)
         _w(stream, f'      Viewpoint: Lat = {lat} (deg)')
@@ -165,7 +211,7 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
             vp = f'{vp} ({sc})'
         _w(stream, f'      Viewpoint: {vp}')
     else:
-        _w(stream, "      Viewpoint: Earth's Center")
+        _w(stream, "      Viewpoint: Earth's center")
 
     _w(stream, ' ')
 

@@ -1,0 +1,1040 @@
+#!/usr/bin/env python3
+"""Generate random full CGI URLs for Viewer, Tracker, and Ephemeris tools.
+
+Reads the parameter options from the CGI parameter reference (docs) and
+produces valid full URLs (host pds-rings.seti.org, path e.g. /cgi-bin/tools/
+ephem3_xxx.pl?) with mandatory fields always set and optional fields randomly
+included with random valid values. Output is one URL per line to the given file.
+
+Usage:
+    python scripts/generate_random_cgi_queries.py -n 100 -o urls.txt
+    python scripts/generate_random_cgi_queries.py -n 50 -o viewer.txt --tool viewer
+"""
+
+from __future__ import annotations
+
+import argparse
+import random
+import sys
+from datetime import datetime, timedelta, timezone
+from typing import Any
+from urllib.parse import urlencode
+
+# ---------------------------------------------------------------------------
+# Base URL and CGI script names (same pattern as fortran/Tools/tests/test_files)
+# ---------------------------------------------------------------------------
+
+BASE_URL = 'https://pds-rings.seti.org'
+TOOL_CGI_SCRIPT = {
+    'viewer': 'viewer3_xxx.pl',
+    'tracker': 'tracker3_xxx.pl',
+    'ephemeris': 'ephem3_xxx.pl',
+}
+
+# ---------------------------------------------------------------------------
+# Tool / abbrev / planet / ephem mapping (from CGI parameter reference)
+# ---------------------------------------------------------------------------
+
+VIEWER_ABBREVS = [
+    'mar',
+    'jup',
+    'sat',
+    'ura',
+    'nep',
+    'plu',
+    'satc',
+    'jupc',
+    'jupj',
+    'jupjc',
+    'jupnh',
+    'jupec',
+    'plunh',
+]
+TRACKER_ABBREVS = [
+    'mar',
+    'jup',
+    'sat',
+    'ura',
+    'nep',
+    'plu',
+    'jupj',
+    'jupjc',
+    'jupec',
+    'satc',
+    'plunh',
+]
+# Ephemeris: Earth abbrevs use Earth-only observatory select; mission abbrevs use
+# mission-specific forms (ephem3_jupnh.shtml, ephem3_satc.shtml, etc.) with hidden
+# observatory. When abbrev is mission-specific, set observatory from mission_obs.
+EPHEMERIS_ABBREVS = [
+    'mar',
+    'jup',
+    'sat',
+    'ura',
+    'nep',
+    'plu',
+    'jupc',
+    'jupj',
+    'jupjc',
+    'jupnh',
+    'jupec',
+    'satc',
+    'plunh',
+]
+
+
+def _planet(abbrev: str) -> str:
+    """Map abbrev to planet name for value lookups."""
+    p = {
+        'mar': 'Mars',
+        'jup': 'Jupiter',
+        'jupc': 'Jupiter',
+        'jupj': 'Jupiter',
+        'jupjc': 'Jupiter',
+        'jupnh': 'Jupiter',
+        'jupec': 'Jupiter',
+        'sat': 'Saturn',
+        'satc': 'Saturn',
+        'ura': 'Uranus',
+        'nep': 'Neptune',
+        'plu': 'Pluto',
+        'plunh': 'Pluto',
+    }
+    return p.get(abbrev, 'Jupiter')
+
+
+def _prefix(abbrev: str) -> str:
+    """Mission prefix for abbrev (empty for Earth-based)."""
+    pre = {
+        'satc': 'Cassini/',
+        'jupc': 'Cassini/',
+        'jupj': 'Juno/',
+        'jupjc': 'JUICE/',
+        'jupnh': 'New Horizons/',
+        'jupec': 'Europa Clipper/',
+        'plunh': 'New Horizons/',
+    }
+    return pre.get(abbrev, '')
+
+
+# Mission date limits for SPICE kernel availability (from web/tools/EPHEMERIS_INFO.shtml).
+# (min_date, max_date) inclusive. Spacecraft kernels exist only for past times;
+# max_date is capped to "today" at runtime so we never generate future dates.
+MISSION_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
+    'jupc': (datetime(2000, 6, 1, tzinfo=timezone.utc), datetime(2001, 6, 1, tzinfo=timezone.utc)),
+    'jupj': (datetime(2016, 8, 15, tzinfo=timezone.utc), datetime(2025, 10, 31, tzinfo=timezone.utc)),
+    'jupjc': (datetime(2023, 4, 5, tzinfo=timezone.utc), datetime(2035, 10, 5, tzinfo=timezone.utc)),
+    'jupnh': (datetime(2007, 1, 1, tzinfo=timezone.utc), datetime(2007, 3, 15, tzinfo=timezone.utc)),
+    'jupec': (datetime(2024, 12, 20, tzinfo=timezone.utc), datetime(2034, 9, 3, tzinfo=timezone.utc)),
+    'satc': (datetime(2004, 1, 1, tzinfo=timezone.utc), datetime(2017, 9, 15, tzinfo=timezone.utc)),
+    'plunh': (datetime(2015, 1, 1, tzinfo=timezone.utc), datetime(2015, 8, 1, tzinfo=timezone.utc)),
+}
+
+# Observatory date limits for SPICE kernel availability (when observatory is used).
+OBSERVATORY_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
+    'JWST': (
+        datetime(2022, 1, 1, tzinfo=timezone.utc),
+        datetime(2025, 12, 31, tzinfo=timezone.utc),
+    ),
+}
+
+EPHEM_BY_ABBREV = {
+    'mar': '000 MAR097 + DE440',
+    'jup': '000 JUP365 + DE440',
+    'jupc': '000 JUP365 + DE440',
+    'jupj': '000 JUP365 + DE440',
+    'jupjc': '000 JUP365 + DE440',
+    'jupnh': '000 JUP344 + JUP365 + DE440',
+    'jupec': '000 JUP365 + DE440',
+    'sat': '000 SAT415 + SAT441 + DE440',
+    'satc': '000 SAT415 + SAT441 + DE440',
+    'ura': '000 URA111 + URA115 + DE440',
+    'nep': '000 NEP095 + NEP097 + NEP101 + DE440',
+    'plu': '000 PLU058 + DE440',
+    'plunh': '000 PLU058 + DE440',
+}
+
+# ---------------------------------------------------------------------------
+# Shared option lists (leading spaces as in HTML where applicable)
+# ---------------------------------------------------------------------------
+
+# Match fortran/Tools/tests/test_files/ephemeris-generator-unit-tests.txt:
+# observatory and lon_dir values without leading space (FORTRAN expects 'east'/'west').
+# Ephemeris and tracker forms have NO spacecraft in the observatory select (VIEWPOINT.shtml
+# is included with TOOL=ephem3/tracker3, so the spacecraft block is not rendered).
+OBSERVATORIES_EARTH = [
+    "Earth's center",
+    'HST',
+    'JWST',
+    'Apache Point Observatory (32.780361, -105.820417, 2674.)',
+    'Kitt Peak National Observatory (31.958833, -111.594694, 2058.4)',
+    'Lowell Observatory (35.097, -111.537, 2200.)',
+    'Mauna Kea Observatory (19.827, -155.472, 4215.)',
+    'McDonald Observatory (30.671500, -104.022611, 2076.)',
+    'Mt. Evans Observatory (39.587, -105.640, 4305.)',
+    'NMSU Observatory (32.27631, -106.746556, 0.)',
+    'Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)',
+    'Yerkes Observatory (42.57, -88.557, 334.)',
+]
+
+# Viewer only: spacecraft options per planet (from VIEWPOINT.shtml with TOOL=viewer3).
+# Mars has no spacecraft; Pluto has New Horizons; Jupiter/Saturn/Uranus/Neptune have more.
+VIEWER_OBSERVATORIES_JUPITER = OBSERVATORIES_EARTH + [
+    'Voyager 1',
+    'Voyager 2',
+    'Galileo',
+    'Cassini',
+    'New Horizons',
+    'Juno',
+    'JUICE',
+    'Europa Clipper',
+]
+VIEWER_OBSERVATORIES_SATURN = OBSERVATORIES_EARTH + ['Voyager 1', 'Voyager 2', 'Cassini']
+VIEWER_OBSERVATORIES_URANUS = OBSERVATORIES_EARTH + ['Voyager 2']
+VIEWER_OBSERVATORIES_NEPTUNE = OBSERVATORIES_EARTH + ['Voyager 2']
+VIEWER_OBSERVATORIES_PLUTO = OBSERVATORIES_EARTH + ['New Horizons']
+
+VIEWER_OBSERVATORIES_BY_PLANET: dict[str, list[str]] = {
+    'Mars': OBSERVATORIES_EARTH,
+    'Jupiter': VIEWER_OBSERVATORIES_JUPITER,
+    'Saturn': VIEWER_OBSERVATORIES_SATURN,
+    'Uranus': VIEWER_OBSERVATORIES_URANUS,
+    'Neptune': VIEWER_OBSERVATORIES_NEPTUNE,
+    'Pluto': VIEWER_OBSERVATORIES_PLUTO,
+}
+
+LON_DIR = ['east', 'west']
+CENTER_EW = [' east', ' west']
+RA_TYPE = [' hours', ' degrees']
+OUTPUT_VIEWER = ['HTML', 'PDF', 'JPEG', 'PS']
+OUTPUT_TRACKER = ['HTML', 'PDF', 'JPEG', 'PS', 'TAB']
+OUTPUT_EPHEM = ['HTML', 'TAB']
+TIME_UNIT = ['seconds', 'minutes', 'hours', 'days']
+LABELS = ['None', 'Small (6 points)', 'Medium (9 points)', 'Large (12 points)']
+MERIDIANS = ['Yes', 'No']
+BLANK = ['Yes', 'No']
+OPACITY = ['Transparent', 'Semi-transparent (2x file size)', 'Opaque']
+
+# Planet-specific: center_body, center_ansa, fov_unit, moons (viewer radio), rings, etc.
+VIEWER_CENTER_BODY: dict[str, list[str]] = {
+    'Mars': [' Mars', ' Phobos (M1)', ' Deimos (M2)'],
+    'Jupiter': [
+        ' Jupiter',
+        ' Io (J1)',
+        ' Europa (J2)',
+        ' Ganymede (J3)',
+        ' Callisto (J4)',
+        ' Amalthea (J5)',
+        ' Thebe (J14)',
+        ' Adrastea (J15)',
+        ' Metis (J16)',
+    ],
+    'Saturn': [
+        ' Saturn',
+        ' Mimas (S1)',
+        ' Enceladus (S2)',
+        ' Tethys (S3)',
+        ' Dione (S4)',
+        ' Rhea (S5)',
+        ' Titan (S6)',
+        ' Hyperion (S7)',
+        ' Iapetus (S8)',
+        ' Phoebe (S9)',
+        ' Janus (S10)',
+        ' Epimetheus (S11)',
+        ' Helene (S12)',
+        ' Telesto (S13)',
+        ' Calypso (S14)',
+        ' Atlas (S15)',
+        ' Prometheus (S16)',
+        ' Pandora (S17)',
+        ' Pan (S18)',
+        ' Methone (S32)',
+        ' Pallene (S33)',
+        ' Polydeuces (S34)',
+        ' Daphnis (S35)',
+        ' Anthe (S49)',
+        ' Aegaeon (S53)',
+    ],
+    'Uranus': [
+        ' Uranus',
+        ' Miranda (U5)',
+        ' Ariel (U1)',
+        ' Umbriel (U2)',
+        ' Titania (U3)',
+        ' Oberon (U4)',
+        ' Cordelia (U6)',
+        ' Ophelia (U7)',
+        ' Bianca (U8)',
+        ' Cressida (U9)',
+        ' Desdemona (U10)',
+        ' Juliet (U11)',
+        ' Portia (U12)',
+        ' Rosalind (U13)',
+        ' Belinda (U14)',
+        ' Puck (U15)',
+        ' Perdita (U25)',
+        ' Mab (U26)',
+        ' Cupid (U27)',
+    ],
+    'Neptune': [
+        ' Neptune',
+        ' Triton (N1)',
+        ' Nereid (N2)',
+        ' Naiad (N3)',
+        ' Thalassa (N4)',
+        ' Despina (N5)',
+        ' Galatea (N6)',
+        ' Larissa (N7)',
+        ' Proteus (N8)',
+        ' Hippocamp (N14)',
+    ],
+    'Pluto': [
+        ' Barycenter',
+        ' Pluto',
+        ' Charon (P1)',
+        ' Nix (P2)',
+        ' Hydra (P3)',
+        ' Kerberos (P4)',
+        ' Styx (P5)',
+    ],
+}
+VIEWER_CENTER_ANSA: dict[str, list[str]] = {
+    'Mars': [' Phobos Ring', ' Deimos Ring'],
+    'Jupiter': [' Halo', ' Main Ring', ' Amalthea Ring', ' Thebe Ring'],
+    'Saturn': [' C Ring', ' B Ring', ' A Ring', ' F Ring', ' G Ring', ' E Ring core'],
+    'Uranus': [
+        ' 6 Ring',
+        ' 5 Ring',
+        ' 4 Ring',
+        ' Alpha Ring',
+        ' Beta Ring',
+        ' Eta Ring',
+        ' Gamma Ring',
+        ' Delta Ring',
+        ' Lambda Ring',
+        ' Epsilon Ring',
+        ' Nu Ring',
+        ' Mu Ring',
+    ],
+    'Neptune': [' Galle Ring', ' LeVerrier Ring', ' Arago Ring', ' Adams Ring'],
+    'Pluto': [' Styx', ' Nix', ' Kerberos', ' Hydra'],
+}
+FOV_UNIT_COMMON = [' seconds of arc', ' degrees', ' milliradians', ' microradians', ' kilometers']
+FOV_UNIT_PLANET: dict[str, list[str]] = {
+    'Mars': [' Mars radii'],
+    'Jupiter': [' Jupiter radii'],
+    'Saturn': [' Saturn radii'],
+    'Uranus': [' Uranus radii'],
+    'Neptune': [' Neptune radii'],
+    'Pluto': [' Pluto radii (1153 km)', ' Pluto-Charon separations (19,571 km)'],
+}
+VIEWER_MOONS_RADIO: dict[str, list[str]] = {
+    'Mars': ['402 Phobos, Deimos'],
+    'Jupiter': [
+        '504 Galilean satellites (J1-J4)',
+        '505 Galilean satellites, Amalthea (J1-J5)',
+        '516 All inner moons (J1-J5,J14-J16)',
+    ],
+    'Saturn': [
+        '609 Classical satellites (S1-S9)',
+        '618 Classicals, Voyager discoveries (S1-S18)',
+        '653 All inner moons (S1-S18,S32-S35,S49,S53)',
+    ],
+    'Uranus': [
+        '705 Classical satellites (U1-U5)',
+        '715 Classicals, Voyager discoveries (U1-U15)',
+        '727 All inner moons (U1-U15,U25-U27)',
+    ],
+    'Neptune': ['802 Triton & Nereid', '814 All inner moons (N1-N8,N14)'],
+    'Pluto': ['901 Charon (P1)', '903 Charon, Nix, Hydra (P1-P3)', '905 All moons (P1-P5)'],
+}
+VIEWER_RINGS: dict[str, list[str]] = {
+    'Mars': ['None', 'Phobos, Deimos'],
+    'Jupiter': ['None', 'Main', 'Main & Gossamer'],
+    'Saturn': ['A,B,C', 'A,B,C,F', 'A,B,C,F,E', 'A,B,C,F,G,E'],
+    'Uranus': [
+        'Alpha, Beta, Eta, Gamma, Delta, Epsilon',
+        'Nine major rings',
+        'All inner rings',
+        'All rings',
+    ],
+    'Neptune': ['LeVerrier, Adams', 'LeVerrier, Arago, Adams', 'Galle, LeVerrier, Arago, Adams'],
+    'Pluto': [
+        'None',
+        'Charon',
+        'Charon, Nix, Hydra',
+        'Charon, Styx, Nix, Kerberos, Hydra',
+        'Nix, Hydra',
+        'Styx, Nix, Kerberos, Hydra',
+    ],
+}
+TRACKER_MOONS: dict[str, list[str]] = {
+    'Mars': ['001 Phobos (M1)', '002 Deimos (M2)'],
+    'Jupiter': [
+        '001 Io (J1)',
+        '002 Europa (J2)',
+        '003 Ganymede (J3)',
+        '004 Callisto (J4)',
+        '005 Amalthea (J5)',
+        '014 Thebe (J14)',
+        '015 Adrastea (J15)',
+        '016 Metis (J16)',
+    ],
+    'Saturn': [
+        '001 Mimas (S1)',
+        '002 Enceladus (S2)',
+        '003 Tethys (S3)',
+        '004 Dione (S4)',
+        '005 Rhea (S5)',
+        '006 Titan (S6)',
+        '007 Hyperion (S7)',
+        '008 Iapetus (S8)',
+        '009 Phoebe (S9)',
+        '010 Janus (S10)',
+        '011 Epimetheus (S11)',
+        '012 Helene (S12)',
+        '013 Telesto (S13)',
+        '014 Calypso (S14)',
+        '015 Atlas (S15)',
+        '016 Prometheus (S16)',
+        '017 Pandora (S17)',
+        '018 Pan (S18)',
+        '032 Methone (S32)',
+        '033 Pallene (S33)',
+        '034 Polydeuces (S34)',
+        '035 Daphnis (S35)',
+        '049 Anthe (S49)',
+        '053 Aegaeon (S53)',
+    ],
+    'Uranus': [
+        '001 Ariel (U1)',
+        '002 Umbriel (U2)',
+        '003 Titania (U3)',
+        '004 Oberon (U4)',
+        '005 Miranda (U5)',
+        '006 Cordelia (U6)',
+        '007 Ophelia (U7)',
+        '008 Bianca (U8)',
+        '009 Cressida (U9)',
+        '010 Desdemona (U10)',
+        '011 Juliet (U11)',
+        '012 Portia (U12)',
+        '013 Rosalind (U13)',
+        '014 Belinda (U14)',
+        '015 Puck (U15)',
+        '025 Perdita (U25)',
+        '026 Mab (U26)',
+        '027 Cupid (U27)',
+    ],
+    'Neptune': [
+        '001 Triton (N1)',
+        '002 Nereid (N2)',
+        '003 Naiad (N3)',
+        '004 Thalassa (N4)',
+        '005 Despina (N5)',
+        '006 Galatea (N6)',
+        '007 Larissa (N7)',
+        '008 Proteus (N8)',
+        '014 Hippocamp (N14)',
+    ],
+    'Pluto': [
+        '001 Charon (P1)',
+        '005 Styx (P5)',
+        '002 Nix (P2)',
+        '004 Kerberos (P4)',
+        '003 Hydra (P3)',
+    ],
+}
+TRACKER_RINGS: dict[str, list[str]] = {
+    'Jupiter': ['051 Main Ring', '052 Gossamer Rings'],
+    'Saturn': ['061 Main Rings', '062 G Ring', '063 E Ring'],
+    'Uranus': ['071 Epsilon Ring'],
+    'Neptune': ['081 Adams Ring'],
+}
+XUNIT_EMPTY = [
+    ' arcsec',
+    ' Mars radii',
+    ' Jupiter radii',
+    ' Saturn radii',
+    ' Uranus radii',
+    ' Neptune radii',
+    ' Pluto radii',
+]
+XUNIT_PREFIX = [
+    ' degrees',
+    ' Jupiter radii',
+    ' Saturn radii',
+    ' Uranus radii',
+    ' Neptune radii',
+    ' Pluto radii',
+]
+
+# Ephemeris columns (Earth-based; [Planet] replaced)
+EPHEM_COLUMNS_EMPTY = [
+    '001 Modified Julian Date',
+    '002 Year, Month, Day, Hour, Minute',
+    '003 Year, Month, Day, Hour, Minute, Second',
+    '004 Year, DOY, Hour, Minute',
+    '005 Year, DOY, Hour, Minute, Second',
+    '006 Observer-{planet} distance',
+    '007 Sun-{planet} distance',
+    '008 {planet} phase angle',
+    '009 Ring plane opening angle to observer',
+    '010 Ring plane opening angle to Sun',
+    '011 Sub-observer inertial longitude',
+    '012 Sub-solar inertial longitude',
+    '013 Sub-observer latitude & rotating longitude',
+    '014 Sub-solar latitude & rotating longitude',
+    '015 {planet} RA & Dec',
+    '018 {planet} projected equatorial radius',
+    '020 Lunar phase angle',
+    '021 Sun-{planet} sky separation angle',
+    '022 Lunar-{planet} sky separation angle',
+]
+EPHEM_COLUMNS_PREFIX = [
+    '001 Modified Julian Date',
+    '002 Year, Month, Day, Hour, Minute',
+    '003 Year, Month, Day, Hour, Minute, Second',
+    '004 Year, DOY, Hour, Minute',
+    '005 Year, DOY, Hour, Minute, Second',
+    '006 Observer-{planet} distance',
+    '007 Sun-{planet} distance',
+    '008 {planet} phase angle',
+    '009 Ring plane opening angle to observer',
+    '010 Ring plane opening angle to Sun',
+    '011 Sub-observer inertial longitude',
+    '012 Sub-solar inertial longitude',
+    '013 Sub-observer latitude & rotating longitude',
+    '014 Sub-solar latitude & rotating longitude',
+    '015 {planet} RA & Dec',
+    '016 Earth RA & Dec',
+    '017 Sun RA & Dec',
+    '019 {planet} projected equatorial radius',
+]
+EPHEM_MOONCOLS_EMPTY = [
+    '003 Sub-observer latitude & rotating longitude',
+    '004 Sub-solar latitude & rotating longitude',
+    '005 RA & Dec',
+    '006 Offset RA & Dec from the moon',
+    '008 Orbital longitude relative to observer',
+    '009 Orbit plane opening angle to observer',
+]
+EPHEM_MOONCOLS_PREFIX = [
+    '001 Observer-moon distance',
+    '002 Moon phase angle',
+    '003 Sub-observer latitude & rotating longitude',
+    '004 Sub-solar latitude & rotating longitude',
+    '005 RA & Dec',
+    '007 Offset RA & Dec from the moon',
+    '008 Orbital longitude relative to observer',
+    '009 Orbit plane opening angle to observer',
+]
+
+# ---------------------------------------------------------------------------
+# Random value helpers
+# ---------------------------------------------------------------------------
+
+
+# Bounds for time range and interval: ensure 2 <= ntimes <= MAX_STEPS.
+# Tracker limit 10000, ephemeris 100000; use 8000 to stay safe for both.
+_MAX_STEPS = 8000
+_SECONDS_PER_DAY = 86400.0
+
+
+def _random_datetime(
+    min_dt: datetime | None = None,
+    max_dt: datetime | None = None,
+) -> str:
+    """Return a random UTC datetime in yyyy-mm-dd hh:mm:ss form."""
+    if min_dt is not None and max_dt is not None:
+        delta = (max_dt - min_dt).days
+        if delta < 0:
+            delta = 0
+        offset_days = random.randint(0, max(0, delta))
+        dt = min_dt + timedelta(days=offset_days)
+        dt = dt.replace(
+            hour=random.randint(0, 23),
+            minute=random.randint(0, 59),
+            second=random.randint(0, 59),
+        )
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
+    year = random.randint(1990, 2030)
+    month = random.randint(1, 12)
+    day = random.randint(1, 28)
+    hour = random.randint(0, 23)
+    minute = random.randint(0, 59)
+    second = random.randint(0, 59)
+    return f'{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}'
+
+
+def _random_time_range_and_interval(
+    abbrev: str = '',
+    observatory: str | None = None,
+) -> tuple[str, str, str, str]:
+    """Return (start_str, stop_str, interval_str, time_unit) with valid step count.
+
+    Chooses delta_days, interval, and time_unit so that
+    10 <= ntimes <= _MAX_STEPS, avoiding "too many steps" and
+    "time range too short or interval too large" errors.
+    When abbrev is a spacecraft (jupc, jupj, satc, etc.), constrains dates to
+    mission SPICE kernel limits. When observatory has limited ephemeris (e.g.
+    JWST), constrains to OBSERVATORY_DATE_RANGES.
+    """
+    mission_range = MISSION_DATE_RANGES.get(abbrev)
+    obs_range = OBSERVATORY_DATE_RANGES.get(observatory or '') if observatory else None
+    # Prefer observatory range when set (e.g. JWST); else use mission range.
+    date_range = obs_range if obs_range else mission_range
+    if date_range:
+        min_dt, max_dt = date_range
+        # Spacecraft kernels exist only for past times; never generate future dates.
+        now = datetime.now(timezone.utc)
+        max_dt = min(max_dt, now)
+        span_days = (max_dt - min_dt).days
+        if span_days < 0:
+            # Mission not started yet; use recent past to avoid future dates
+            max_dt = now
+            min_dt = now - timedelta(days=30)
+            span_days = 30
+        delta_days = random.randint(2, min(30, max(2, span_days)))
+        start_dt = min_dt + timedelta(
+            days=random.randint(0, max(0, span_days - delta_days))
+        )
+        start_dt = start_dt.replace(
+            hour=random.randint(0, 23),
+            minute=random.randint(0, 59),
+            second=random.randint(0, 59),
+        )
+        stop_dt = start_dt + timedelta(days=delta_days)
+        if stop_dt > max_dt:
+            stop_dt = max_dt
+            start_dt = stop_dt - timedelta(days=delta_days)
+            if start_dt < min_dt:
+                start_dt = min_dt
+                delta_days = (stop_dt - start_dt).days
+        start_str = start_dt.strftime('%Y-%m-%d %H:%M:%S')
+        stop_str = stop_dt.strftime('%Y-%m-%d %H:%M:%S')
+        total_sec = delta_days * _SECONDS_PER_DAY
+    else:
+        delta_days = random.randint(2, 30)
+        start_str = _random_datetime()
+        year = int(start_str[:4])
+        month = int(start_str[5:7])
+        day = int(start_str[8:10])
+        hour = int(start_str[11:13])
+        minute = int(start_str[14:16])
+        second = int(start_str[17:19])
+        start_dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+        stop_dt = start_dt + timedelta(days=delta_days)
+        stop_str = stop_dt.strftime('%Y-%m-%d %H:%M:%S')
+        total_sec = delta_days * _SECONDS_PER_DAY
+
+    time_unit = _pick(TIME_UNIT)
+    ntimes = random.randint(10, _MAX_STEPS)
+    interval_sec = total_sec / ntimes
+
+    mult = {
+        'seconds': 1.0,
+        'minutes': 60.0,
+        'hours': 3600.0,
+        'days': _SECONDS_PER_DAY,
+    }[time_unit]
+    interval_val = interval_sec / mult
+
+    if interval_val == int(interval_val):
+        interval_str = str(int(interval_val))
+    else:
+        interval_str = f'{interval_val:.4f}'.rstrip('0').rstrip('.')
+
+    return start_str, stop_str, interval_str, time_unit
+
+
+def _random_numeric(low: float = 0.1, high: float = 100.0, decimals: int = 4) -> str:
+    """Return a random numeric string."""
+    v = random.uniform(low, high)
+    if decimals == 0:
+        return str(round(v))
+    return f'{v:.{decimals}f}'.rstrip('0').rstrip('.')
+
+
+def _maybe(p: float = 0.5) -> bool:
+    """Return True with probability p."""
+    return random.random() < p
+
+
+def _pick(lst: list[str]) -> str:
+    """Return a random element from a non-empty list."""
+    return random.choice(lst)
+
+
+def _pick_multi(lst: list[str], min_n: int = 0, max_n: int | None = None) -> list[str]:
+    """Return a random subset; max_n defaults to len(lst)."""
+    if max_n is None:
+        max_n = len(lst)
+    n = random.randint(min_n, min(max_n, len(lst)))
+    return random.sample(lst, n)
+
+
+# ---------------------------------------------------------------------------
+# Query builders
+# ---------------------------------------------------------------------------
+
+
+def _build_viewer_query(abbrev: str) -> str:
+    planet = _planet(abbrev)
+    pre = _prefix(abbrev)
+    params: dict[str, Any] = {}
+
+    # Viewpoint/observatory first (needed to constrain time for JWST etc.)
+    if pre:
+        params['viewpoint'] = 'observatory'
+        mission_obs = {
+            'Cassini/': 'Cassini',
+            'New Horizons/': 'New Horizons',
+            'Juno/': 'Juno',
+            'JUICE/': 'JUICE',
+            'Europa Clipper/': 'Europa Clipper',
+        }
+        params['observatory'] = mission_obs.get(pre, "Earth's center")
+    else:
+        if _maybe(0.8):
+            params['viewpoint'] = 'observatory'
+            obs_list = VIEWER_OBSERVATORIES_BY_PLANET.get(planet, OBSERVATORIES_EARTH)
+            params['observatory'] = _pick(obs_list)
+        else:
+            params['viewpoint'] = 'latlon'
+            params['latitude'] = _random_numeric(-90, 90, 4)
+            params['longitude'] = _random_numeric(0, 360, 4)
+            params['lon_dir'] = _pick(LON_DIR)
+            params['altitude'] = _random_numeric(0, 4500, 0)
+
+    obs_range = OBSERVATORY_DATE_RANGES.get(params.get('observatory') or '')
+    time_kw: dict[str, datetime] = {}
+    if obs_range:
+        time_kw = {'min_dt': obs_range[0], 'max_dt': obs_range[1]}
+
+    # Mandatory and always-included
+    params['abbrev'] = abbrev
+    params['version'] = '3.1'
+    params['ephem'] = EPHEM_BY_ABBREV[abbrev]
+    params['time'] = _random_datetime(**time_kw)
+    params['fov'] = _random_numeric(0.001, 50.0)
+    fov_opts = FOV_UNIT_COMMON + FOV_UNIT_PLANET.get(planet, [' Jupiter radii'])
+    params['fov_unit'] = _pick(fov_opts)
+    params['output'] = _pick(OUTPUT_VIEWER)
+
+    # Center (optional but usually set)
+    if _maybe(0.9):
+        params['center'] = _pick(['body', 'ansa', 'J2000', 'star'])
+        if params['center'] == 'body':
+            bodies = VIEWER_CENTER_BODY.get(planet, VIEWER_CENTER_BODY['Jupiter'])
+            params['center_body'] = _pick(bodies)
+        elif params['center'] == 'ansa':
+            ansas = VIEWER_CENTER_ANSA.get(planet, VIEWER_CENTER_ANSA['Jupiter'])
+            params['center_ansa'] = _pick(ansas)
+            params['center_ew'] = _pick(CENTER_EW)
+        elif params['center'] == 'J2000':
+            params['center_ra'] = _random_numeric(0, 24, 4)
+            params['center_ra_type'] = _pick(RA_TYPE)
+            params['center_dec'] = _random_numeric(-90, 90, 4)
+        else:
+            params['center_star'] = 'Sirius'
+
+    # Moons (viewer uses single radio value)
+    if planet in VIEWER_MOONS_RADIO:
+        params['moons'] = _pick(VIEWER_MOONS_RADIO[planet])
+
+    # Rings
+    if planet in VIEWER_RINGS and _maybe(0.8):
+        params['rings'] = _pick(VIEWER_RINGS[planet])
+
+    # Neptune arc model
+    if planet == 'Neptune' and _maybe(0.3):
+        params['arcmodel'] = _pick(
+            ['#1 (820.1194 deg/day)', '#2 (820.1118 deg/day)', '#3 (820.1121 deg/day)']
+        )
+
+    # Optional diagram options
+    if _maybe(0.4):
+        params['title'] = 'Test plot'
+    if _maybe(0.7):
+        params['labels'] = _pick(LABELS)
+    if _maybe(0.3):
+        params['moonpts'] = str(random.randint(0, 5))
+    if not pre and _maybe(0.2):
+        params['blank'] = _pick(BLANK)
+    if planet == 'Saturn' and _maybe(0.3):
+        params['opacity'] = _pick(OPACITY)
+    if planet in ('Saturn', 'Uranus') and _maybe(0.2):
+        params['peris'] = _pick(
+            ['None', 'F Ring'] if planet == 'Saturn' else ['None', 'Epsilon Ring only', 'All rings']
+        )
+        params['peripts'] = str(random.randint(2, 8))
+    if _maybe(0.7):
+        params['meridians'] = _pick(MERIDIANS)
+    if planet == 'Neptune' and _maybe(0.2):
+        params['arcpts'] = str(random.randint(2, 8))
+
+    # Jupiter torus
+    if planet == 'Jupiter' and _maybe(0.2):
+        params['torus'] = 'Yes'
+        params['torus_inc'] = '6.8'
+        params['torus_rad'] = '422000'
+
+    # Background: standard stars, additional star, other
+    if _maybe(0.3):
+        params['standard'] = 'Yes'
+    if _maybe(0.2):
+        params['additional'] = 'Yes'
+        params['extra_ra'] = _random_numeric(0, 24, 4)
+        params['extra_ra_type'] = _pick(RA_TYPE)
+        params['extra_dec'] = _random_numeric(-90, 90, 4)
+        params['extra_name'] = 'Star1'
+    if _maybe(0.4):
+        others = ['Sun', 'Anti-Sun', 'Earth']
+        if planet == 'Jupiter' and not pre:
+            others += [
+                'Voyager 1',
+                'Voyager 2',
+                'Galileo',
+                'Cassini',
+                'New Horizons',
+                'Juno',
+                'JUICE',
+                'Europa Clipper',
+            ]
+        elif planet == 'Saturn' and not pre:
+            others += ['Voyager 1', 'Voyager 2', 'Cassini']
+        elif planet in ('Uranus', 'Neptune') and not pre:
+            others += ['Voyager 2']
+        elif planet == 'Pluto':
+            others += ['Barycenter', 'New Horizons'] if not pre else ['Barycenter']
+        params['other'] = '#'.join(_pick_multi(others, 1, 3))
+
+    return urlencode(params, doseq=False, encoding='utf-8')
+
+
+def _build_tracker_query(abbrev: str) -> str:
+    planet = _planet(abbrev)
+    pre = _prefix(abbrev)
+    params: dict[str, Any] = {}
+
+    params['abbrev'] = abbrev
+    params['version'] = '3.0'
+    params['ephem'] = EPHEM_BY_ABBREV[abbrev]
+
+    if pre:
+        params['viewpoint'] = 'observatory'
+        mission_obs = {
+            'Cassini/': 'Cassini',
+            'New Horizons/': 'New Horizons',
+            'Juno/': 'Juno',
+            'JUICE/': 'JUICE',
+            'Europa Clipper/': 'Europa Clipper',
+        }
+        params['observatory'] = mission_obs.get(pre, "Earth's center")
+        params['latitude'] = ''
+        params['longitude'] = ''
+        params['lon_dir'] = 'east'
+        params['altitude'] = ''
+    else:
+        if _maybe(0.8):
+            params['viewpoint'] = 'observatory'
+            params['observatory'] = _pick(OBSERVATORIES_EARTH)
+            params['latitude'] = ''
+            params['longitude'] = ''
+            params['lon_dir'] = 'east'
+            params['altitude'] = ''
+        else:
+            params['viewpoint'] = 'latlon'
+            params['latitude'] = _random_numeric(-90, 90, 4)
+            params['longitude'] = _random_numeric(0, 360, 4)
+            params['lon_dir'] = _pick(LON_DIR)
+            params['altitude'] = _random_numeric(0, 4500, 0)
+
+    start_str, stop_str, interval_str, time_unit = _random_time_range_and_interval(
+        abbrev, observatory=params.get('observatory')
+    )
+    params['start'] = start_str
+    params['stop'] = stop_str
+    params['interval'] = interval_str
+    params['time_unit'] = time_unit
+    params['output'] = _pick(OUTPUT_TRACKER)
+
+    if planet in TRACKER_MOONS:
+        moon_list = TRACKER_MOONS[planet]
+        params['moons'] = _pick_multi(moon_list, min_n=1, max_n=min(4, len(moon_list)))
+
+    if planet in TRACKER_RINGS and _maybe(0.6):
+        rlist = TRACKER_RINGS[planet]
+        params['rings'] = _pick_multi(rlist, min_n=1)
+
+    if _maybe(0.5):
+        params['xrange'] = _random_numeric(1, 50, 2)
+        params['xunit'] = _pick(XUNIT_PREFIX if pre else XUNIT_EMPTY)
+    if _maybe(0.3):
+        params['title'] = 'Tracker test'
+
+    return urlencode(params, doseq=True, encoding='utf-8')
+
+
+def _build_ephemeris_query(abbrev: str) -> str:
+    planet = _planet(abbrev)
+    pre = _prefix(abbrev)
+    params: dict[str, Any] = {}
+
+    params['abbrev'] = abbrev
+    params['version'] = '3.0'
+    params['ephem'] = EPHEM_BY_ABBREV[abbrev]
+
+    if pre:
+        params['viewpoint'] = 'observatory'
+        mission_obs = {
+            'Cassini/': 'Cassini',
+            'New Horizons/': 'New Horizons',
+            'Juno/': 'Juno',
+            'JUICE/': 'JUICE',
+            'Europa Clipper/': 'Europa Clipper',
+        }
+        params['observatory'] = mission_obs.get(pre, "Earth's center")
+        params['latitude'] = ''
+        params['longitude'] = ''
+        params['lon_dir'] = 'east'
+        params['altitude'] = ''
+    else:
+        if _maybe(0.8):
+            params['viewpoint'] = 'observatory'
+            params['observatory'] = _pick(OBSERVATORIES_EARTH)
+            params['latitude'] = ''
+            params['longitude'] = ''
+            params['lon_dir'] = 'east'
+            params['altitude'] = ''
+        else:
+            params['viewpoint'] = 'latlon'
+            params['latitude'] = _random_numeric(-90, 90, 4)
+            params['longitude'] = _random_numeric(0, 360, 4)
+            params['lon_dir'] = _pick(LON_DIR)
+            params['altitude'] = _random_numeric(0, 4500, 0)
+
+    start_str, stop_str, interval_str, time_unit = _random_time_range_and_interval(
+        abbrev, observatory=params.get('observatory')
+    )
+    params['start'] = start_str
+    params['stop'] = stop_str
+    params['interval'] = interval_str
+    params['time_unit'] = time_unit
+    params['output'] = _pick(OUTPUT_EPHEM)
+
+    if _maybe(0.9):
+        template = EPHEM_COLUMNS_PREFIX if pre else EPHEM_COLUMNS_EMPTY
+        cols = [c.format(planet=planet) for c in template]
+        params['columns'] = _pick_multi(cols, min_n=1, max_n=8)
+
+    if _maybe(0.6):
+        template = EPHEM_MOONCOLS_PREFIX if pre else EPHEM_MOONCOLS_EMPTY
+        params['mooncols'] = _pick_multi(template, min_n=1, max_n=5)
+
+    if planet in TRACKER_MOONS and _maybe(0.8):
+        moon_list = TRACKER_MOONS[planet]
+        params['moons'] = _pick_multi(moon_list, min_n=1, max_n=min(4, len(moon_list)))
+
+    # Valid ephemeris requires: at least one general column, OR (moons + mooncols).
+    has_columns = len(params.get('columns', [])) > 0
+    has_moons = len(params.get('moons', [])) > 0
+    has_mooncols = len(params.get('mooncols', [])) > 0
+    if not has_columns and not (has_moons and has_mooncols):
+        if planet in TRACKER_MOONS and _maybe(0.5):
+            template = EPHEM_MOONCOLS_PREFIX if pre else EPHEM_MOONCOLS_EMPTY
+            params['mooncols'] = _pick_multi(template, min_n=1, max_n=5)
+            moon_list = TRACKER_MOONS[planet]
+            params['moons'] = _pick_multi(moon_list, min_n=1, max_n=min(4, len(moon_list)))
+        else:
+            cols = [c.format(planet=planet) for c in (EPHEM_COLUMNS_PREFIX if pre else EPHEM_COLUMNS_EMPTY)]
+            params['columns'] = _pick_multi(cols, min_n=1, max_n=8)
+
+    return urlencode(params, doseq=True, encoding='utf-8')
+
+
+def generate_one_url(tool: str) -> str:
+    """Generate a single random full URL for the given tool.
+
+    Parameters:
+        tool: One of "viewer", "tracker", "ephemeris".
+
+    Returns:
+        Full URL (e.g. https://pds-rings.seti.org/cgi-bin/tools/ephem3_xxx.pl?key=val&...).
+    """
+    if tool == 'viewer':
+        abbrev = _pick(VIEWER_ABBREVS)
+        query = _build_viewer_query(abbrev)
+    elif tool == 'tracker':
+        abbrev = _pick(TRACKER_ABBREVS)
+        query = _build_tracker_query(abbrev)
+    elif tool == 'ephemeris':
+        abbrev = _pick(EPHEMERIS_ABBREVS)
+        query = _build_ephemeris_query(abbrev)
+    else:
+        raise ValueError(f'Unknown tool: {tool}')
+    script = TOOL_CGI_SCRIPT[tool]
+    return f'{BASE_URL}/cgi-bin/tools/{script}?{query}'
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Generate random CGI query strings for Viewer, Tracker, and Ephemeris tools.',
+    )
+    parser.add_argument(
+        '-n',
+        '--count',
+        type=int,
+        required=True,
+        metavar='N',
+        help='Number of query strings to generate.',
+    )
+    parser.add_argument(
+        '-o',
+        '--output',
+        type=str,
+        required=True,
+        metavar='FILE',
+        help='Output file path (one query string per line).',
+    )
+    parser.add_argument(
+        '--tool',
+        type=str,
+        choices=['viewer', 'tracker', 'ephemeris'],
+        default=None,
+        help='Restrict to one tool; default is to choose randomly among all three.',
+    )
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=None,
+        metavar='N',
+        help='Random seed for reproducibility.',
+    )
+    args = parser.parse_args()
+
+    if args.count < 1:
+        parser.error('--count must be at least 1')
+    if args.seed is not None:
+        random.seed(args.seed)
+
+    tools = [args.tool] if args.tool else ['viewer', 'tracker', 'ephemeris']
+
+    try:
+        with open(args.output, 'w', encoding='utf-8') as f:
+            for _ in range(args.count):
+                tool = random.choice(tools)
+                url = generate_one_url(tool)
+                f.write(url + '\n')
+    except OSError as e:
+        print(f'Error writing {args.output}: {e}', file=sys.stderr)
+        return 1
+
+    print(f'Wrote {args.count} URL(s) to {args.output}', file=sys.stderr)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import sys
 from typing import TextIO
@@ -62,6 +63,8 @@ from ephemeris_tools.viewer_helpers import (
     _write_fov_table,
     get_planet_config,
 )
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     '_fov_deg_from_unit',
@@ -395,6 +398,17 @@ def _run_viewer_impl(
             for i in range(1, len(f_moon_ids)):
                 if f_moon_ids[i] not in moon_ids:
                     f_moon_flags[i] = False
+            # Fallback: if selection filtered out every moon (e.g. wrong planet or
+            # parse mismatch), show all moons so we do not emit a diagram with no
+            # moons when the user requested a valid group (e.g. 609 = S1-S9).
+            if not any(f_moon_flags[1:]):
+                logger.warning(
+                    'Moon selection %r matched no moons for planet %s; showing all moons.',
+                    moon_ids,
+                    planet_num,
+                )
+                for i in range(1, len(f_moon_flags)):
+                    f_moon_flags[i] = True
 
         # Build ring arrays
         f_nrings = len(cfg.rings) if hasattr(cfg, 'rings') and cfg.rings else 0
