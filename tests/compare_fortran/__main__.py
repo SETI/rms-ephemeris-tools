@@ -21,7 +21,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -60,6 +62,55 @@ _ABBREV_TO_PLANET: dict[str, int] = {
     'nep': 8,
     'plu': 9,
 }
+
+
+def _format_duration(seconds: float) -> str:
+    """Format duration seconds as MM:SS or HH:MM:SS."""
+    total = max(0, int(round(seconds)))
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours > 0:
+        return f'{hours:02d}:{minutes:02d}:{secs:02d}'
+    return f'{minutes:02d}:{secs:02d}'
+
+
+def _emit_progress(
+    *,
+    current: int,
+    total: int,
+    passed: int,
+    failed: int,
+    skipped: int,
+    started_at: float,
+    is_tty: bool,
+) -> None:
+    """Render progress for batch URL runs."""
+    elapsed = max(0.0, time.monotonic() - started_at)
+    fraction = (current / total) if total > 0 else 0.0
+    width = 28
+    filled = int(round(width * fraction))
+    bar = f'[{"#" * filled}{"-" * (width - filled)}]'
+    pct = 100.0 * fraction
+    rate = (current / elapsed) if elapsed > 0 and current > 0 else 0.0
+    remaining = max(0, total - current)
+    eta = (remaining / rate) if rate > 0 else 0.0
+    line = (
+        f'{bar} {current}/{total} {pct:6.2f}% '
+        f'pass={passed} fail={failed} skip={skipped} '
+        f'elapsed={_format_duration(elapsed)} eta={_format_duration(eta)}'
+    )
+
+    if is_tty:
+        term_cols = shutil.get_terminal_size(fallback=(120, 20)).columns
+        trimmed = line[: max(20, term_cols - 1)]
+        print(f'\r{trimmed}', end='', file=sys.stderr, flush=True)
+        if current == total:
+            print('', file=sys.stderr, flush=True)
+        return
+
+    # Non-interactive logs: print first, every 10 cases, and final line.
+    if current == 1 or current == total or current % 10 == 0:
+        print(line, file=sys.stderr, flush=True)
 
 
 def _parse_center_angle(value: str, *, is_ra_hours: bool) -> float | str:
@@ -272,8 +323,13 @@ def _execute_spec(
     fort_cmd: list[str] | None,
     float_tol: int | None,
     lsd_tol: float | None,
+    viewer_min_similarity_pct: float | None = None,
 ) -> tuple[bool, list[str], float | None]:
     """Execute one comparison spec and return (passed, detail lines, max_table_abs_diff).
+
+    For viewer and tracker, pass/fail is based only on image similarity
+    (axis anti-mask), not on stdout or PostScript. When viewer_min_similarity_pct
+    is set (e.g. 99.99), they pass if image similarity >= that value.
 
     Returns:
         A 3-tuple: (passed, detail_lines, max_table_abs_diff). passed is True
@@ -396,16 +452,24 @@ def _execute_spec(
         res_ps = compare_postscript(py_ps_use, fort_ps_use)
         details.append(f'ps: {res_ps.message}')
         details.extend(res_ps.details)
-        all_ok = all_ok and res_ps.same
+        if spec.tool not in ('viewer', 'tracker'):
+            all_ok = all_ok and res_ps.same
         diff_img = out_dir / 'diff.png'
         res_img = compare_postscript_images(
             py_ps_use,
             fort_ps_use,
             diff_image_path=diff_img,
-            ignore_axis_pixels=(spec.tool == 'viewer'),
+            ignore_axis_pixels=(spec.tool in ('viewer', 'tracker')),
+            min_similarity_pct=(
+                viewer_min_similarity_pct if spec.tool in ('viewer', 'tracker') else None
+            ),
         )
         details.append(f'image: {res_img.message}')
         details.extend(res_img.details)
+        if spec.tool in ('viewer', 'tracker'):
+            all_ok = res_img.same
+        else:
+            all_ok = all_ok and res_img.same
     return (all_ok, details, max_table_abs_diff)
 
 
@@ -512,6 +576,24 @@ def main() -> int:
         'lsd_tol * lsd, where lsd is inferred from the printed form. E.g. 1.001 with '
         'lsd_tol=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1. Set 0 for exact.',
     )
+    parser.add_argument(
+        '--viewer-image-min-similarity',
+        type=float,
+        default=99.97,
+        metavar='PCT',
+        help='For viewer and tracker, minimum image similarity (percent) to pass; '
+        'only content pixels (axis anti-mask) are used. Default 99.97. PostScript '
+        'differences do not cause viewer or tracker failure.',
+    )
+    parser.add_argument(
+        '--collect-failed-to',
+        type=str,
+        default=None,
+        metavar='DIR',
+        help='After running, copy all files from each failed case (comparison.txt, '
+        'stdout, table, PS, PNG) into this directory with case-prefixed names. '
+        'Only used with --test-file or --url.',
+    )
     args = parser.parse_args()
 
     if args.query_input or args.test_file:
@@ -525,8 +607,11 @@ def main() -> int:
         summary_lines: list[str] = []
         all_details_lines: list[str] = []
         failed: list[str] = []
+        failed_dirs: list[Path] = []
         passed_count = 0
         skipped_count = 0
+        started_at = time.monotonic()
+        is_tty = sys.stderr.isatty()
         run_max_table_abs_diff: float | None = None
         for idx, url in enumerate(urls, start=1):
             spec = spec_from_query_input(url)
@@ -544,6 +629,7 @@ def main() -> int:
                 fort_cmd=case_fort_cmd,
                 float_tol=(args.float_tol if args.float_tol > 0 else None),
                 lsd_tol=(args.lsd_tol if args.lsd_tol > 0 else None),
+                viewer_min_similarity_pct=args.viewer_image_min_similarity,
             )
             (case_dir / 'comparison.txt').write_text('\n'.join(details) + '\n')
             all_details_lines.append(f'## case {idx}')
@@ -556,12 +642,22 @@ def main() -> int:
                 passed_count += 1
             else:
                 failed.append(f'line {idx}: {url}')
+                failed_dirs.append(case_dir)
             if case_max_diff is not None:
                 run_max_table_abs_diff = (
                     case_max_diff
                     if run_max_table_abs_diff is None
                     else max(run_max_table_abs_diff, case_max_diff)
                 )
+            _emit_progress(
+                current=idx,
+                total=len(urls),
+                passed=passed_count,
+                failed=len(failed),
+                skipped=skipped_count,
+                started_at=started_at,
+                is_tty=is_tty,
+            )
         total = len(urls)
         failed_count = len(failed)
         summary_lines.append(f'total={total}')
@@ -575,6 +671,15 @@ def main() -> int:
             summary_lines.extend(failed)
         (out_dir / 'summary.txt').write_text('\n'.join(summary_lines) + '\n')
         (out_dir / 'all_comparisons.txt').write_text('\n'.join(all_details_lines) + '\n')
+        if args.collect_failed_to and failed_dirs:
+            collect_dir = Path(args.collect_failed_to)
+            collect_dir.mkdir(parents=True, exist_ok=True)
+            for case_dir in failed_dirs:
+                prefix = case_dir.name + '_'
+                for path in case_dir.iterdir():
+                    if path.is_file():
+                        dest = collect_dir / (prefix + path.name)
+                        shutil.copy2(path, dest)
         return 1 if failed_count > 0 else 0
 
     if args.tool is None:
@@ -720,7 +825,7 @@ def main() -> int:
         for d in res_stdout.details:
             print(d)
         exit_code = 0
-        if not res_stdout.same:
+        if not res_stdout.same and args.tool not in ('viewer', 'tracker'):
             exit_code = 1
 
         if py_table_use and fort_table_use:
@@ -735,7 +840,7 @@ def main() -> int:
             print('Table:', res.message)
             for d in res.details:
                 print(d)
-            if not res.same:
+            if not res.same and args.tool not in ('viewer', 'tracker'):
                 exit_code = 1
         if py_txt_use and fort_txt_use and (py_txt_use.exists() and fort_txt_use.exists()):
             res = compare_tables(
@@ -747,14 +852,14 @@ def main() -> int:
             print(f'Text table ({spec.tool}):', res.message)
             for d in res.details:
                 print(d)
-            if not res.same:
+            if not res.same and args.tool not in ('viewer', 'tracker'):
                 exit_code = 1
         if py_ps_use and fort_ps_use:
             res = compare_postscript(py_ps_use, fort_ps_use)
             print(res.message)
             for d in res.details:
                 print(d)
-            if not res.same:
+            if not res.same and args.tool not in ('viewer', 'tracker'):
                 exit_code = 1
             # Pixel comparison via Ghostscript rendering
             diff_img = out_dir / 'diff.png'
@@ -762,11 +867,21 @@ def main() -> int:
                 py_ps_use,
                 fort_ps_use,
                 diff_image_path=diff_img,
-                ignore_axis_pixels=(spec.tool == 'viewer'),
+                ignore_axis_pixels=(args.tool in ('viewer', 'tracker')),
+                min_similarity_pct=(
+                    args.viewer_image_min_similarity
+                    if args.tool in ('viewer', 'tracker')
+                    else None
+                ),
             )
             print(res_img.message)
             for d in res_img.details:
                 print(d)
+            if args.tool in ('viewer', 'tracker'):
+                if not res_img.same:
+                    exit_code = 1
+            elif not res_img.same:
+                exit_code = 1
         return exit_code
 
     print('Outputs written to', out_dir)

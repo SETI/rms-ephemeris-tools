@@ -164,6 +164,27 @@ def _run_viewer_impl(
                 except Exception:
                     spacecraft_observer_id = None
 
+    # Match FORTRAN viewer: load "other" spacecraft kernels before planet kernels
+    # so the user-selected planet ephemeris still takes precedence.
+    for other_name in other_bodies or []:
+        token = other_name.strip()
+        if token == '':
+            continue
+        low = token.lower()
+        if low in {'sun', 'anti-sun', 'antisun', 'earth', 'barycenter'}:
+            continue
+        sc_code = spacecraft_name_to_code(token)
+        if sc_code is None:
+            continue
+        sc_abbrev = spacecraft_code_to_id(sc_code)
+        if not sc_abbrev:
+            continue
+        try:
+            load_spacecraft(sc_abbrev, planet_num, ephem_version, set_obs=False)
+        except Exception:
+            # Keep viewer behavior tolerant of unavailable spacecraft kernels.
+            pass
+
     ok, reason = load_spice_files(planet_num, ephem_version)
     if not ok:
         raise RuntimeError(f'Failed to load SPICE kernels: {reason}')
@@ -625,13 +646,6 @@ def _run_viewer_impl(
                         body_id = known_spacecraft_id
                     else:
                         body_id = cspyce.bodn2c(token)
-                    if body_id < 0:
-                        try:
-                            sc_abbrev = spacecraft_code_to_id(body_id)
-                            if sc_abbrev:
-                                load_spacecraft(sc_abbrev, planet_num, ephem_version, set_obs=False)
-                        except Exception:
-                            pass
                     ra, dec = body_radec(et, body_id)
             except Exception:
                 continue

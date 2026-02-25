@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import TYPE_CHECKING, Any, TextIO, TypedDict, cast
 
@@ -24,6 +25,8 @@ from ephemeris_tools.planets import (
 
 if TYPE_CHECKING:
     from ephemeris_tools.planets.base import PlanetConfig, RingSpec
+
+logger = logging.getLogger(__name__)
 
 # Import for viewer_params_from_legacy_kwargs (runtime).
 from ephemeris_tools.params import (
@@ -431,6 +434,13 @@ def _resolve_viewer_ring_flags(
     if n == 0:
         return []
     flags = [False] * n
+    if planet_num == 7:
+        # Match FORTRAN viewer3_ura.f initialization exactly:
+        # Six/Five/Four off by default; Alpha..Delta on; Lambda off;
+        # Epsilon components on; outer Mu/Nu families off.
+        for i in (3, 4, 5, 6, 7, 9, 10):
+            if i < n:
+                flags[i] = True
 
     # Split tokens into numeric group codes and individual ring names
     codes: list[int] = []
@@ -832,11 +842,18 @@ def _fov_deg_from_unit(
     if 'radii' in s and et is not None and cfg is not None:
         from ephemeris_tools.spice.geometry import planet_ranges
 
-        _sun_dist_km, obs_dist_km = planet_ranges(et)
+        _sun_dist_km, obs_dist_km = planet_ranges(et, planet_id=cfg.planet_id)
         if obs_dist_km > 0:
             ratio = cfg.equatorial_radius_km / obs_dist_km
             clamped = max(-1.0, min(1.0, ratio))
-            return fov * math.asin(clamped) * _RAD2DEG
+            fov_deg = fov * math.asin(clamped) * _RAD2DEG
+            logger.debug(
+                'FOV radii: obs_dist_km=%.6e radius_km=%.4f fov_deg=%.10f',
+                obs_dist_km,
+                cfg.equatorial_radius_km,
+                fov_deg,
+            )
+            return fov_deg
         return fov
     if ('pluto-charon separation' in s or 'pluto charon separation' in s) and et is not None:
         from ephemeris_tools.spice.geometry import planet_ranges
