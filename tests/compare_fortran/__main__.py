@@ -66,7 +66,7 @@ _ABBREV_TO_PLANET: dict[str, int] = {
 
 def _format_duration(seconds: float) -> str:
     """Format duration seconds as MM:SS or HH:MM:SS."""
-    total = max(0, int(round(seconds)))
+    total = max(0, round(seconds))
     hours, rem = divmod(total, 3600)
     minutes, secs = divmod(rem, 60)
     if hours > 0:
@@ -88,7 +88,7 @@ def _emit_progress(
     elapsed = max(0.0, time.monotonic() - started_at)
     fraction = (current / total) if total > 0 else 0.0
     width = 28
-    filled = int(round(width * fraction))
+    filled = round(width * fraction)
     bar = f'[{"#" * filled}{"-" * (width - filled)}]'
     pct = 100.0 * fraction
     rate = (current / elapsed) if elapsed > 0 and current > 0 else 0.0
@@ -869,9 +869,7 @@ def main() -> int:
                 diff_image_path=diff_img,
                 ignore_axis_pixels=(args.tool in ('viewer', 'tracker')),
                 min_similarity_pct=(
-                    args.viewer_image_min_similarity
-                    if args.tool in ('viewer', 'tracker')
-                    else None
+                    args.viewer_image_min_similarity if args.tool in ('viewer', 'tracker') else None
                 ),
             )
             print(res_img.message)

@@ -481,6 +481,7 @@ class RunSpec:
 
         # Variables read via WWW_GetEnv (real env vars, not QUERY_STRING).
         from ephemeris_tools.config import get_spice_path
+
         env['SPICE_PATH'] = get_spice_path()
         if 'planet' in p:
             env['NPLANET'] = str(int(p['planet']))

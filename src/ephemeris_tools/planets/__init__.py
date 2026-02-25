@@ -209,7 +209,6 @@ def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
             pref = _int_prefix(s)
             if pref is not None:
                 num = pref
-                trailing_text = s[len(str(pref)) :].strip() != ''
                 # FORTRAN viewer reads string(1:3) and uses it as max moon ID or group
                 # code; match that by resolving known group codes with or without text.
                 if num in cgi_group_map.get(planet_num, {}):

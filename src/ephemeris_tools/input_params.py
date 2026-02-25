@@ -72,9 +72,7 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         ephem_s = _strip_cgi_code(params.ephem_display.strip())
         _w(stream, f'      Ephemeris: {ephem_s}')
     else:
-        ephem_s = EPHEM_DESCRIPTIONS_BY_PLANET.get(
-            params.planet_num, str(params.ephem_version)
-        )
+        ephem_s = EPHEM_DESCRIPTIONS_BY_PLANET.get(params.planet_num, str(params.ephem_version))
         _w(stream, f'      Ephemeris: {ephem_s}')
 
     # Viewpoint
@@ -141,9 +139,9 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
             _w(stream, f'{prefix}{s}')
     elif params.moon_ids:
         for i, mid in enumerate(params.moon_ids):
-            s = get_moon_display_name(params.planet_num, mid)
+            moon_name = get_moon_display_name(params.planet_num, mid)
             prefix = ' Moon selection: ' if i == 0 else '                 '
-            _w(stream, f'{prefix}{s or mid}')
+            _w(stream, f'{prefix}{moon_name or mid}')
     else:
         _w(stream, ' Moon selection:')
     _w(stream, ' ')
@@ -258,7 +256,8 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
     _w(stream, ' ')
 
     # Ring selection (if not Mars)
-    planet = getattr(args, 'planet_num', None) or getattr(args, 'planet', 6)
+    planet_value = getattr(args, 'planet_num', None) or getattr(args, 'planet', 6)
+    planet = int(planet_value) if planet_value is not None else 6
     if planet != 4:
         rings_display = getattr(args, 'rings_display', None)
         if rings_display and len(rings_display) > 0:

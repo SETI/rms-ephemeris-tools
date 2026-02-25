@@ -14,6 +14,13 @@ from ephemeris_tools.constants import (
     NOON_SECONDS_OFFSET,
     SECONDS_PER_DAY,
 )
+from ephemeris_tools.params import (
+    ExtraStar,
+    Observer,
+    ViewerCenter,
+    ViewerDisplayInfo,
+    ViewerParams,
+)
 from ephemeris_tools.planets import (
     JUPITER_CONFIG,
     MARS_CONFIG,
@@ -27,15 +34,6 @@ if TYPE_CHECKING:
     from ephemeris_tools.planets.base import PlanetConfig, RingSpec
 
 logger = logging.getLogger(__name__)
-
-# Import for viewer_params_from_legacy_kwargs (runtime).
-from ephemeris_tools.params import (
-    ExtraStar,
-    Observer,
-    ViewerCenter,
-    ViewerDisplayInfo,
-    ViewerParams,
-)
 
 
 class _RunViewerKwargs(TypedDict, total=True):
@@ -226,10 +224,11 @@ def _propagated_neptune_arcs(
 
     from ephemeris_tools.spice.common import get_state
     from ephemeris_tools.spice.observer import observer_state
+
     neptune_ref_jed = 2447757.0
     # FORTRAN uses FJUL_TAIofJD(...,2) for a JED reference epoch.
     # Use the non-deprecated rms-julian API for JED(TDB)->time(TDB).
-    ref_et = float(julian.time_from_jd(neptune_ref_jed, timesys='TDB', jdsys='TDB'))
+    ref_et = float(cast(Any, julian).time_from_jd(neptune_ref_jed, timesys='TDB', jdsys='TDB'))
     obs_pv = observer_state(et)
     state = get_state()
     _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')

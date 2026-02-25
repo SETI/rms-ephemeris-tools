@@ -14,7 +14,7 @@ def test_fov_deg_from_planet_radii(monkeypatch: pytest.MonkeyPatch) -> None:
     """Planet-radii units use observer range and equatorial radius (angular size)."""
     monkeypatch.setattr(
         'ephemeris_tools.spice.geometry.planet_ranges',
-        lambda _et: (0.0, 1_000_000.0),
+        lambda _et, **_kwargs: (0.0, 1_000_000.0),
     )
     result = _fov_deg_from_unit(10.0, 'Neptune radii', et=0.0, cfg=NEPTUNE_CONFIG)
     # Formula: fov * asin(equatorial_radius_km / obs_dist_km) * 180/pi

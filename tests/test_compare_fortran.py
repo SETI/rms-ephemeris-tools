@@ -157,13 +157,15 @@ def test_compare_tables_lsd_tolerance_integer_column() -> None:
         path_b = Path(f.name)
     try:
         strict = compare_tables(
-            path_a, path_b,
+            path_a,
+            path_b,
             ignore_column_suffixes=('_nonexistent',),
         )
         assert strict.same is False
         # diff=2, LSD from "7"=1, lsd_tol=2 allows ±2
         tolerant = compare_tables(
-            path_a, path_b,
+            path_a,
+            path_b,
             lsd_tolerance=2.0,
             ignore_column_suffixes=('_nonexistent',),
         )

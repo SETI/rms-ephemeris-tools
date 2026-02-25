@@ -40,6 +40,9 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
 - `--url`, `--query-string`: single CGI URL or raw query string
 - `--test-file`: file containing one CGI URL/query string per line
 
+In batch/query mode the runner prints a progress bar with completed/total,
+percent, pass/fail/skip counts, elapsed time, and ETA.
+
 ### Common options
 
 - `--planet`: planet number or name (`4..9`, `mars..pluto`), default `6`
@@ -95,6 +98,14 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
   - Default: `1.0`
   - E.g. 1.001 with lsd_tol=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1
   - Set `0` for exact numeric comparison
+- `--viewer-image-min-similarity`: minimum image similarity percent for
+  `viewer` and `tracker` pass/fail when comparing rendered images.
+  - Default: `99.97`
+  - PostScript/stdout differences do not fail viewer/tracker when this image
+    threshold passes.
+- `--collect-failed-to DIR`: after batch/query runs, copy all files from each
+  failed case (`comparison.txt`, stdout, PS, PNG, tables/text) into `DIR` with
+  case-prefixed filenames.
 
 ### Arguments and environment
 
@@ -137,6 +148,11 @@ Comparison runs when a FORTRAN binary is available (auto-detected from `fortran/
   - numeric fields can be compared with `--float-tol` (significant digits) and/or
     `--lsd-tol` (least-significant-digit tolerance).
 - **PostScript**: Variable headers such as `%%Creator` and `%%CreationDate` are ignored so only structural and drawing differences are reported.
+- **Viewer/tracker image anti-mask**: image similarity is measured on content
+  pixels after masking:
+  - axis/tick neighborhoods detected from shared dark line features;
+  - the generated-footer text band near the bottom (detected in the lower page
+    region; bottom-row fallback if detection fails).
 
 In `--test-file` batch mode, `summary.txt` includes `largest_table_abs_diff=<value>`
 for the largest numeric table difference seen across the run.

@@ -22,6 +22,7 @@ from ephemeris_tools.params import (
     Observer,
     TrackerParams,
     ViewerParams,
+    _get_env,
     _parse_sexagesimal_to_degrees,
     ephemeris_params_from_env,
     parse_center,
@@ -80,8 +81,8 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         if not args.output:
             args.output = os.environ.get('EPHEM_FILE', None)
     else:
-        start = (args.start or '').strip() or os.environ.get('start', '') or os.environ.get('START_TIME', '')
-        stop = (args.stop or '').strip() or os.environ.get('stop', '') or os.environ.get('STOP_TIME', '')
+        start = (args.start or '').strip() or _get_env('start', '') or _get_env('START_TIME', '')
+        stop = (args.stop or '').strip() or _get_env('stop', '') or _get_env('STOP_TIME', '')
         if not start or not stop:
             parser.error(
                 '--start and --stop are required when not using --cgi '
@@ -570,8 +571,8 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
                 print(f'Error: {e}', file=sys.stderr)
                 return 1
 
-    start = (args.start or '').strip() or os.environ.get('start', '') or os.environ.get('START_TIME', '')
-    stop = (args.stop or '').strip() or os.environ.get('stop', '') or os.environ.get('STOP_TIME', '')
+    start = (args.start or '').strip() or _get_env('start', '') or _get_env('START_TIME', '')
+    stop = (args.stop or '').strip() or _get_env('stop', '') or _get_env('STOP_TIME', '')
     if not start or not stop:
         parser.error(
             '--start and --stop are required when not using --cgi '

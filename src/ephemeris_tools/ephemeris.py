@@ -80,9 +80,7 @@ SPR = DPR * 3600.0
 MAXSECS = 360.0 * 60.0 * 60.0
 
 
-def _set_observer_from_params(
-    params: EphemerisParams, *, sc_loaded_early: bool = False
-) -> None:
+def _set_observer_from_params(params: EphemerisParams, *, sc_loaded_early: bool = False) -> None:
     """Set SPICE observer from params (ephem3_xxx.f observer setup).
 
     Uses latlon if viewpoint is latlon; else observatory name or Earth.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any, cast
 
 import cspyce
 import julian
@@ -115,7 +116,7 @@ def tdb_from_tai(tai: float) -> float:
         TDB (ephemeris time) in seconds.
     """
     try:
-        return float(cspyce.unitim(tai, 'TAI', 'TDB'))
+        return float(cast(Any, cspyce).unitim(tai, 'TAI', 'TDB'))
     except Exception:
         return float(julian.tdb_from_tai(tai))
 
