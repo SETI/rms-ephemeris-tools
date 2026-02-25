@@ -358,12 +358,10 @@ Diagram Center
    Right ascension for diagram center.  Free-text numeric.
 
 ``center_ra_type`` (select, when center="J2000")
-   RA unit.
-
-   Possible values:
-
-   - ``" hours"``
-   - ``" degrees"``
+   RA unit. Forms use ``value="hours"`` and ``value="degrees"`` (no leading
+   space). Parsing (Python and FORTRAN): only first character ``d`` or ``D``
+   means degrees; any other first character (e.g. space or ``+``, as from
+   URL-encoded ``+degrees``) means hours.
 
 ``center_dec`` (text, when center="J2000")
    Declination in degrees for diagram center.  Free-text numeric.

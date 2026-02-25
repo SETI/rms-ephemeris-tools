@@ -108,9 +108,10 @@ def test_viewer_params_from_env_j2000_center_ra_type_degrees_leading_space_is_ho
     params = viewer_params_from_env()
     assert params is not None
     assert params.center.mode == 'J2000'
-    assert params.center.ra_deg is not None
-    # 3.2636 hours -> 48.954 degrees (match FORTRAN)
-    assert abs(params.center.ra_deg - (3.2636 * 15)) < 1e-9
+    ra_deg = params.center.ra_deg
+    assert ra_deg is not None
+    assert abs(ra_deg - (3.2636 * 15)) < 1e-9
+    assert params.center.dec_deg is not None
     assert abs(params.center.dec_deg - 67.5189) < 1e-9
 
 
@@ -226,8 +227,10 @@ def test_viewer_params_from_env_latlon_west_longitude(monkeypatch: pytest.Monkey
     assert params.observer.altitude_m == 1712.0
 
 
-def test_viewer_params_from_env_lon_dir_legacy_leading_space(monkeypatch: pytest.MonkeyPatch) -> None:
-    """lon_dir with leading space (legacy form submission) is treated as west."""
+def test_viewer_params_from_env_lon_dir_legacy_leading_space(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """lon_dir with leading space (legacy form) is treated as west."""
     monkeypatch.setenv('NPLANET', '5')
     monkeypatch.setenv('time', '2000-01-01 00:00')
     monkeypatch.setenv('viewpoint', 'latlon')
@@ -240,8 +243,10 @@ def test_viewer_params_from_env_lon_dir_legacy_leading_space(monkeypatch: pytest
     assert params.observer.longitude_deg == -100.0
 
 
-def test_viewer_params_from_env_fov_unit_legacy_leading_space(monkeypatch: pytest.MonkeyPatch) -> None:
-    """fov_unit with leading space (legacy form) is accepted; _get_env strips so we store 'degrees'."""
+def test_viewer_params_from_env_fov_unit_legacy_leading_space(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """fov_unit with leading space (legacy form) accepted; _get_env strips to 'degrees'."""
     monkeypatch.setenv('NPLANET', '5')
     monkeypatch.setenv('time', '2000-01-01 00:00')
     monkeypatch.setenv('fov', '1')

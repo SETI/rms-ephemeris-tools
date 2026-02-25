@@ -169,7 +169,7 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     center_mode = _get_env('center', 'body')
     if center_mode == 'J2000':
-        ra_type_raw = os.environ.get('center_ra_type', 'hours') or 'hours'
+        ra_type_raw = os.environ.get('center_ra_type', 'hours') or 'hours'  # noqa: SIM112
         is_ra_hours = _is_ra_hours_from_raw(ra_type_raw)
         try:
             ra_deg = _parse_sexagesimal_to_degrees(
@@ -286,7 +286,7 @@ def viewer_params_from_env() -> ViewerParams | None:
     if additional_flag in {'yes', 'y', 'true', '1'}:
         extra_ra_s = _get_env('extra_ra', '')
         extra_dec_s = _get_env('extra_dec', '')
-        extra_ra_type_raw = os.environ.get('extra_ra_type', 'hours') or 'hours'
+        extra_ra_type_raw = os.environ.get('extra_ra_type', 'hours') or 'hours'  # noqa: SIM112
         is_extra_ra_hours = _is_ra_hours_from_raw(extra_ra_type_raw)
         if extra_ra_s.strip() and extra_dec_s.strip():
             try:

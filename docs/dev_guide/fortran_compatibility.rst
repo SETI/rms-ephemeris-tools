@@ -56,6 +56,12 @@ Time parsing and stepping
   UTC↔TAI conversion matches SPICE/FORTRAN. This is required for tracker
   output parity, especially for historical-date runs.
 
+- **Ephemeris “Input Parameters” Interval line** (``input_params.py``):
+  FORTRAN prints the interval with an integer when the value is whole and
+  the time unit in plural form (e.g. ``Interval: 1 hours``). Python matches:
+  whole-number intervals are shown as integers, and the unit is always plural
+  (hours, days, minutes, seconds).
+
 Viewer FOV table
 ^^^^^^^^^^^^^^^^
 

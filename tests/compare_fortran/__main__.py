@@ -494,6 +494,7 @@ def _run_one_url(
     spec = spec_from_query_input(url)
     planet = int(spec.params.get('planet', 6))
     case_dir = out_dir / f'{spec.tool}_{planet}_{idx:03d}'
+    case_fort_cmd: list[str] | None
     if fortran_cmd_str:
         case_fort_cmd = fortran_cmd_str.split()
     else:
