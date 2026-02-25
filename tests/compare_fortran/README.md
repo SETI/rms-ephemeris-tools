@@ -22,6 +22,9 @@ python -m tests.compare_fortran viewer --planet 6 --time "2022-01-01 12:00" --fo
 
 # Override FORTRAN binary path
 python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.bin -o /tmp/compare
+
+# Run multiple URLs from a file in parallel (e.g. 4 jobs)
+python -m tests.compare_fortran viewer --test-file urls.txt -o /tmp/compare -j 4
 ```
 
 ## Complete command-line options
@@ -39,6 +42,9 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
 
 - `--url`, `--query-string`: single CGI URL or raw query string
 - `--test-file`: file containing one CGI URL/query string per line
+- `-j`, `--jobs`: number of parallel jobs when comparing multiple URLs
+  (default `1`). Only used with `--test-file` or multiple `--url`; ignored for
+  single-URL or direct CLI runs.
 
 In batch/query mode the runner prints a progress bar with completed/total,
 percent, pass/fail/skip counts, elapsed time, and ETA.
@@ -109,9 +115,10 @@ percent, pass/fail/skip counts, elapsed time, and ETA.
 
 ### Arguments and environment
 
-- **Arguments** to `python -m tests.compare_fortran` are the same logical parameters as the Python CLI (`ephemeris-tools ephemeris ...`) and the FORTRAN CGI (e.g. `start`, `stop`, `NPLANET`). The framework converts them into:
+- **With `--url` or `--test-file`**: both Python and FORTRAN use the **same parameters** from the query string. Python is run with `--cgi` and env vars derived from that query (so it reads `viewer_params_from_env()` etc.); FORTRAN gets `QUERY_STRING` and parses it. No CLI args are used for the URL case.
+- **With direct args** (e.g. `ephemeris --planet 6 --start ... --stop ...`): the framework converts them into:
   - **Python**: CLI args for `ephemeris-tools`
-  - **FORTRAN**: environment variables (e.g. `NPLANET`, `start`, `stop`, `EPHEM_FILE`, `TRACKER_POSTFILE`, etc.)
+  - **FORTRAN**: environment variables (e.g. `NPLANET`, `QUERY_STRING` built from the same params, `EPHEM_FILE`, `TRACKER_POSTFILE`, etc.)
 - You can also **set environment variables** before running; the Python run uses the current process env, and the FORTRAN run gets the same vars (plus the output paths we add). So you can do:
   ```bash
   export NPLANET=6

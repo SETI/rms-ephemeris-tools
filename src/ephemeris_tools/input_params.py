@@ -24,6 +24,10 @@ def _w(stream: TextIO, line: str) -> None:
     stream.write(line + '\n')
 
 
+# Match FORTRAN ephemeris stdout: interval unit always plural (e.g. "1 hours").
+_TIME_UNIT_PLURAL = {'hour': 'hours', 'day': 'days', 'min': 'minutes', 'sec': 'seconds'}
+
+
 def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) -> None:
     """Write Input Parameters section for ephemeris (port of ephem3_xxx Summarize).
 
@@ -54,18 +58,10 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         interval_val = float(interval_s)
     except (TypeError, ValueError):
         interval_val = 1.0
+    if interval_val == int(interval_val):
+        interval_s = str(int(interval_val))
     time_unit = params.time_unit or 'hour'
-    plural = interval_val != 1.0
-    if time_unit == 'hour' and plural:
-        time_unit_display = 'hours'
-    elif time_unit == 'day' and plural:
-        time_unit_display = 'days'
-    elif time_unit == 'min' and plural:
-        time_unit_display = 'minutes'
-    elif time_unit == 'sec' and plural:
-        time_unit_display = 'seconds'
-    else:
-        time_unit_display = time_unit
+    time_unit_display = _TIME_UNIT_PLURAL.get(time_unit, time_unit)
     _w(stream, f'       Interval: {interval_s} {time_unit_display}')
 
     if params.ephem_display and str(params.ephem_display).strip():
@@ -179,18 +175,10 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
         interval_val = float(interval_s)
     except (TypeError, ValueError):
         interval_val = 1.0
+    if interval_val == int(interval_val):
+        interval_s = str(int(interval_val))
     time_unit = getattr(args, 'time_unit', 'hour') or 'hour'
-    plural = interval_val != 1.0
-    if time_unit == 'hour' and plural:
-        time_unit_display = 'hours'
-    elif time_unit == 'day' and plural:
-        time_unit_display = 'days'
-    elif time_unit == 'min' and plural:
-        time_unit_display = 'minutes'
-    elif time_unit == 'sec' and plural:
-        time_unit_display = 'seconds'
-    else:
-        time_unit_display = time_unit
+    time_unit_display = _TIME_UNIT_PLURAL.get(time_unit, time_unit)
     _w(stream, f'       Interval: {interval_s} {time_unit_display}')
     ephem_display = getattr(args, 'ephem_display', None)
     if ephem_display and str(ephem_display).strip():

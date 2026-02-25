@@ -42,10 +42,10 @@
                 <li>
                     Interval:   <input name="interval" size=6  maxlength=50 autocomplete="on" aria-label="interval"/>
                     <select name="time_unit" autocomplete="on" aria-label="select time unit">
-                      <option>          seconds
-                      <option>          minutes
-                      <option selected> hours
-                      <option>          days
+                      <option value="seconds"> seconds
+                      <option value="minutes"> minutes
+                      <option value="hours" selected> hours
+                      <option value="days"> days
                     </select>
                 </li>
             </ul>

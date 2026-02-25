@@ -23,6 +23,7 @@ from ephemeris_tools.params import (
     TrackerParams,
     ViewerParams,
     _get_env,
+    _is_ra_hours_from_raw,
     _parse_sexagesimal_to_degrees,
     ephemeris_params_from_env,
     parse_center,
@@ -701,10 +702,11 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             if first == 'body' and args.center_body is not None:
                 center = parse_center(args.planet, [str(args.center_body)])
             elif first == 'j2000':
-                ra_type = (getattr(args, 'center_ra_type', None) or 'hours').strip().lower()
+                ra_type_raw = getattr(args, 'center_ra_type', None) or 'hours'
+                is_ra_hours = _is_ra_hours_from_raw(ra_type_raw)
                 ra_deg = (
                     float(args.center_ra) * DEGREES_PER_HOUR_RA
-                    if not ra_type.startswith('d')
+                    if is_ra_hours
                     else float(args.center_ra)
                 )
                 center = parse_center(
@@ -767,8 +769,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
         extra_ra = (args.extra_ra or '').strip()
         extra_dec = (args.extra_dec or '').strip()
         if additional in {'yes', 'y', 'true', '1'} and extra_ra and extra_dec:
-            ra_type = (args.extra_ra_type or 'hours').strip().lower()
-            is_hours = not ra_type.startswith('d')
+            is_hours = _is_ra_hours_from_raw(args.extra_ra_type or 'hours')
             try:
                 extra_star = ExtraStar(
                     name=(args.extra_name or '').strip(),

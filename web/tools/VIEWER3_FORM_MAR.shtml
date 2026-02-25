@@ -42,12 +42,12 @@
             <div class="indent">
                 <input type="text" name="fov" size="12" maxlength="50" autocomplete="on" aria-label="field of view"/>
                 <select name="fov_unit" autocomplete="on" aria-label="field of view unit">
-                     <option> seconds of arc
-                     <option> degrees
-                     <option> milliradians
-                     <option> microradians
+                     <option value="seconds of arc"> seconds of arc
+                     <option value="degrees"> degrees
+                     <option value="milliradians"> milliradians
+                     <option value="microradians"> microradians
                      <option selected> <!--#echo var="PLANET"--> radii
-                     <option> kilometers
+                     <option value="kilometers"> kilometers
                 </select>
                 <strong>(Required)</strong>
             </div>
@@ -58,21 +58,21 @@
                     <input type="radio" name="center" value="body" checked autocomplete="on" aria-label="diagram center select body"/>
                     Body:
                     <select name="center_body" autocomplete="on" aria-label="diagram center body">
-                       <option selected> Mars
-                       <option> Phobos (M1)
-                       <option> Deimos (M2)
+                       <option value="Mars" selected> Mars
+                       <option value="Phobos (M1)"> Phobos (M1)
+                       <option value="Deimos (M2)"> Deimos (M2)
                     </select>
                 </li>
                 <li>
                     <input type="radio" name="center" value="ansa" autocomplete="on" aria-label="diagram center select ring ansa"/>
                     Ring ansa:
                     <select name="center_ansa" autocomplete="on" aria-label="diagram center ring ansa">
-                      <option selected> Phobos Ring
-                      <option>          Deimos Ring
+                      <option value="Phobos Ring" selected> Phobos Ring
+                      <option value="Deimos Ring"> Deimos Ring
                     </select>
                     <select name="center_ew" autocomplete="on" aria-label="diagram center ring ansa direction">
-                      <option selected> east
-                      <option>          west
+                      <option value="east" selected> east
+                      <option value="west"> west
                     </select>
                 </li>
                 <li>
@@ -80,8 +80,8 @@
                     J2000 RA and Dec:
                     <input type="text" name="center_ra" size="12" maxlength="50" autocomplete="on" aria-label="diagram center J2000 RA and Dec"/>
                     <select name="center_ra_type" autocomplete="on" aria-label="diagram center RA type">
-                      <option selected> hours
-                      <option>          degrees
+                      <option value="hours" selected> hours
+                      <option value="degrees"> degrees
                     </select>
                     <input type="text" name="center_dec" size="12" maxlength="50" autocomplete="on" aria-label="diagram center J2000 RA and Dec degrees"/> degrees
                 </li>
@@ -99,9 +99,9 @@
                 <li>
                     <input type="radio" name="viewpoint" value="observatory" checked autocomplete="on" aria-label="viewpoint select observatory"/> Observatory:
                     <select name="observatory" autocomplete="on" aria-label="viewpoint observatory">
-                      <option selected> Earth's center
-                      <option> HST
-                      <option> JWST
+                      <option value="Earth's center" selected> Earth's center
+                      <option value="HST"> HST
+                      <option value="JWST"> JWST
                       <!--#include file="OBSERVATORIES.html"-->
                     </select>
                 </li>
@@ -110,8 +110,8 @@
                     Lat: <input type="text" name="latitude"  size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint latitude"/>
                     Lon: <input type="text" name="longitude" size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint longitude"/>
                     <select name="lon_dir" autocomplete="on" aria-label="viewpoint longitude direction">
-                    <option selected> east
-                    <option> west
+                    <option value="east" selected> east
+                    <option value="west"> west
                     </select>
                     Alt: <input type="text" name="altitude" size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint altitude"/> (m)
                 </li>
@@ -143,8 +143,8 @@
                     Additional star:
                     RA = <input type="text" name="extra_ra" size="12" maxlength="50" autocomplete="on" aria-label="background objects additional star RA"/>
                     <select name="extra_ra_type" autocomplete="on" aria-label="background objects RA type">
-                      <option selected> hours
-                      <option>          degrees
+                      <option value="hours" selected> hours
+                      <option value="degrees"> degrees
                     </select>
                     Dec = <input type="text" name="extra_dec"  size="12" maxlength="50" autocomplete="on" aria-label="background objects additional star Dec"/>
                     Label = <input type="text" name="extra_name" size="12" maxlength="50" autocomplete="on" aria-label="background objects additional star Label"/>
@@ -166,10 +166,10 @@
                 <li>
                     <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#LABELS" target="_blank">Moon & Star Labels:</a>
                     <select name="labels" autocomplete="on" aria-label="diagram options moon and star labels">
-                      <option>          None
-                      <option selected> Small (6 points)
-                      <option>          Medium (9 points)
-                      <option>          Large (12 points)
+                      <option value="None"> None
+                      <option value="Small (6 points)" selected> Small (6 points)
+                      <option value="Medium (9 points)"> Medium (9 points)
+                      <option value="Large (12 points)"> Large (12 points)
                     </select>
                 </li>
                 <li class="pb-1">

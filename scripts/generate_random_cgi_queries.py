@@ -217,12 +217,12 @@ OBSERVATORY_ABBREV_DATE_RANGES: dict[tuple[str, str], tuple[datetime, datetime]]
         datetime(1979, 7, 15, tzinfo=timezone.utc),
     ),
     ('sat', 'Voyager 2'): (
-        datetime(1981, 6, 6, tzinfo=timezone.utc),
-        datetime(1981, 9, 4, tzinfo=timezone.utc),
+        datetime(1981, 6, 11, tzinfo=timezone.utc),
+        datetime(1981, 9, 20, tzinfo=timezone.utc),
     ),
     ('ura', 'Voyager 2'): (
         datetime(1985, 11, 7, tzinfo=timezone.utc),
-        datetime(1986, 2, 18, tzinfo=timezone.utc),
+        datetime(1986, 2, 10, tzinfo=timezone.utc),
     ),
     ('nep', 'Voyager 2'): (
         datetime(1989, 7, 1, tzinfo=timezone.utc),
@@ -306,6 +306,10 @@ EPHEM_BY_ABBREV = {
 # Shared option lists (leading spaces as in HTML where applicable)
 # ---------------------------------------------------------------------------
 
+# Probability of generating "legacy" form values (leading space) to exercise
+# backward compatibility with old SHTML submissions and URL-encoded queries.
+LEGACY_FORM_PROB = 0.2
+
 # Match fortran/Tools/tests/test_files/ephemeris-generator-unit-tests.txt:
 # observatory and lon_dir values without leading space (FORTRAN expects 'east'/'west').
 # Ephemeris and tracker forms have NO spacecraft in the observatory select (VIEWPOINT.shtml
@@ -353,7 +357,8 @@ VIEWER_OBSERVATORIES_BY_PLANET: dict[str, list[str]] = {
 
 LON_DIR = ['east', 'west']
 CENTER_EW = ['east', 'west']
-RA_TYPE = [' hours', ' degrees']
+# Submitted values for center_ra_type / extra_ra_type (no leading space; match form value=).
+RA_TYPE = ['hours', 'degrees']
 OUTPUT_VIEWER = ['HTML', 'PDF', 'JPEG', 'PS']
 OUTPUT_TRACKER = ['HTML', 'PDF', 'JPEG', 'PS', 'TAB']
 OUTPUT_EPHEM = ['HTML', 'TAB']
@@ -918,6 +923,12 @@ def _build_viewer_query(abbrev: str) -> str:
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
     params: dict[str, Any] = {}
+    use_legacy = _maybe(LEGACY_FORM_PROB)
+
+    def _val(raw: str) -> str:
+        """Return value in new format (trimmed) or legacy format (leading space)."""
+        s = raw.strip()
+        return (' ' + s) if use_legacy and s else s
 
     # Viewpoint/observatory first (needed to constrain time for JWST etc.)
     if pre:
@@ -929,17 +940,17 @@ def _build_viewer_query(abbrev: str) -> str:
             'JUICE/': 'JUICE',
             'Europa Clipper/': 'Europa Clipper',
         }
-        params['observatory'] = mission_obs.get(pre, "Earth's center")
+        params['observatory'] = _val(mission_obs.get(pre, "Earth's center"))
     else:
         if _maybe(0.8):
             params['viewpoint'] = 'observatory'
             obs_list = VIEWER_OBSERVATORIES_BY_PLANET.get(planet, OBSERVATORIES_EARTH)
-            params['observatory'] = _pick(obs_list)
+            params['observatory'] = _val(_pick(obs_list))
         else:
             params['viewpoint'] = 'latlon'
             params['latitude'] = _random_numeric(-90, 90, 4)
             params['longitude'] = _random_numeric(0, 360, 4)
-            params['lon_dir'] = _pick(LON_DIR)
+            params['lon_dir'] = _val(_pick(LON_DIR))
             params['altitude'] = _random_numeric(0, 4500, 0)
 
     # Mandatory and always-included
@@ -948,8 +959,7 @@ def _build_viewer_query(abbrev: str) -> str:
     params['ephem'] = EPHEM_BY_ABBREV[abbrev]
     params['fov'] = _random_numeric(0.001, 50.0)
     fov_opts = FOV_UNIT_COMMON + FOV_UNIT_PLANET.get(planet, [' Jupiter radii'])
-    # FORTRAN expects no leading space (string .eq. 'degrees' etc.).
-    params['fov_unit'] = _pick(fov_opts).strip()
+    params['fov_unit'] = _val(_pick(fov_opts))
     params['output'] = 'HTML'
 
     # Center: always set to avoid FORTRAN defaulting to star with empty center_star (Mars/Pluto).
@@ -962,15 +972,14 @@ def _build_viewer_query(abbrev: str) -> str:
         params['center'] = _pick(center_opts)
         if params['center'] == 'body':
             bodies = VIEWER_CENTER_BODY.get(planet, VIEWER_CENTER_BODY['Jupiter'])
-            params['center_body'] = _pick(bodies).strip()
+            params['center_body'] = _val(_pick(bodies))
         elif params['center'] == 'ansa':
             ansas = VIEWER_CENTER_ANSA.get(planet, VIEWER_CENTER_ANSA['Jupiter'])
-            # FORTRAN checks string(1:1) for C/B/A/F/G/E; strip leading space.
-            params['center_ansa'] = _pick(ansas).strip()
-            params['center_ew'] = _pick(CENTER_EW)
+            params['center_ansa'] = _val(_pick(ansas))
+            params['center_ew'] = _val(_pick(CENTER_EW))
         elif params['center'] == 'J2000':
             params['center_ra'] = _random_numeric(0, 24, 4)
-            params['center_ra_type'] = _pick(RA_TYPE)
+            params['center_ra_type'] = _val(_pick(RA_TYPE))
             params['center_dec'] = _random_numeric(-90, 90, 4)
         elif params['center'] == 'star':
             params['center_star'] = _pick(stars)
@@ -992,8 +1001,7 @@ def _build_viewer_query(abbrev: str) -> str:
     # Optional diagram options
     if _maybe(0.4):
         params['title'] = 'Test plot'
-    # SHTML always submits a label-size selection (default: Small).
-    params['labels'] = _pick(LABELS) if _maybe(0.7) else 'Small (6 points)'
+    params['labels'] = _val(_pick(LABELS) if _maybe(0.7) else 'Small (6 points)')
     if _maybe(0.3):
         params['moonpts'] = str(random.randint(0, 5))
     if not pre and _maybe(0.2):
@@ -1031,7 +1039,7 @@ def _build_viewer_query(abbrev: str) -> str:
     if _maybe(0.2):
         params['additional'] = 'Yes'
         params['extra_ra'] = _random_numeric(0, 24, 4)
-        params['extra_ra_type'] = _pick(RA_TYPE)
+        params['extra_ra_type'] = _val(_pick(RA_TYPE))
         params['extra_dec'] = _random_numeric(-90, 90, 4)
         params['extra_name'] = 'Star1'
     other_pool: list[str] | None = None

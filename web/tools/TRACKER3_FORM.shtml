@@ -43,10 +43,10 @@
                 <li>
                     Interval:   <input name="interval" size=6  maxlength=50 autocomplete="on" aria-label="interval"/>
                     <select name="time_unit" autocomplete="on" aria-label="select time unit">
-                      <option>          seconds
-                      <option>          minutes
-                      <option selected> hours
-                      <option>          days
+                      <option value="seconds"> seconds
+                      <option value="minutes"> minutes
+                      <option value="hours" selected> hours
+                      <option value="days"> days
                     </select>
                 </li>
             </ul>
@@ -87,9 +87,9 @@
                     <input name="xrange" size=10 maxlength=20 autocomplete="on" aria-label="scale"/>
                     <select name="xunit" autocomplete="on" aria-label="plot options select unit">
                     <!--#if expr="v('PREFIX') == ''"-->
-                      <option> arcsec
+                      <option value="arcsec"> arcsec
                     <!--#else-->
-                      <option> degrees
+                      <option value="degrees"> degrees
                     <!--#endif-->
                       <option selected> <!--#echo var="PLANET"--> radii
                     </select>

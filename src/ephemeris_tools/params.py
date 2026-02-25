@@ -864,6 +864,18 @@ def _safe_float(value: str, default: float) -> float:
         return default
 
 
+def _is_ra_hours_from_raw(raw: str | None) -> bool:
+    """Return True if RA value should be interpreted as hours (else degrees).
+
+    Matches FORTRAN: only first character 'd' or 'D' means degrees. Any other
+    first character (including '+' or space, e.g. from URL-encoded + or form
+    option text with leading space) means hours.
+    """
+    if not raw:
+        return True
+    return raw[:1] not in ('d', 'D')
+
+
 def _get_env(key: str, default: str = '') -> str:
     """Get environment variable, stripped."""
     return os.environ.get(key, default).strip()

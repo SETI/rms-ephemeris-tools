@@ -15,6 +15,8 @@ Usage:
 
 With a FORTRAN binary (auto-detected or --fortran-cmd): runs both, compares outputs.
 Without: runs only Python and writes outputs (no comparison).
+
+With --test-file or --url, use -j N to run N URL comparisons in parallel (default 1).
 """
 
 from __future__ import annotations
@@ -24,11 +26,13 @@ import os
 import shutil
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ephemeris_tools.params import (
+    _is_ra_hours_from_raw,
     _parse_sexagesimal_to_degrees,
     parse_column_spec,
     parse_mooncol_spec,
@@ -209,7 +213,7 @@ def spec_from_query_input(url_or_query: str) -> RunSpec:
         params['center_ew'] = qs.get('center_ew', ['east'])[0]
         center_ra_raw = qs.get('center_ra', [''])[0]
         params['center_ra_type'] = qs.get('center_ra_type', [''])[0]
-        is_ra_hours = not params['center_ra_type'].strip().lower().startswith('d')
+        is_ra_hours = _is_ra_hours_from_raw(params['center_ra_type'])
         params['center_ra'] = _parse_center_angle(center_ra_raw, is_ra_hours=is_ra_hours)
         center_dec_raw = qs.get('center_dec', [''])[0]
         params['center_dec'] = _parse_center_angle(center_dec_raw, is_ra_hours=False)
@@ -473,6 +477,42 @@ def _execute_spec(
     return (all_ok, details, max_table_abs_diff)
 
 
+def _run_one_url(
+    idx: int,
+    url: str,
+    repo_root: Path,
+    out_dir: Path,
+    fortran_cmd_str: str | None,
+    float_tol: int | None,
+    lsd_tol: float | None,
+    viewer_min_similarity_pct: float | None,
+) -> tuple[int, str, bool, list[str], float | None, Path, bool]:
+    """Execute one URL comparison; return (idx, url, passed, details, max_diff, case_dir, skipped).
+
+    Used for parallel batch runs. Caller must write comparison.txt and aggregate results.
+    """
+    spec = spec_from_query_input(url)
+    planet = int(spec.params.get('planet', 6))
+    case_dir = out_dir / f'{spec.tool}_{planet}_{idx:03d}'
+    if fortran_cmd_str:
+        case_fort_cmd = fortran_cmd_str.split()
+    else:
+        derived = _default_fortran_binary(spec.tool, planet, repo_root)
+        case_fort_cmd = [str(derived)] if derived is not None else None
+    case_dir.mkdir(parents=True, exist_ok=True)
+    ok, details, case_max_diff = _execute_spec(
+        spec=spec,
+        out_dir=case_dir,
+        fort_cmd=case_fort_cmd,
+        float_tol=float_tol,
+        lsd_tol=lsd_tol,
+        viewer_min_similarity_pct=viewer_min_similarity_pct,
+    )
+    (case_dir / 'comparison.txt').write_text('\n'.join(details) + '\n')
+    skipped = 'fortran_skipped' in details
+    return (idx, url, ok, details, case_max_diff, case_dir, skipped)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description='Run Python (and optionally FORTRAN) with same inputs; compare outputs.',
@@ -594,6 +634,15 @@ def main() -> int:
         'stdout, table, PS, PNG) into this directory with case-prefixed names. '
         'Only used with --test-file or --url.',
     )
+    parser.add_argument(
+        '-j',
+        '--jobs',
+        type=int,
+        default=1,
+        metavar='N',
+        help='Number of parallel jobs when comparing multiple URLs (--test-file or '
+        'multiple --url). Default 1 (sequential). Ignored for single-URL or CLI runs.',
+    )
     args = parser.parse_args()
 
     if args.query_input or args.test_file:
@@ -613,51 +662,97 @@ def main() -> int:
         started_at = time.monotonic()
         is_tty = sys.stderr.isatty()
         run_max_table_abs_diff: float | None = None
-        for idx, url in enumerate(urls, start=1):
-            spec = spec_from_query_input(url)
-            planet = int(spec.params.get('planet', 6))
-            case_dir = out_dir / f'{spec.tool}_{planet}_{idx:03d}'
-            if args.fortran_cmd:
-                case_fort_cmd = args.fortran_cmd.split()
-            else:
-                derived = _default_fortran_binary(spec.tool, planet, repo_root)
-                case_fort_cmd = [str(derived)] if derived is not None else None
-            case_dir.mkdir(parents=True, exist_ok=True)
-            ok, details, case_max_diff = _execute_spec(
-                spec=spec,
-                out_dir=case_dir,
-                fort_cmd=case_fort_cmd,
-                float_tol=(args.float_tol if args.float_tol > 0 else None),
-                lsd_tol=(args.lsd_tol if args.lsd_tol > 0 else None),
-                viewer_min_similarity_pct=args.viewer_image_min_similarity,
-            )
-            (case_dir / 'comparison.txt').write_text('\n'.join(details) + '\n')
-            all_details_lines.append(f'## case {idx}')
-            all_details_lines.append(url)
-            all_details_lines.extend(details)
-            all_details_lines.append('')
-            if 'fortran_skipped' in details:
-                skipped_count += 1
-            if ok:
-                passed_count += 1
-            else:
-                failed.append(f'line {idx}: {url}')
-                failed_dirs.append(case_dir)
-            if case_max_diff is not None:
-                run_max_table_abs_diff = (
-                    case_max_diff
-                    if run_max_table_abs_diff is None
-                    else max(run_max_table_abs_diff, case_max_diff)
+        float_tol = args.float_tol if args.float_tol > 0 else None
+        lsd_tol = args.lsd_tol if args.lsd_tol > 0 else None
+        jobs = max(1, int(args.jobs))
+        if jobs > 1:
+            result_by_idx: dict[int, tuple[str, bool, list[str], Path, float | None, bool]] = {}
+            with ThreadPoolExecutor(max_workers=jobs) as executor:
+                future_to_idx = {
+                    executor.submit(
+                        _run_one_url,
+                        idx,
+                        url,
+                        repo_root,
+                        out_dir,
+                        args.fortran_cmd,
+                        float_tol,
+                        lsd_tol,
+                        args.viewer_image_min_similarity,
+                    ): idx
+                    for idx, url in enumerate(urls, start=1)
+                }
+                for fut in as_completed(future_to_idx):
+                    idx = future_to_idx[fut]
+                    _idx, url, ok, details, case_max_diff, case_dir, skipped = fut.result()
+                    result_by_idx[idx] = (url, ok, details, case_dir, case_max_diff, skipped)
+                    n_done = len(result_by_idx)
+                    _emit_progress(
+                        current=n_done,
+                        total=len(urls),
+                        passed=sum(1 for r in result_by_idx.values() if r[1]),
+                        failed=sum(1 for r in result_by_idx.values() if not r[1]),
+                        skipped=sum(1 for r in result_by_idx.values() if r[5]),
+                        started_at=started_at,
+                        is_tty=is_tty,
+                    )
+            for idx in range(1, len(urls) + 1):
+                url, ok, details, case_dir, case_max_diff, skipped = result_by_idx[idx]
+                all_details_lines.append(f'## case {idx}')
+                all_details_lines.append(url)
+                all_details_lines.extend(details)
+                all_details_lines.append('')
+                if skipped:
+                    skipped_count += 1
+                if ok:
+                    passed_count += 1
+                else:
+                    failed.append(f'line {idx}: {url}')
+                    failed_dirs.append(case_dir)
+                if case_max_diff is not None:
+                    run_max_table_abs_diff = (
+                        case_max_diff
+                        if run_max_table_abs_diff is None
+                        else max(run_max_table_abs_diff, case_max_diff)
+                    )
+        else:
+            for idx, url in enumerate(urls, start=1):
+                _idx, _url, ok, details, case_max_diff, case_dir, skipped = _run_one_url(
+                    idx,
+                    url,
+                    repo_root,
+                    out_dir,
+                    args.fortran_cmd,
+                    float_tol,
+                    lsd_tol,
+                    args.viewer_image_min_similarity,
                 )
-            _emit_progress(
-                current=idx,
-                total=len(urls),
-                passed=passed_count,
-                failed=len(failed),
-                skipped=skipped_count,
-                started_at=started_at,
-                is_tty=is_tty,
-            )
+                all_details_lines.append(f'## case {idx}')
+                all_details_lines.append(url)
+                all_details_lines.extend(details)
+                all_details_lines.append('')
+                if skipped:
+                    skipped_count += 1
+                if ok:
+                    passed_count += 1
+                else:
+                    failed.append(f'line {idx}: {url}')
+                    failed_dirs.append(case_dir)
+                if case_max_diff is not None:
+                    run_max_table_abs_diff = (
+                        case_max_diff
+                        if run_max_table_abs_diff is None
+                        else max(run_max_table_abs_diff, case_max_diff)
+                    )
+                _emit_progress(
+                    current=idx,
+                    total=len(urls),
+                    passed=passed_count,
+                    failed=len(failed),
+                    skipped=skipped_count,
+                    started_at=started_at,
+                    is_tty=is_tty,
+                )
         total = len(urls)
         failed_count = len(failed)
         summary_lines.append(f'total={total}')

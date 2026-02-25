@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from ephemeris_tools.constants import DEFAULT_INTERVAL
 from ephemeris_tools.params import (
@@ -15,6 +16,7 @@ from ephemeris_tools.params import (
     ViewerParams,
     _get_env,
     _get_keys_env,
+    _is_ra_hours_from_raw,
     _normalize_time_unit,
     _parse_observatory_coords,
     _parse_sexagesimal_to_degrees,
@@ -89,7 +91,7 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
     except ValueError:
         logger.error('Invalid altitude %r: must be numeric', alt_s)
         alt = None
-    if lon is not None and lon_dir.lower() == 'west':
+    if lon is not None and lon_dir.strip().lower() == 'west':
         lon = -lon
 
     sc_traj_s = _get_env('sc_trajectory', '0')
@@ -167,11 +169,8 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     center_mode = _get_env('center', 'body')
     if center_mode == 'J2000':
-        # Match FORTRAN CGI behavior exactly: only a leading 'd'/'D' means degrees.
-        # A leading blank (e.g., " degrees" from form values) is treated as hours.
-        ra_type_raw = _get_env('center_ra_type', 'hours')
-        first_char = ra_type_raw[:1]
-        is_ra_hours = first_char not in {'d', 'D'}
+        ra_type_raw = os.environ.get('center_ra_type', 'hours') or 'hours'
+        is_ra_hours = _is_ra_hours_from_raw(ra_type_raw)
         try:
             ra_deg = _parse_sexagesimal_to_degrees(
                 _get_env('center_ra', '0'),
@@ -214,7 +213,7 @@ def viewer_params_from_env() -> ViewerParams | None:
             lon = float(lon_s) if lon_s else None
         except ValueError:
             lon = None
-        if lon is not None and lon_dir.lower() == 'west':
+        if lon is not None and lon_dir.strip().lower() == 'west':
             lon = -lon
         try:
             alt = float(alt_s) if alt_s else None
@@ -287,9 +286,8 @@ def viewer_params_from_env() -> ViewerParams | None:
     if additional_flag in {'yes', 'y', 'true', '1'}:
         extra_ra_s = _get_env('extra_ra', '')
         extra_dec_s = _get_env('extra_dec', '')
-        extra_ra_type_raw = _get_env('extra_ra_type', 'hours')
-        first_char = extra_ra_type_raw[:1]
-        is_extra_ra_hours = first_char not in {'d', 'D'}
+        extra_ra_type_raw = os.environ.get('extra_ra_type', 'hours') or 'hours'
+        is_extra_ra_hours = _is_ra_hours_from_raw(extra_ra_type_raw)
         if extra_ra_s.strip() and extra_dec_s.strip():
             try:
                 extra_star = ExtraStar(
@@ -419,7 +417,7 @@ def tracker_params_from_env() -> TrackerParams | None:
         except ValueError:
             alt_m = None
         lon_dir = _get_env('lon_dir', 'east')
-        if lon_deg is not None and lon_dir.lower() == 'west':
+        if lon_deg is not None and lon_dir.strip().lower() == 'west':
             lon_deg = -lon_deg
         observer = Observer(
             latitude_deg=lat_deg,

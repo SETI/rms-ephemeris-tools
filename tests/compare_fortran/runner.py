@@ -56,6 +56,9 @@ def run_python(
     env = os.environ.copy()
     env.setdefault('SPICE_PATH', get_spice_path())
     if spec.params.get('query_string'):
+        # URL/test-file: use the same env vars for both Python and FORTRAN.
+        # Python is run with --cgi and reads from env; FORTRAN gets QUERY_STRING.
+        # We expand the query string into env key=value so both see identical params.
         query_string = str(spec.params['query_string'])
         env.update(_env_from_query_string(query_string))
         # FORTRAN requires xrange/xunit for tracker; inject defaults so both get same params.
@@ -98,6 +101,7 @@ def run_python(
             env['VIEWER_TEXTFILE'] = str(out_txt)
         cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main', spec.tool, '--cgi']
     else:
+        # No query_string: spec came from direct args (e.g. --planet 6 --time ...); use CLI.
         cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main']
         cmd.extend(spec.cli_args_for_python())
         if out_table and spec.tool == 'ephemeris':

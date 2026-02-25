@@ -837,7 +837,7 @@ def _fov_deg_from_unit(
     """
     if fov_unit is None or len(fov_unit) == 0:
         return fov
-    s = fov_unit.lower()
+    s = fov_unit.strip().lower()
     if 'radii' in s and et is not None and cfg is not None:
         from ephemeris_tools.spice.geometry import planet_ranges
 
@@ -900,6 +900,8 @@ def _resolve_center_body_id(cfg: PlanetConfig, center_body_name: str | None) -> 
     wanted = _normalize_body_name(center_body_name)
     if wanted == _normalize_body_name(cfg.planet_name):
         return cfg.planet_id
+    if wanted == 'barycenter' and cfg.barycenter_id is not None:
+        return cfg.barycenter_id
     for moon in cfg.moons:
         if moon.id == cfg.planet_id:
             continue

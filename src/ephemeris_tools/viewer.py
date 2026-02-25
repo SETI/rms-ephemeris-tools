@@ -243,7 +243,10 @@ def _run_viewer_impl(
         center_body_id = _resolve_center_body_id(cfg, center_body_name)
         center_ra_rad, center_dec_rad = body_radec(et, center_body_id)
         caption_center_body_id = center_body_id
-        if center_body_id != cfg.planet_id:
+        if center_body_id == cfg.barycenter_id and cfg.barycenter_id is not None:
+            caption_center_body_id = cfg.planet_id
+            caption_center_body_name = cfg.planet_name
+        elif center_body_id != cfg.planet_id:
             for moon in cfg.moons:
                 if moon.id == center_body_id:
                     caption_center_body_name = moon.name

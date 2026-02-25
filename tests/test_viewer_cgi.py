@@ -91,6 +91,48 @@ def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch: pytest.MonkeyPatc
     assert abs(params.center.dec_deg - (-21.980283333333334)) < 1e-9
 
 
+def test_viewer_params_from_env_j2000_center_ra_type_degrees_leading_space_is_hours(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """J2000 center_ra_type ' degrees' (leading space) is hours to match FORTRAN/URL.
+
+    URL decoding turns + into space, so '+degrees' becomes ' degrees'. FORTRAN
+    uses first character only; space is not 'd', so hours.
+    """
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2007-02-19 15:01:20')
+    monkeypatch.setenv('center', 'J2000')
+    monkeypatch.setenv('center_ra', '3.2636')
+    monkeypatch.setenv('center_ra_type', ' degrees')
+    monkeypatch.setenv('center_dec', '67.5189')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.center.mode == 'J2000'
+    assert params.center.ra_deg is not None
+    # 3.2636 hours -> 48.954 degrees (match FORTRAN)
+    assert abs(params.center.ra_deg - (3.2636 * 15)) < 1e-9
+    assert abs(params.center.dec_deg - 67.5189) < 1e-9
+
+
+def test_viewer_params_from_env_j2000_center_ra_type_plus_degrees_is_hours(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """J2000 center_ra_type '+degrees' (leading plus) is hours to match FORTRAN."""
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2007-02-19 15:01:20')
+    monkeypatch.setenv('center', 'J2000')
+    monkeypatch.setenv('center_ra', '3.2636')
+    monkeypatch.setenv('center_ra_type', '+degrees')
+    monkeypatch.setenv('center_dec', '67.5189')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.center.mode == 'J2000'
+    assert params.center.ra_deg is not None
+    assert params.center.dec_deg is not None
+    assert abs(params.center.ra_deg - (3.2636 * 15.0)) < 1e-9
+    assert abs(params.center.dec_deg - 67.5189) < 1e-9
+
+
 def test_viewer_params_from_env_standard_stars_from_standard(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -182,3 +224,32 @@ def test_viewer_params_from_env_latlon_west_longitude(monkeypatch: pytest.Monkey
     assert params.observer.longitude_deg == -116.865
     assert params.observer.lon_dir == 'west'
     assert params.observer.altitude_m == 1712.0
+
+
+def test_viewer_params_from_env_lon_dir_legacy_leading_space(monkeypatch: pytest.MonkeyPatch) -> None:
+    """lon_dir with leading space (legacy form submission) is treated as west."""
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2000-01-01 00:00')
+    monkeypatch.setenv('viewpoint', 'latlon')
+    monkeypatch.setenv('latitude', '0')
+    monkeypatch.setenv('longitude', '100')
+    monkeypatch.setenv('lon_dir', ' west')
+    monkeypatch.setenv('altitude', '0')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.observer.longitude_deg == -100.0
+
+
+def test_viewer_params_from_env_fov_unit_legacy_leading_space(monkeypatch: pytest.MonkeyPatch) -> None:
+    """fov_unit with leading space (legacy form) is accepted; _get_env strips so we store 'degrees'."""
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2000-01-01 00:00')
+    monkeypatch.setenv('fov', '1')
+    monkeypatch.setenv('fov_unit', ' degrees')
+    monkeypatch.setenv('center', 'body')
+    monkeypatch.setenv('center_body', 'Jupiter')
+    monkeypatch.setenv('viewpoint', 'observatory')
+    monkeypatch.setenv('observatory', "Earth's center")
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.fov_unit == 'degrees'
