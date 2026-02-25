@@ -160,10 +160,7 @@ def _rspk_write_label(
             secs1 += _MAXSECS
     fsign = 1.0 if secs1 >= 0 else -1.0
     fsecs = abs(secs1)
-    if offset == 'B':
-        ims = _fortran_nint(fsecs * 1000.0 + 1.0e-9)
-    else:
-        ims = _fortran_nint(fsecs * 1000.0)
+    ims = _fortran_nint(fsecs * 1000.0)
     isec = ims // 1000
     ims = ims - 1000 * isec
     imin = isec // 60

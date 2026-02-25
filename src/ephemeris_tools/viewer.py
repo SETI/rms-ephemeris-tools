@@ -5,10 +5,12 @@ from __future__ import annotations
 import logging
 import math
 import sys
+from pathlib import Path
 from typing import TextIO
 
 import cspyce
 
+from ephemeris_tools.config import get_starlist_path
 from ephemeris_tools.constants import (
     DEFAULT_ALIGN_LOC_POINTS,
     EARTH_ID,
@@ -40,6 +42,7 @@ from ephemeris_tools.spice.observer import (
     set_observer_location,
 )
 from ephemeris_tools.spice.rings import ansa_radec
+from ephemeris_tools.stars import read_stars
 from ephemeris_tools.time_utils import parse_datetime, tai_from_day_sec, tdb_from_tai
 from ephemeris_tools.viewer_helpers import (
     _DEG2RAD,
@@ -107,8 +110,10 @@ def _run_viewer_impl(
     center_body_name: str | None = None,
     center_ansa_name: str | None = None,
     center_ansa_ew: str = 'east',
+    center_star_name: str | None = None,
     viewpoint: str = 'Earth',
     ephem_version: int = 0,
+    ephem_display: str | None = None,
     moon_ids: list[int] | None = None,
     moon_selection_display: str | None = None,
     blank_disks: bool = False,
@@ -133,6 +138,7 @@ def _run_viewer_impl(
     torus: bool = False,
     torus_inc: float = 6.8,
     torus_rad: float = 422000.0,
+    show_standard_stars: bool = False,
     extra_star_name: str | None = None,
     extra_star_ra_deg: float | None = None,
     extra_star_dec_deg: float | None = None,
@@ -206,6 +212,9 @@ def _run_viewer_impl(
     planet_ra, planet_dec = body_radec(et, cfg.planet_id)
     caption_center_body_id = cfg.planet_id
     caption_center_body_name = cfg.planet_name
+    centered_star_name: str | None = None
+    centered_star_ra_rad: float | None = None
+    centered_star_dec_rad: float | None = None
     if center_mode == 'J2000' and (center_ra != 0.0 or center_dec != 0.0):
         center_ra_rad = center_ra * _DEG2RAD
         center_dec_rad = center_dec * _DEG2RAD
@@ -228,6 +237,38 @@ def _run_viewer_impl(
             # center_ew='west' -> right ansa, 'east' -> left ansa.
             is_right_ansa = center_ansa_ew.strip().lower() == 'west'
             center_ra_rad, center_dec_rad = ansa_radec(et, ring_radius_km, is_right_ansa)
+    elif center_mode == 'star':
+        target_star = (center_star_name or '').strip()
+        if len(target_star) == 0:
+            center_ra_rad = planet_ra
+            center_dec_rad = planet_dec
+        else:
+            starlist_candidates = [
+                Path(get_starlist_path()) / cfg.starlist_file,
+                Path(__file__).resolve().parents[2] / 'web' / 'tools' / cfg.starlist_file,
+            ]
+            center_ra_rad = planet_ra
+            center_dec_rad = planet_dec
+            found_center_star = False
+            for starlist_path in starlist_candidates:
+                if not starlist_path.exists():
+                    continue
+                try:
+                    for star in read_stars(starlist_path, max_stars=1000):
+                        if star.name == target_star:
+                            center_ra_rad = star.ra
+                            center_dec_rad = star.dec
+                            centered_star_name = star.name
+                            centered_star_ra_rad = star.ra
+                            centered_star_dec_rad = star.dec
+                            found_center_star = True
+                            break
+                except OSError:
+                    continue
+                if found_center_star:
+                    break
+            if not found_center_star:
+                raise ValueError(f'Invalid value found for variable CENTER_STAR: {target_star}')
     elif center_ra == 0.0 and center_dec == 0.0:
         center_ra_rad = planet_ra
         center_dec_rad = planet_dec
@@ -313,9 +354,12 @@ def _run_viewer_impl(
         lc.append('Time (UTC):')
         rc.append(time_str)
 
-        # Caption 2: Ephemeris — show kernel description (FORTRAN uses ephem string(5:))
+        # Caption 2: Ephemeris — prefer raw CGI/legacy display string when present.
         lc.append('Ephemeris:')
-        ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, 'DE440')
+        if ephem_display is not None and ephem_display.strip():
+            ephem_caption = _strip_leading_option_code(ephem_display.strip())
+        else:
+            ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, 'DE440')
         rc.append(ephem_caption)
 
         # Caption 3: Viewpoint
@@ -547,6 +591,16 @@ def _run_viewer_impl(
         star_ras: list[float] = []
         star_decs: list[float] = []
         star_names: list[str] = []
+        if (
+            center_mode == 'star'
+            and show_standard_stars
+            and centered_star_name is not None
+            and centered_star_ra_rad is not None
+            and centered_star_dec_rad is not None
+        ):
+            star_ras.append(centered_star_ra_rad)
+            star_decs.append(centered_star_dec_rad)
+            star_names.append(centered_star_name)
         if extra_star_ra_deg is not None and extra_star_dec_deg is not None:
             star_ras.append(extra_star_ra_deg * _DEG2RAD)
             star_decs.append(extra_star_dec_deg * _DEG2RAD)

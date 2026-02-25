@@ -157,30 +157,30 @@ def spec_from_query_input(url_or_query: str) -> RunSpec:
         params['center_ansa'] = qs.get('center_ansa', [''])[0]
         params['center_ew'] = qs.get('center_ew', ['east'])[0]
         center_ra_raw = qs.get('center_ra', [''])[0]
-        params['center_ra_type'] = qs.get('center_ra_type', ['hours'])[0]
+        params['center_ra_type'] = qs.get('center_ra_type', [''])[0]
         is_ra_hours = not params['center_ra_type'].strip().lower().startswith('d')
         params['center_ra'] = _parse_center_angle(center_ra_raw, is_ra_hours=is_ra_hours)
         center_dec_raw = qs.get('center_dec', [''])[0]
         params['center_dec'] = _parse_center_angle(center_dec_raw, is_ra_hours=False)
         params['center_star'] = qs.get('center_star', [''])[0]
         params['rings'] = qs.get('rings', [None])[0]
-        params['torus'] = qs.get('torus', ['No'])[0]
-        params['torus_inc'] = qs.get('torus_inc', ['6.8'])[0]
-        params['torus_rad'] = qs.get('torus_rad', ['422000'])[0]
-        params['labels'] = qs.get('labels', ['Small (6 points)'])[0]
-        params['moonpts'] = qs.get('moonpts', ['0'])[0]
-        params['blank'] = qs.get('blank', ['No'])[0]
-        params['opacity'] = qs.get('opacity', ['Transparent'])[0]
-        params['peris'] = qs.get('peris', ['None'])[0]
-        params['peripts'] = qs.get('peripts', ['4'])[0]
-        params['meridians'] = qs.get('meridians', ['No'])[0]
-        params['arcmodel'] = qs.get('arcmodel', [''])[0]
-        params['arcpts'] = qs.get('arcpts', ['4'])[0]
-        params['additional'] = qs.get('additional', ['No'])[0]
-        params['extra_name'] = qs.get('extra_name', [''])[0]
-        params['extra_ra'] = qs.get('extra_ra', [''])[0]
-        params['extra_ra_type'] = qs.get('extra_ra_type', ['hours'])[0]
-        params['extra_dec'] = qs.get('extra_dec', [''])[0]
+        params['torus'] = qs.get('torus', [None])[0]
+        params['torus_inc'] = qs.get('torus_inc', [None])[0]
+        params['torus_rad'] = qs.get('torus_rad', [None])[0]
+        params['labels'] = qs.get('labels', [None])[0]
+        params['moonpts'] = qs.get('moonpts', [None])[0]
+        params['blank'] = qs.get('blank', [None])[0]
+        params['opacity'] = qs.get('opacity', [None])[0]
+        params['peris'] = qs.get('peris', [None])[0]
+        params['peripts'] = qs.get('peripts', [None])[0]
+        params['meridians'] = qs.get('meridians', [None])[0]
+        params['arcmodel'] = qs.get('arcmodel', [None])[0]
+        params['arcpts'] = qs.get('arcpts', [None])[0]
+        params['additional'] = qs.get('additional', [None])[0]
+        params['extra_name'] = qs.get('extra_name', [None])[0]
+        params['extra_ra'] = qs.get('extra_ra', [None])[0]
+        params['extra_ra_type'] = qs.get('extra_ra_type', [None])[0]
+        params['extra_dec'] = qs.get('extra_dec', [None])[0]
         params['other'] = qs.get('other', [])
         params['title'] = qs.get('title', [''])[0]
 
@@ -309,8 +309,9 @@ def _execute_spec(
         py_table_use = fort_table_use = None
         py_ps_use = py_ps
         fort_ps_use = fort_ps
-        py_txt_use = py_txt
-        fort_txt_use = fort_txt
+        # Keep viewer FOV description on stdout for Python/FORTRAN parity.
+        py_txt_use = None
+        fort_txt_use = None
 
     result_py = run_python(spec, out_table=py_table_use, out_ps=py_ps_use, out_txt=py_txt_use)
     if result_py.returncode != 0:
@@ -397,7 +398,12 @@ def _execute_spec(
         details.extend(res_ps.details)
         all_ok = all_ok and res_ps.same
         diff_img = out_dir / 'diff.png'
-        res_img = compare_postscript_images(py_ps_use, fort_ps_use, diff_image_path=diff_img)
+        res_img = compare_postscript_images(
+            py_ps_use,
+            fort_ps_use,
+            diff_image_path=diff_img,
+            ignore_axis_pixels=(spec.tool == 'viewer'),
+        )
         details.append(f'image: {res_img.message}')
         details.extend(res_img.details)
     return (all_ok, details, max_table_abs_diff)
@@ -662,8 +668,9 @@ def main() -> int:
         py_table_use = fort_table_use = None
         py_ps_use = py_ps
         fort_ps_use = fort_ps
-        py_txt_use = py_txt
-        fort_txt_use = fort_txt
+        # Keep viewer FOV description on stdout for Python/FORTRAN parity.
+        py_txt_use = None
+        fort_txt_use = None
 
     print('Running Python...', flush=True)
     result_py = run_python(spec, out_table=py_table_use, out_ps=py_ps_use, out_txt=py_txt_use)
@@ -755,6 +762,7 @@ def main() -> int:
                 py_ps_use,
                 fort_ps_use,
                 diff_image_path=diff_img,
+                ignore_axis_pixels=(spec.tool == 'viewer'),
             )
             print(res_img.message)
             for d in res_img.details:

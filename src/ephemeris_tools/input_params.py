@@ -351,6 +351,10 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     center_obj = getattr(args, 'center', None)
     center_ra = getattr(args, 'center_ra', 0.0)
     center_dec = getattr(args, 'center_dec', 0.0)
+    if not hasattr(args, 'center_ra'):
+        center_ra = getattr(center_obj, 'ra_deg', center_ra)
+    if not hasattr(args, 'center_dec'):
+        center_dec = getattr(center_obj, 'dec_deg', center_dec)
     mode = getattr(center_obj, 'mode', None)
     val = getattr(center_obj, 'center', center_obj) if center_obj is not None else None
     if isinstance(mode, str):
@@ -365,6 +369,14 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     ).strip()
     if len(center_body) == 0:
         center_body = _PLANET_NAMES.get(getattr(args, 'planet', 6), 'Saturn')
+    try:
+        center_ra_num = float(center_ra)
+    except (TypeError, ValueError):
+        center_ra_num = 0.0
+    try:
+        center_dec_num = float(center_dec)
+    except (TypeError, ValueError):
+        center_dec_num = 0.0
     if center == 'ansa':
         center_ansa = (
             getattr(center_obj, 'ansa_name', None) or getattr(args, 'center_ansa', None) or 'A Ring'
@@ -373,12 +385,30 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
             getattr(center_obj, 'ansa_ew', None) or getattr(args, 'center_ew', None) or 'east'
         ).strip()
         _w(stream, f'    Diagram center: {center_ansa} {center_ew} ansa')
-    elif center == 'j2000' or (center_ra != 0.0 or center_dec != 0.0):
-        ra_type = (getattr(args, 'center_ra_type', None) or 'hours').strip()
-        _w(stream, f'    Diagram center: RA  = {center_ra} {ra_type}')
-        _w(stream, f'                    Dec = {center_dec}')
+    elif center == 'j2000' or (center_ra_num != 0.0 or center_dec_num != 0.0):
+        center_ra_display = getattr(display, 'center_ra_display', None)
+        center_dec_display = getattr(display, 'center_dec_display', None)
+        if center_ra_display is not None:
+            center_ra_print = center_ra_display.strip()
+        else:
+            center_ra_print = str(center_ra)
+        if center_dec_display is not None:
+            center_dec_print = center_dec_display.strip()
+        else:
+            center_dec_print = str(center_dec)
+        ra_type_display = getattr(display, 'center_ra_type_display', None)
+        if ra_type_display is not None:
+            ra_type = ra_type_display.strip()
+        elif hasattr(args, 'center_ra_type'):
+            ra_type = (getattr(args, 'center_ra_type', None) or 'hours').strip()
+        else:
+            ra_type = 'degrees'
+        _w(stream, f'    Diagram center: RA  = {center_ra_print} {ra_type}')
+        _w(stream, f'                    Dec = {center_dec_print}')
     elif center == 'star':
-        center_star = (getattr(args, 'center_star', None) or ' ').strip()
+        center_star = (
+            getattr(center_obj, 'star_name', None) or getattr(args, 'center_star', None) or ' '
+        ).strip()
         _w(stream, f'    Diagram center: Star = {center_star}')
     else:
         _w(stream, f'    Diagram center: {center_body}')
@@ -391,7 +421,11 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
             _w(stream, f'         Viewpoint: {observer_obj.name}')
         elif observer_obj.latitude_deg is not None or observer_obj.longitude_deg is not None:
             _w(stream, f'         Viewpoint: Lat = {observer_obj.latitude_deg} (deg)')
-            _w(stream, f'                    Lon = {observer_obj.longitude_deg} (deg east)')
+            lon_display = observer_obj.longitude_deg
+            lon_dir = (getattr(observer_obj, 'lon_dir', None) or 'east').strip().lower()
+            if lon_display is not None and lon_dir == 'west':
+                lon_display = abs(lon_display)
+            _w(stream, f'                    Lon = {lon_display} (deg {lon_dir})')
             _w(stream, f'                    Alt = {observer_obj.altitude_m} (m)')
         else:
             _w(stream, "         Viewpoint: Earth's center")
@@ -435,12 +469,15 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     _w(stream, f'    Ring selection: {ring_str}')
 
     # Io torus (Jupiter only; FORTRAN: 10 spaces before "Io torus:")
-    if getattr(args, 'planet_num', None) == 5 and getattr(args, 'torus', False):
-        torus_inc = getattr(args, 'torus_inc', 6.8)
-        torus_rad = getattr(args, 'torus_rad', 422000)
-        inc_str = f'{torus_inc:g}'
-        rad_str = str(int(torus_rad)) if float(torus_rad).is_integer() else f'{torus_rad:g}'
-        _w(stream, f'          Io torus: Inclination = {inc_str} deg; Radius = {rad_str} km')
+    if getattr(args, 'planet_num', None) == 5:
+        if getattr(args, 'torus', False):
+            torus_inc = getattr(args, 'torus_inc', 6.8)
+            torus_rad = getattr(args, 'torus_rad', 422000)
+            inc_str = f'{torus_inc:g}'
+            rad_str = str(int(torus_rad)) if float(torus_rad).is_integer() else f'{torus_rad:g}'
+            _w(stream, f'          Io torus: Inclination = {inc_str} deg; Radius = {rad_str} km')
+        else:
+            _w(stream, '          Io torus: No')
 
     # Arc model (Neptune only; FORTRAN Saturn does not have this line)
     arcmodel = (getattr(args, 'arcmodel', None) or '').strip()
@@ -458,16 +495,36 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     _w(stream, f'    Standard stars: {str(standard).strip()}')
 
     # Additional star (FORTRAN: 3 spaces)
-    additional = getattr(args, 'additional', None)
-    if additional is None or (isinstance(additional, str) and len(additional) == 0):
+    additional = getattr(display, 'additional_display', None)
+    if additional is None:
+        additional = getattr(args, 'additional', None)
+    has_extra_star = getattr(args, 'extra_star', None) is not None
+    if (
+        additional is None
+        or (isinstance(additional, str) and len(additional.strip()) == 0)
+        or (isinstance(additional, str) and additional.strip().lower() in {'no', 'n', 'false', '0'})
+    ) and not has_extra_star:
         _w(stream, '   Additional star: No')
     else:
-        extra_name = (getattr(args, 'extra_name', None) or ' ').strip()
+        extra_name = (
+            getattr(display, 'extra_name_display', None)
+            or getattr(args, 'extra_name', None)
+            or getattr(getattr(args, 'extra_star', None), 'name', None)
+            or ' '
+        ).strip()
         _w(stream, f'   Additional star: {extra_name}')
-        extra_ra = (getattr(args, 'extra_ra', None) or ' ').strip()
-        extra_ra_type = (getattr(args, 'extra_ra_type', None) or 'hours').strip()
+        extra_ra = (
+            getattr(display, 'extra_ra_display', None) or getattr(args, 'extra_ra', None) or ' '
+        ).strip()
+        extra_ra_type = (
+            getattr(display, 'extra_ra_type_display', None)
+            or getattr(args, 'extra_ra_type', None)
+            or 'hours'
+        ).strip()
         _w(stream, f'                    RA  = {extra_ra} {extra_ra_type}')
-        extra_dec = (getattr(args, 'extra_dec', None) or ' ').strip()
+        extra_dec = (
+            getattr(display, 'extra_dec_display', None) or getattr(args, 'extra_dec', None) or ' '
+        ).strip()
         _w(stream, f'                    Dec = {extra_dec}')
 
     # Other bodies (FORTRAN: 6 spaces)
@@ -489,16 +546,24 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     _w(stream, f'       Moon labels: {labels}')
 
     # Moon enlargement (FORTRAN: 2 spaces; integer when whole number)
-    moonpts_val = getattr(args, 'moonpts', None) or 0
-    try:
-        fval = float(moonpts_val)
-        moonpts = str(int(fval)) if fval == int(fval) else str(moonpts_val)
-    except (TypeError, ValueError):
-        moonpts = str(moonpts_val).strip()
+    moonpts_display = getattr(display, 'moonpts_display', None)
+    if moonpts_display is not None:
+        moonpts = moonpts_display.strip()
+    else:
+        moonpts_val = getattr(args, 'moonpts', None) or 0
+        try:
+            fval = float(moonpts_val)
+            moonpts = str(int(fval)) if fval == int(fval) else str(moonpts_val)
+        except (TypeError, ValueError):
+            moonpts = str(moonpts_val).strip()
     _w(stream, f'  Moon enlargement: {moonpts} (points)')
 
     # Blank disks (FORTRAN: 7 spaces)
-    blank = (getattr(args, 'blank', None) or 'No').strip()
+    blank_display = getattr(display, 'blank_display', None)
+    if blank_display is not None:
+        blank = blank_display.strip()
+    else:
+        blank = (getattr(args, 'blank', None) or 'No').strip()
     _w(stream, f'       Blank disks: {blank}')
 
     # Ring plot type (Saturn only); pericenter markers and marker size (Saturn and Uranus).
@@ -520,13 +585,28 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
         except (TypeError, ValueError):
             peripts_str = '4'
         _w(stream, f'       Marker size: {peripts_str} (points)')
+    if planet_num == 8:
+        arcpts_val = getattr(args, 'arcpts', None)
+        try:
+            if arcpts_val is None:
+                arcpts_str = ''
+            else:
+                a = float(arcpts_val)
+                arcpts_str = str(int(a)) if a == int(a) else str(a)
+        except (TypeError, ValueError):
+            arcpts_str = str(arcpts_val).strip() if arcpts_val is not None else ''
+        _w(stream, f'      Arc weight: {arcpts_str} (points)')
 
     # Prime meridians (FORTRAN: 3 spaces)
-    meridians_raw = getattr(args, 'meridians', None)
-    if isinstance(meridians_raw, bool):
-        meridians = 'Yes' if meridians_raw else 'No'
+    meridians_display = getattr(display, 'meridians_display', None)
+    if meridians_display is not None:
+        meridians = meridians_display.strip()
     else:
-        meridians = (meridians_raw or 'Yes').strip()
+        meridians_raw = getattr(args, 'meridians', None)
+        if isinstance(meridians_raw, bool):
+            meridians = 'Yes' if meridians_raw else 'No'
+        else:
+            meridians = (meridians_raw or 'Yes').strip()
     _w(stream, f'   Prime meridians: {meridians}')
 
     _w(stream, ' ')

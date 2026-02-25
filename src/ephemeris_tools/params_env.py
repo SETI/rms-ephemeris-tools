@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from ephemeris_tools.constants import DEFAULT_INTERVAL
 from ephemeris_tools.params import (
@@ -167,8 +168,11 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     center_mode = _get_env('center', 'body')
     if center_mode == 'J2000':
-        ra_type = _get_env('center_ra_type', 'hours').strip().lower()
-        is_ra_hours = not ra_type.startswith('d')
+        # Match FORTRAN CGI behavior exactly: only a leading 'd'/'D' means degrees.
+        # A leading blank (e.g., " degrees" from form values) is treated as hours.
+        ra_type_raw = os.environ.get('center_ra_type', 'hours')
+        first_char = ra_type_raw[:1]
+        is_ra_hours = first_char not in {'d', 'D'}
         try:
             ra_deg = _parse_sexagesimal_to_degrees(
                 _get_env('center_ra', '0'),
@@ -284,8 +288,9 @@ def viewer_params_from_env() -> ViewerParams | None:
     if additional_flag in {'yes', 'y', 'true', '1'}:
         extra_ra_s = _get_env('extra_ra', '')
         extra_dec_s = _get_env('extra_dec', '')
-        extra_ra_type = _get_env('extra_ra_type', 'hours').strip().lower()
-        is_extra_ra_hours = not extra_ra_type.startswith('d')
+        extra_ra_type_raw = os.environ.get('extra_ra_type', 'hours')
+        first_char = extra_ra_type_raw[:1]
+        is_extra_ra_hours = first_char not in {'d', 'D'}
         if extra_ra_s.strip() and extra_dec_s.strip():
             try:
                 extra_star = ExtraStar(
@@ -314,6 +319,17 @@ def viewer_params_from_env() -> ViewerParams | None:
         moons_display=_get_env('moons') or None,
         rings_display=_get_env('rings') or None,
         viewpoint_display=viewpoint_display,
+        center_ra_display=_get_env('center_ra'),
+        center_ra_type_display=_get_env('center_ra_type'),
+        center_dec_display=_get_env('center_dec'),
+        moonpts_display=_get_env('moonpts'),
+        blank_display=_get_env('blank'),
+        meridians_display=_get_env('meridians'),
+        additional_display=_get_env('additional'),
+        extra_name_display=_get_env('extra_name'),
+        extra_ra_display=_get_env('extra_ra'),
+        extra_ra_type_display=_get_env('extra_ra_type'),
+        extra_dec_display=_get_env('extra_dec'),
     )
     return ViewerParams(
         planet_num=planet_num,

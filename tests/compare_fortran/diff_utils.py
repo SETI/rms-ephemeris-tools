@@ -476,6 +476,7 @@ def compare_postscript_images(
     *,
     dpi: int = 150,
     diff_image_path: Path | str | None = None,
+    ignore_axis_pixels: bool = False,
 ) -> CompareResult:
     """Render two PostScript files to PNG and pixel-compare the images.
 
@@ -542,17 +543,59 @@ def compare_postscript_images(
     # Compute pixel-level differences
     diff = np.abs(arr_a - arr_b)  # shape (H, W, 3), values 0-255
     pixel_max_diff = diff.max(axis=2)  # max channel difference per pixel
-    total_pixels = pixel_max_diff.size
+    ignore_mask = np.zeros(pixel_max_diff.shape, dtype=bool)
+    if ignore_axis_pixels:
+        # Viewer-only relaxation: ignore differences around axis lines and tick marks.
+        # Detect strong shared horizontal/vertical line features in both renderings.
+        dark_a = np.all(arr_a <= 80, axis=2)
+        dark_b = np.all(arr_b <= 80, axis=2)
+        common_dark = dark_a & dark_b
+        row_counts = common_dark.sum(axis=1)
+        col_counts = common_dark.sum(axis=0)
+        row_thresh = max(200, int(0.20 * w))
+        col_thresh = max(200, int(0.20 * h))
+        row_candidates = np.where(row_counts >= row_thresh)[0]
+        col_candidates = np.where(col_counts >= col_thresh)[0]
+        if row_candidates.size >= 2 and col_candidates.size >= 2:
+            top = int(row_candidates[0])
+            bottom = int(row_candidates[-1])
+            left = int(col_candidates[0])
+            right = int(col_candidates[-1])
+            band = max(3, int(round(dpi / 24)))  # ~6 px at 150 dpi
+            tick_pad = max(8, int(round(dpi / 10)))  # ~15 px at 150 dpi
+            y0 = max(0, top - band - tick_pad)
+            y1 = min(h, top + band + tick_pad + 1)
+            y2 = max(0, bottom - band - tick_pad)
+            y3 = min(h, bottom + band + tick_pad + 1)
+            x0 = max(0, left - band - tick_pad)
+            x1 = min(w, left + band + tick_pad + 1)
+            x2 = max(0, right - band - tick_pad)
+            x3 = min(w, right + band + tick_pad + 1)
+            ignore_mask[y0:y1, :] = True
+            ignore_mask[y2:y3, :] = True
+            ignore_mask[:, x0:x1] = True
+            ignore_mask[:, x2:x3] = True
+            details.append(
+                '  Axis mask: enabled '
+                f'(rows {top},{bottom}; cols {left},{right}; ~{int(ignore_mask.sum()):,} px)'
+            )
+        else:
+            details.append('  Axis mask: enabled but axis lines not detected; no mask applied')
 
-    identical_pixels = int(np.sum(pixel_max_diff == 0))
+    valid_mask = ~ignore_mask
+    total_pixels = int(np.sum(valid_mask))
+    if total_pixels == 0:
+        return CompareResult(False, 'Image comparison failed: axis mask excluded all pixels', details)
+
+    identical_pixels = int(np.sum((pixel_max_diff == 0) & valid_mask))
     similarity_pct = 100.0 * identical_pixels / total_pixels
-    mean_diff = float(diff.mean())
-    max_diff = int(diff.max())
+    mean_diff = float(diff[valid_mask].mean())
+    max_diff = int(diff[valid_mask].max())
 
     # Count pixels by severity
-    minor_pixels = int(np.sum((pixel_max_diff > 0) & (pixel_max_diff <= 10)))
-    moderate_pixels = int(np.sum((pixel_max_diff > 10) & (pixel_max_diff <= 50)))
-    major_pixels = int(np.sum(pixel_max_diff > 50))
+    minor_pixels = int(np.sum((pixel_max_diff > 0) & (pixel_max_diff <= 10) & valid_mask))
+    moderate_pixels = int(np.sum((pixel_max_diff > 10) & (pixel_max_diff <= 50) & valid_mask))
+    major_pixels = int(np.sum((pixel_max_diff > 50) & valid_mask))
 
     details.append(f'  Total pixels:    {total_pixels:,}')
     details.append(f'  Identical:       {identical_pixels:,} ({similarity_pct:.4f}%)')

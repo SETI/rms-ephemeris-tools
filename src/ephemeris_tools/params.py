@@ -738,12 +738,34 @@ class ViewerDisplayInfo:
         moons_display: Moon selection display string.
         rings_display: Ring selection display string.
         viewpoint_display: Raw lat/lon/alt caption string from CGI, if present.
+        center_ra_display: Raw center RA text from CGI (for J2000 summary line).
+        center_ra_type_display: Raw center RA units text from CGI.
+        center_dec_display: Raw center Dec text from CGI (for J2000 summary line).
+        moonpts_display: Raw moon point-size text from CGI.
+        blank_display: Raw blank-disk toggle text from CGI.
+        meridians_display: Raw prime-meridians toggle text from CGI.
+        additional_display: Raw additional-star toggle text from CGI.
+        extra_name_display: Raw extra star name from CGI.
+        extra_ra_display: Raw extra star RA from CGI.
+        extra_ra_type_display: Raw extra star RA units from CGI.
+        extra_dec_display: Raw extra star Dec from CGI.
     """
 
     ephem_display: str | None = None
     moons_display: str | None = None
     rings_display: str | None = None
     viewpoint_display: str | None = None
+    center_ra_display: str | None = None
+    center_ra_type_display: str | None = None
+    center_dec_display: str | None = None
+    moonpts_display: str | None = None
+    blank_display: str | None = None
+    meridians_display: str | None = None
+    additional_display: str | None = None
+    extra_name_display: str | None = None
+    extra_ra_display: str | None = None
+    extra_ra_type_display: str | None = None
+    extra_dec_display: str | None = None
 
 
 @dataclass

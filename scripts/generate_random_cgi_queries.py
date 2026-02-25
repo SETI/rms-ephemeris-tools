@@ -17,8 +17,12 @@ import argparse
 import random
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
+
+# Repo root (script is in scripts/)
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # ---------------------------------------------------------------------------
 # Base URL and CGI script names (same pattern as fortran/Tools/tests/test_files)
@@ -127,10 +131,12 @@ MISSION_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
     'jupnh': (datetime(2007, 1, 1, tzinfo=timezone.utc), datetime(2007, 3, 15, tzinfo=timezone.utc)),
     'jupec': (datetime(2024, 12, 20, tzinfo=timezone.utc), datetime(2034, 9, 3, tzinfo=timezone.utc)),
     'satc': (datetime(2004, 1, 1, tzinfo=timezone.utc), datetime(2017, 9, 15, tzinfo=timezone.utc)),
-    'plunh': (datetime(2015, 1, 1, tzinfo=timezone.utc), datetime(2015, 8, 1, tzinfo=timezone.utc)),
+    'plunh': (datetime(2015, 1, 1, tzinfo=timezone.utc), datetime(2015, 8, 31, tzinfo=timezone.utc)),
 }
 
 # Observatory date limits for SPICE kernel availability (when observatory is used).
+# Spacecraft must have dates within SPK ephemeris coverage or FORTRAN fails with
+# SPKINSUFFDATA. Ranges aligned with typical SPICE_spacecraft.txt kernel coverage.
 OBSERVATORY_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
     'HST': (
         datetime(2000, 1, 1, tzinfo=timezone.utc),
@@ -140,12 +146,150 @@ OBSERVATORY_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
         datetime(2022, 1, 1, tzinfo=timezone.utc),
         datetime(2025, 12, 31, tzinfo=timezone.utc),
     ),
+    # Spacecraft: constrain to mission SPK coverage
+    'New Horizons': (
+        datetime(2006, 1, 19, tzinfo=timezone.utc),  # launch
+        datetime(2016, 1, 1, tzinfo=timezone.utc),  # post-Pluto, extended mission
+    ),
+    'Juno': (
+        datetime(2016, 7, 5, tzinfo=timezone.utc),  # Jupiter arrival
+        datetime(2025, 10, 31, tzinfo=timezone.utc),
+    ),
+    'Europa Clipper': (
+        datetime(2024, 12, 20, tzinfo=timezone.utc),  # nominal launch
+        datetime(2034, 9, 3, tzinfo=timezone.utc),
+    ),
+    'JUICE': (
+        datetime(2023, 4, 5, tzinfo=timezone.utc),  # launch
+        datetime(2035, 10, 5, tzinfo=timezone.utc),
+    ),
+    'Cassini': (
+        datetime(2004, 1, 1, tzinfo=timezone.utc),  # Saturn arrival
+        datetime(2017, 9, 15, tzinfo=timezone.utc),  # end of mission
+    ),
+    'Voyager 1': (
+        datetime(1977, 9, 5, tzinfo=timezone.utc),
+        datetime(1990, 1, 1, tzinfo=timezone.utc),
+    ),
+    'Voyager 2': (
+        datetime(1977, 8, 20, tzinfo=timezone.utc),
+        datetime(1990, 1, 1, tzinfo=timezone.utc),
+    ),
+    'Galileo': (
+        datetime(1995, 12, 7, tzinfo=timezone.utc),  # Jupiter arrival
+        datetime(2003, 9, 21, tzinfo=timezone.utc),  # impact
+    ),
 }
+
+# Override OBSERVATORY_DATE_RANGES when (abbrev, observatory) is constrained.
+# New Horizons at Pluto (plunh) has SPK coverage for the encounter window.
+OBSERVATORY_ABBREV_DATE_RANGES: dict[tuple[str, str], tuple[datetime, datetime]] = {
+    ('jupc', 'Cassini'): (
+        datetime(2000, 6, 1, tzinfo=timezone.utc),
+        datetime(2001, 6, 1, tzinfo=timezone.utc),
+    ),
+    ('jupj', 'Juno'): (
+        datetime(2016, 8, 15, tzinfo=timezone.utc),
+        datetime(2025, 10, 31, tzinfo=timezone.utc),
+    ),
+    ('jupjc', 'JUICE'): (
+        datetime(2023, 4, 5, tzinfo=timezone.utc),
+        datetime(2035, 10, 5, tzinfo=timezone.utc),
+    ),
+    ('jupnh', 'New Horizons'): (
+        datetime(2007, 1, 1, tzinfo=timezone.utc),
+        datetime(2007, 3, 15, tzinfo=timezone.utc),
+    ),
+    ('jupec', 'Europa Clipper'): (
+        datetime(2024, 12, 20, tzinfo=timezone.utc),
+        datetime(2034, 9, 3, tzinfo=timezone.utc),
+    ),
+    ('satc', 'Cassini'): (
+        datetime(2004, 1, 1, tzinfo=timezone.utc),
+        datetime(2017, 9, 15, tzinfo=timezone.utc),
+    ),
+    ('plunh', 'New Horizons'): (
+        datetime(2015, 1, 1, tzinfo=timezone.utc),
+        datetime(2015, 8, 31, tzinfo=timezone.utc),
+    ),
+    ('jup', 'Voyager 2'): (
+        datetime(1979, 6, 5, tzinfo=timezone.utc),
+        datetime(1979, 7, 15, tzinfo=timezone.utc),
+    ),
+    ('sat', 'Voyager 2'): (
+        datetime(1981, 6, 6, tzinfo=timezone.utc),
+        datetime(1981, 9, 4, tzinfo=timezone.utc),
+    ),
+    ('ura', 'Voyager 2'): (
+        datetime(1985, 11, 7, tzinfo=timezone.utc),
+        datetime(1986, 2, 18, tzinfo=timezone.utc),
+    ),
+    ('nep', 'Voyager 2'): (
+        datetime(1989, 7, 1, tzinfo=timezone.utc),
+        datetime(1989, 9, 28, tzinfo=timezone.utc),
+    ),
+    ('jup', 'Voyager 1'): (
+        datetime(1978, 12, 12, tzinfo=timezone.utc),
+        datetime(1979, 3, 15, tzinfo=timezone.utc),
+    ),
+    ('sat', 'Voyager 1'): (
+        datetime(1980, 8, 24, tzinfo=timezone.utc),
+        datetime(1980, 12, 14, tzinfo=timezone.utc),
+    ),
+}
+
+def _load_starlist(planet_abbrev: str) -> list[str]:
+    """Load star names from web/tools/starlist_<planet>.txt.
+
+    Returns names in the exact format the FORTRAN expects (used for center=star).
+    Mars and Pluto starlists are empty; Jupiter/Saturn/Uranus/Neptune have entries.
+    """
+    # Map abbrev to starlist file suffix
+    abbrev_to_suffix = {
+        'mar': 'mar',
+        'jup': 'jup',
+        'jupc': 'jup',
+        'jupj': 'jup',
+        'jupjc': 'jup',
+        'jupnh': 'jup',
+        'jupec': 'jup',
+        'sat': 'sat',
+        'satc': 'sat',
+        'ura': 'ura',
+        'nep': 'nep',
+        'plu': 'plu',
+        'plunh': 'plu',
+    }
+    suffix = abbrev_to_suffix.get(planet_abbrev)
+    if not suffix:
+        return []
+    path = _REPO_ROOT / 'web' / 'tools' / f'starlist_{suffix}.txt'
+    if not path.exists():
+        return []
+    stars: list[str] = []
+    lines = path.read_text().splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line or line.startswith('!'):
+            i += 1
+            continue
+        # Star name line; next two should be RA and Dec (numeric)
+        try:
+            float(lines[i + 1].strip().split()[0])
+            float(lines[i + 2].strip().split()[0])
+        except (IndexError, ValueError):
+            i += 1
+            continue
+        stars.append(line)
+        i += 3
+    return stars
+
 
 EPHEM_BY_ABBREV = {
     'mar': '000 MAR097 + DE440',
     'jup': '000 JUP365 + DE440',
-    'jupc': '000 JUP365 + DE440',
+    'jupc': '000 JUP344 + JUP365 + DE440',
     'jupj': '000 JUP365 + DE440',
     'jupjc': '000 JUP365 + DE440',
     'jupnh': '000 JUP344 + JUP365 + DE440',
@@ -208,7 +352,7 @@ VIEWER_OBSERVATORIES_BY_PLANET: dict[str, list[str]] = {
 }
 
 LON_DIR = ['east', 'west']
-CENTER_EW = [' east', ' west']
+CENTER_EW = ['east', 'west']
 RA_TYPE = [' hours', ' degrees']
 OUTPUT_VIEWER = ['HTML', 'PDF', 'JPEG', 'PS']
 OUTPUT_TRACKER = ['HTML', 'PDF', 'JPEG', 'PS', 'TAB']
@@ -572,6 +716,90 @@ def _random_datetime(
     return f'{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}'
 
 
+def _contextual_spacecraft_abbrev(*, abbrev: str, body_name: str) -> str | None:
+    """Return mission abbrev for spacecraft in this planet context.
+
+    This enforces that selecting a spacecraft in "other" uses the same SPICE
+    window as if that spacecraft were selected as viewpoint for this planet.
+    """
+    planet_short = abbrev[:3].lower()
+    if body_name == 'Cassini':
+        if planet_short == 'jup':
+            return 'jupc'
+        if planet_short == 'sat':
+            return 'satc'
+    if body_name == 'New Horizons':
+        if planet_short == 'jup':
+            return 'jupnh'
+        if planet_short == 'plu':
+            return 'plunh'
+    if body_name == 'Juno' and planet_short == 'jup':
+        return 'jupj'
+    if body_name == 'JUICE' and planet_short == 'jup':
+        return 'jupjc'
+    if body_name == 'Europa Clipper' and planet_short == 'jup':
+        return 'jupec'
+    # Voyager overrides are already keyed by planet short abbrev (jup/sat/ura/nep).
+    if body_name in {'Voyager 1', 'Voyager 2'}:
+        return planet_short
+    return None
+
+
+def _range_for_body(*, abbrev: str, body_name: str) -> tuple[datetime, datetime] | None:
+    """Return date range for one observatory/body in the current abbrev context."""
+    canonical_body_name = body_name.strip().rstrip('/')
+    override = OBSERVATORY_ABBREV_DATE_RANGES.get((abbrev, canonical_body_name))
+    if override is not None:
+        return override
+    contextual_abbrev = _contextual_spacecraft_abbrev(abbrev=abbrev, body_name=canonical_body_name)
+    if contextual_abbrev is not None:
+        contextual = OBSERVATORY_ABBREV_DATE_RANGES.get((contextual_abbrev, canonical_body_name))
+        if contextual is not None:
+            return contextual
+    return OBSERVATORY_DATE_RANGES.get(canonical_body_name)
+
+
+def _intersect_date_ranges(
+    ranges: list[tuple[datetime, datetime]],
+) -> tuple[datetime, datetime] | None:
+    """Return the intersection of date ranges or None if empty."""
+    if len(ranges) == 0:
+        return None
+    start = max(r[0] for r in ranges)
+    stop = min(r[1] for r in ranges)
+    if start > stop:
+        return None
+    return (start, stop)
+
+
+def _combined_spice_range(
+    *,
+    abbrev: str,
+    observatory: str | None,
+    other_bodies: list[str] | None = None,
+) -> tuple[datetime, datetime] | None:
+    """Return combined SPICE-safe range from mission, observatory, and other bodies."""
+    canonical_others = [str(body).strip().rstrip('/') for body in (other_bodies or [])]
+    effective_abbrev = abbrev
+    # Pluto + New Horizons (as "other") must use the Pluto encounter window.
+    if abbrev[:3].lower() == 'plu' and 'New Horizons' in canonical_others:
+        effective_abbrev = 'plunh'
+
+    ranges: list[tuple[datetime, datetime]] = []
+    mission_range = MISSION_DATE_RANGES.get(effective_abbrev)
+    if mission_range is not None:
+        ranges.append(mission_range)
+    if observatory:
+        obs_range = _range_for_body(abbrev=effective_abbrev, body_name=observatory)
+        if obs_range is not None:
+            ranges.append(obs_range)
+    for body in canonical_others:
+        body_range = _range_for_body(abbrev=effective_abbrev, body_name=body)
+        if body_range is not None:
+            ranges.append(body_range)
+    return _intersect_date_ranges(ranges)
+
+
 def _random_time_range_and_interval(
     abbrev: str = '',
     observatory: str | None = None,
@@ -586,8 +814,10 @@ def _random_time_range_and_interval(
     JWST), constrains to OBSERVATORY_DATE_RANGES.
     """
     mission_range = MISSION_DATE_RANGES.get(abbrev)
-    obs_range = OBSERVATORY_DATE_RANGES.get(observatory or '') if observatory else None
-    # Prefer observatory range when set (e.g. JWST); else use mission range.
+    obs_range = OBSERVATORY_ABBREV_DATE_RANGES.get((abbrev, observatory or ''))
+    if not obs_range:
+        obs_range = OBSERVATORY_DATE_RANGES.get(observatory or '') if observatory else None
+    # Prefer observatory range when set (e.g. JWST, plunh+New Horizons); else mission.
     date_range = obs_range if obs_range else mission_range
     if date_range:
         min_dt, max_dt = date_range
@@ -712,48 +942,49 @@ def _build_viewer_query(abbrev: str) -> str:
             params['lon_dir'] = _pick(LON_DIR)
             params['altitude'] = _random_numeric(0, 4500, 0)
 
-    obs_range = OBSERVATORY_DATE_RANGES.get(params.get('observatory') or '')
-    time_kw: dict[str, datetime] = {}
-    if obs_range:
-        time_kw = {'min_dt': obs_range[0], 'max_dt': obs_range[1]}
-
     # Mandatory and always-included
     params['abbrev'] = abbrev
     params['version'] = '3.1'
     params['ephem'] = EPHEM_BY_ABBREV[abbrev]
-    params['time'] = _random_datetime(**time_kw)
     params['fov'] = _random_numeric(0.001, 50.0)
     fov_opts = FOV_UNIT_COMMON + FOV_UNIT_PLANET.get(planet, [' Jupiter radii'])
-    params['fov_unit'] = _pick(fov_opts)
-    params['output'] = _pick(OUTPUT_VIEWER)
+    # FORTRAN expects no leading space (string .eq. 'degrees' etc.).
+    params['fov_unit'] = _pick(fov_opts).strip()
+    params['output'] = 'HTML'
 
-    # Center (optional but usually set)
-    if _maybe(0.9):
-        params['center'] = _pick(['body', 'ansa', 'J2000', 'star'])
+    # Center: always set to avoid FORTRAN defaulting to star with empty center_star (Mars/Pluto).
+    # center=star: use only star names from the planet's starlist.
+    center_opts = ['body', 'ansa', 'J2000']
+    stars = _load_starlist(abbrev)
+    if stars:
+        center_opts.append('star')
+    if True:  # always set center
+        params['center'] = _pick(center_opts)
         if params['center'] == 'body':
             bodies = VIEWER_CENTER_BODY.get(planet, VIEWER_CENTER_BODY['Jupiter'])
-            params['center_body'] = _pick(bodies)
+            params['center_body'] = _pick(bodies).strip()
         elif params['center'] == 'ansa':
             ansas = VIEWER_CENTER_ANSA.get(planet, VIEWER_CENTER_ANSA['Jupiter'])
-            params['center_ansa'] = _pick(ansas)
+            # FORTRAN checks string(1:1) for C/B/A/F/G/E; strip leading space.
+            params['center_ansa'] = _pick(ansas).strip()
             params['center_ew'] = _pick(CENTER_EW)
         elif params['center'] == 'J2000':
             params['center_ra'] = _random_numeric(0, 24, 4)
             params['center_ra_type'] = _pick(RA_TYPE)
             params['center_dec'] = _random_numeric(-90, 90, 4)
-        else:
-            params['center_star'] = 'Sirius'
+        elif params['center'] == 'star':
+            params['center_star'] = _pick(stars)
 
     # Moons (viewer uses single radio value)
     if planet in VIEWER_MOONS_RADIO:
         params['moons'] = _pick(VIEWER_MOONS_RADIO[planet])
 
-    # Rings
-    if planet in VIEWER_RINGS and _maybe(0.8):
+    # Rings: SHTML always submits one selected radio value.
+    if planet in VIEWER_RINGS:
         params['rings'] = _pick(VIEWER_RINGS[planet])
 
-    # Neptune arc model
-    if planet == 'Neptune' and _maybe(0.3):
+    # Neptune arc model: FORTRAN requires it when Neptune has rings (default includes rings).
+    if planet == 'Neptune':
         params['arcmodel'] = _pick(
             ['#1 (820.1194 deg/day)', '#2 (820.1118 deg/day)', '#3 (820.1121 deg/day)']
         )
@@ -761,22 +992,31 @@ def _build_viewer_query(abbrev: str) -> str:
     # Optional diagram options
     if _maybe(0.4):
         params['title'] = 'Test plot'
-    if _maybe(0.7):
-        params['labels'] = _pick(LABELS)
+    # SHTML always submits a label-size selection (default: Small).
+    params['labels'] = _pick(LABELS) if _maybe(0.7) else 'Small (6 points)'
     if _maybe(0.3):
         params['moonpts'] = str(random.randint(0, 5))
     if not pre and _maybe(0.2):
         params['blank'] = _pick(BLANK)
-    if planet == 'Saturn' and _maybe(0.3):
-        params['opacity'] = _pick(OPACITY)
-    if planet in ('Saturn', 'Uranus') and _maybe(0.2):
-        params['peris'] = _pick(
-            ['None', 'F Ring'] if planet == 'Saturn' else ['None', 'Epsilon Ring only', 'All rings']
-        )
-        params['peripts'] = str(random.randint(2, 8))
+    if planet == 'Saturn':
+        # SHTML always sends ring_plot_type with default Transparent.
+        params['opacity'] = _pick(OPACITY) if _maybe(0.3) else 'Transparent'
+    if planet in ('Saturn', 'Uranus'):
+        if _maybe(0.2):
+            params['peris'] = _pick(
+                ['None', 'F Ring']
+                if planet == 'Saturn'
+                else ['None', 'Epsilon Ring only', 'All rings']
+            )
+            params['peripts'] = str(random.randint(2, 8))
+        else:
+            # FORTRAN rejects blank PERICENTER_MARKERS/PERIPTS in some viewer modes.
+            params['peris'] = 'None'
+            params['peripts'] = '4'
     if _maybe(0.7):
         params['meridians'] = _pick(MERIDIANS)
-    if planet == 'Neptune' and _maybe(0.2):
+    if planet == 'Neptune':
+        # FORTRAN viewer requires ARC_WEIGHT to be present and positive.
         params['arcpts'] = str(random.randint(2, 8))
 
     # Jupiter torus
@@ -794,6 +1034,7 @@ def _build_viewer_query(abbrev: str) -> str:
         params['extra_ra_type'] = _pick(RA_TYPE)
         params['extra_dec'] = _random_numeric(-90, 90, 4)
         params['extra_name'] = 'Star1'
+    other_pool: list[str] | None = None
     if _maybe(0.4):
         others = ['Sun', 'Anti-Sun', 'Earth']
         if planet == 'Jupiter' and not pre:
@@ -813,9 +1054,47 @@ def _build_viewer_query(abbrev: str) -> str:
             others += ['Voyager 2']
         elif planet == 'Pluto':
             others += ['Barycenter', 'New Horizons'] if not pre else ['Barycenter']
-        params['other'] = '#'.join(_pick_multi(others, 1, 3))
+        other_pool = others
+        # FORTRAN expects separate other= params; use list + doseq for multiple values.
+        params['other'] = _pick_multi(others, 1, 3)
 
-    return urlencode(params, doseq=False, encoding='utf-8')
+    # Observation time must satisfy all selected SPICE-constrained bodies.
+    time_kw: dict[str, datetime] = {}
+    combined_range = _combined_spice_range(
+        abbrev=abbrev,
+        observatory=str(params.get('observatory') or ''),
+        other_bodies=[str(x) for x in params.get('other') or []],
+    )
+    # Keep random "other" bodies, but ensure selected combination has SPICE coverage.
+    if combined_range is None and other_pool is not None:
+        for _ in range(20):
+            candidate_other = _pick_multi(other_pool, 1, 3)
+            candidate_range = _combined_spice_range(
+                abbrev=abbrev,
+                observatory=str(params.get('observatory') or ''),
+                other_bodies=[str(x) for x in candidate_other],
+            )
+            if candidate_range is not None:
+                params['other'] = candidate_other
+                combined_range = candidate_range
+                break
+        if combined_range is None:
+            # Fallback: omit "other" rather than generating known-SPICE-invalid URLs.
+            params.pop('other', None)
+            combined_range = _combined_spice_range(
+                abbrev=abbrev,
+                observatory=str(params.get('observatory') or ''),
+                other_bodies=[],
+            )
+    if combined_range is not None:
+        min_dt, max_dt = combined_range
+        now = datetime.now(timezone.utc)
+        max_dt = min(max_dt, now)
+        if min_dt <= max_dt:
+            time_kw = {'min_dt': min_dt, 'max_dt': max_dt}
+    params['time'] = _random_datetime(**time_kw)
+
+    return urlencode(params, doseq=True, encoding='utf-8')
 
 
 def _build_tracker_query(abbrev: str) -> str:
@@ -863,7 +1142,7 @@ def _build_tracker_query(abbrev: str) -> str:
     params['stop'] = stop_str
     params['interval'] = interval_str
     params['time_unit'] = time_unit
-    params['output'] = _pick(OUTPUT_TRACKER)
+    params['output'] = 'HTML'
 
     if planet in TRACKER_MOONS:
         moon_list = TRACKER_MOONS[planet]
@@ -927,7 +1206,7 @@ def _build_ephemeris_query(abbrev: str) -> str:
     params['stop'] = stop_str
     params['interval'] = interval_str
     params['time_unit'] = time_unit
-    params['output'] = _pick(OUTPUT_EPHEM)
+    params['output'] = 'HTML'
 
     if _maybe(0.9):
         template = EPHEM_COLUMNS_PREFIX if pre else EPHEM_COLUMNS_EMPTY
