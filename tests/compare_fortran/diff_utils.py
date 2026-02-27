@@ -11,6 +11,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Epsilon for LSD-based float comparison to absorb representation noise (e.g. 12.27-12.269).
+LSD_EPSILON = 1e-12
+
 
 @dataclass
 class CompareResult:
@@ -75,7 +78,8 @@ def _fields_match(
     (all asterisks), the field is considered uncomparable and therefore ignored.
 
     When lsd_tolerance is set, values match if |a-b| <= lsd_tolerance * lsd, where
-    lsd is inferred from the printed form (e.g. 1.001 -> lsd=0.001, 10.5 -> 0.1).
+    lsd is the minimum of the LSD inferred from each printed form (field_a and
+    field_b), so the tighter precision is enforced (e.g. 1.001 -> lsd=0.001).
     """
     if _is_fortran_overflow_token(field_b):
         return True
@@ -87,10 +91,12 @@ def _fields_match(
     except ValueError:
         return False
     if lsd_tolerance is not None:
-        lsd = _lsd_from_printed(field_a)
+        lsd_a = _lsd_from_printed(field_a)
+        lsd_b = _lsd_from_printed(field_b)
+        lsd = min(lsd_a, lsd_b)
         threshold = lsd_tolerance * lsd
         # Add tiny epsilon to absorb float representation noise (e.g. 12.27-12.269)
-        if abs(fa - fb) <= threshold + 1e-12 * max(abs(fa), abs(fb), 1.0):
+        if abs(fa - fb) <= threshold + LSD_EPSILON * max(abs(fa), abs(fb), 1.0):
             return True
     if abs_tolerance is not None and abs(fa - fb) <= abs_tolerance:
         return True
@@ -141,9 +147,9 @@ def compare_tables(
     normalization (strip, collapse whitespace).
 
     If lsd_tolerance is set (e.g. 1), numeric fields match when their
-    difference is <= lsd_tolerance * lsd, where lsd is the magnitude of
-    the least significant digit in the printed form. E.g. 1.001 with
-    lsd_tolerance=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1.
+    difference is <= lsd_tolerance * lsd, where lsd is the minimum of the
+    LSD inferred from each field's printed form (tighter precision wins).
+    E.g. 1.001 with lsd_tolerance=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1.
 
     If abs_tolerance is set (and lsd_tolerance is not), numeric fields
     match when |a-b| <= abs_tolerance. Kept for backward compatibility.
@@ -518,6 +524,16 @@ def compare_postscript_images(
         return CompareResult(False, f'File not found: {pa}')
     if not pb.exists():
         return CompareResult(False, f'File not found: {pb}')
+
+    if min_similarity_pct is not None:
+        if not isinstance(min_similarity_pct, (int, float)):
+            raise TypeError(
+                f'min_similarity_pct must be int or float, got {type(min_similarity_pct).__name__}'
+            )
+        if not (0.0 <= min_similarity_pct <= 100.0):
+            raise ValueError(
+                f'min_similarity_pct must be in 0.0..100.0, got {min_similarity_pct}'
+            )
 
     # Render both PS files to temporary PNGs alongside the originals
     png_a = pa.with_suffix('.png')

@@ -359,9 +359,10 @@ Diagram Center
 
 ``center_ra_type`` (select, when center="J2000")
    RA unit. Forms use ``value="hours"`` and ``value="degrees"`` (no leading
-   space). Parsing (Python and FORTRAN): only first character ``d`` or ``D``
-   means degrees; any other first character (e.g. space or ``+``, as from
-   URL-encoded ``+degrees``) means hours.
+   space). Parsing: if the value after stripping is exactly ``degrees`` or
+   ``hours``, that is used (so URL-encoded ``+degrees`` → ``" degrees"`` →
+   degrees). A literal leading ``+`` means hours. Otherwise first character
+   ``d``/``D`` → degrees.
 
 ``center_dec`` (text, when center="J2000")
    Declination in degrees for diagram center.  Free-text numeric.
@@ -1246,7 +1247,7 @@ Moon Columns
    - ``"003 Sub-observer latitude & rotating longitude"``
    - ``"004 Sub-solar latitude & rotating longitude"``
    - ``"005 RA & Dec"``
-   - ``"006 Offset RA & Dec from the moon"`` (arcsec)
+   - ``"006 Offset RA & Dec from the moon (arcsec)"``
    - ``"008 Orbital longitude relative to observer"``
    - ``"009 Orbit plane opening angle to observer"``
 
@@ -1257,7 +1258,7 @@ Moon Columns
    - ``"003 Sub-observer latitude & rotating longitude"``
    - ``"004 Sub-solar latitude & rotating longitude"``
    - ``"005 RA & Dec"``
-   - ``"007 Offset RA & Dec from the moon"`` (deg)
+   - ``"007 Offset RA & Dec from the moon (deg)"``
    - ``"008 Orbital longitude relative to observer"``
    - ``"009 Orbit plane opening angle to observer"``
 

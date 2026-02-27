@@ -272,7 +272,9 @@ def viewer_params_from_env() -> ViewerParams | None:
     except ValueError:
         arcpts = 4.0
     other_bodies = _get_keys_env('other')
-    labels = _get_env('labels', 'Small (6 points)')
+    labels = (
+        _get_env('labels') or _get_env('Labels') or 'Small (6 points)'
+    ).strip() or 'Small (6 points)'
     moonpts_s = _get_env('moonpts', '0')
     try:
         moonpts = float(moonpts_s)

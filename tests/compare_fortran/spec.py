@@ -163,8 +163,8 @@ _COLUMN_CGI_TEMPLATES: dict[int, str] = {
     15: '015 {planet} RA & Dec',
     16: '016 Earth RA & Dec',
     17: '017 Sun RA & Dec',
-    18: '018 {planet} projected equatorial radius',
-    19: '019 {planet} projected equatorial radius',
+    18: '018 {planet} projected equatorial radius (arcsec)',
+    19: '019 {planet} projected equatorial radius (deg)',
     20: '020 Lunar phase angle',
     21: '021 Sun-{planet} sky separation angle',
     22: '022 Lunar-{planet} sky separation angle',
@@ -241,6 +241,22 @@ def _fortran_fov(fov: float, fov_unit: str) -> tuple[str, str]:
     # Map Python CLI / normalized values; fallback strips to handle " degrees" etc.
     mapped = _FOV_UNIT_TO_FORTRAN.get(unit, unit).strip() or 'degrees'
     return (str(fov), mapped)
+
+
+def _normalize_query_string(qs: str) -> str:
+    """Strip leading/trailing whitespace from each parameter value.
+
+    FORTRAN can crash or misbehave when values have leading space (e.g. from
+    URL-encoded +). Rebuild QUERY_STRING with stripped values so both sides
+    see the same logical params.
+    """
+    parsed = parse_qs(qs, keep_blank_values=True)
+    stripped: dict[str, list[str]] = {}
+    for key, values in parsed.items():
+        if not key:
+            continue
+        stripped[key] = [(v or '').strip() for v in values]
+    return urlencode(stripped, doseq=True)
 
 
 def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
@@ -464,6 +480,7 @@ class RunSpec:
         env['REQUEST_METHOD'] = 'GET'
         if p.get('query_string'):
             qs = str(p['query_string'])
+            qs = _normalize_query_string(qs)
             # FORTRAN tracker requires xrange and xunit (PLOT_SCALE); inject defaults if missing.
             if self.tool == 'tracker':
                 parsed = parse_qs(qs, keep_blank_values=True)

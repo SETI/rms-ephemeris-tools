@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import math
 import random
 import sys
 from datetime import datetime, timedelta, timezone
@@ -139,8 +140,8 @@ MISSION_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
 # SPKINSUFFDATA. Ranges aligned with typical SPICE_spacecraft.txt kernel coverage.
 OBSERVATORY_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
     'HST': (
-        datetime(2000, 1, 1, tzinfo=timezone.utc),
-        datetime(2024, 12, 31, tzinfo=timezone.utc),
+        datetime(2020, 1, 1, tzinfo=timezone.utc),
+        datetime(2025, 12, 31, tzinfo=timezone.utc),
     ),
     'JWST': (
         datetime(2022, 1, 1, tzinfo=timezone.utc),
@@ -152,8 +153,8 @@ OBSERVATORY_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
         datetime(2016, 1, 1, tzinfo=timezone.utc),  # post-Pluto, extended mission
     ),
     'Juno': (
-        datetime(2016, 7, 5, tzinfo=timezone.utc),  # Jupiter arrival
-        datetime(2025, 10, 31, tzinfo=timezone.utc),
+        datetime(2016, 8, 16, tzinfo=timezone.utc),  # Jupiter arrival
+        datetime(2025, 10, 19, tzinfo=timezone.utc),
     ),
     'Europa Clipper': (
         datetime(2024, 12, 20, tzinfo=timezone.utc),  # nominal launch
@@ -234,7 +235,7 @@ OBSERVATORY_ABBREV_DATE_RANGES: dict[tuple[str, str], tuple[datetime, datetime]]
     ),
     ('sat', 'Voyager 1'): (
         datetime(1980, 8, 24, tzinfo=timezone.utc),
-        datetime(1980, 12, 14, tzinfo=timezone.utc),
+        datetime(1980, 11, 15, tzinfo=timezone.utc),
     ),
 }
 
@@ -303,12 +304,8 @@ EPHEM_BY_ABBREV = {
 }
 
 # ---------------------------------------------------------------------------
-# Shared option lists (leading spaces as in HTML where applicable)
+# Shared option lists (values trimmed for URL)
 # ---------------------------------------------------------------------------
-
-# Probability of generating "legacy" form values (leading space) to exercise
-# backward compatibility with old SHTML submissions and URL-encoded queries.
-LEGACY_FORM_PROB = 0.2
 
 # Match fortran/Tools/tests/test_files/ephemeris-generator-unit-tests.txt:
 # observatory and lon_dir values without leading space (FORTRAN expects 'east'/'west').
@@ -358,6 +355,7 @@ VIEWER_OBSERVATORIES_BY_PLANET: dict[str, list[str]] = {
 LON_DIR = ['east', 'west']
 CENTER_EW = ['east', 'west']
 # Submitted values for center_ra_type / extra_ra_type (no leading space; match form value=).
+# Never use leading '+' (backend treats + as hours; would mislabel RA axis).
 RA_TYPE = ['hours', 'degrees']
 OUTPUT_VIEWER = ['HTML', 'PDF', 'JPEG', 'PS']
 OUTPUT_TRACKER = ['HTML', 'PDF', 'JPEG', 'PS', 'TAB']
@@ -605,23 +603,16 @@ TRACKER_RINGS: dict[str, list[str]] = {
     'Uranus': ['071 Epsilon Ring'],
     'Neptune': ['081 Adams Ring'],
 }
-XUNIT_EMPTY = [
-    ' arcsec',
-    ' Mars radii',
-    ' Jupiter radii',
-    ' Saturn radii',
-    ' Uranus radii',
-    ' Neptune radii',
-    ' Pluto radii',
-]
-XUNIT_PREFIX = [
-    ' degrees',
-    ' Jupiter radii',
-    ' Saturn radii',
-    ' Uranus radii',
-    ' Neptune radii',
-    ' Pluto radii',
-]
+
+# Tracker xunit (plot scale): per planet only arcsec and that planet's radii (no leading space).
+TRACKER_XUNIT_BY_PLANET: dict[str, list[str]] = {
+    'Mars': ['arcsec', 'Mars radii'],
+    'Jupiter': ['arcsec', 'Jupiter radii'],
+    'Saturn': ['arcsec', 'Saturn radii'],
+    'Uranus': ['arcsec', 'Uranus radii'],
+    'Neptune': ['arcsec', 'Neptune radii'],
+    'Pluto': ['arcsec', 'Pluto radii'],
+}
 
 # Ephemeris columns (Earth-based; [Planet] replaced)
 EPHEM_COLUMNS_EMPTY = [
@@ -640,7 +631,7 @@ EPHEM_COLUMNS_EMPTY = [
     '013 Sub-observer latitude & rotating longitude',
     '014 Sub-solar latitude & rotating longitude',
     '015 {planet} RA & Dec',
-    '018 {planet} projected equatorial radius',
+    '018 {planet} projected equatorial radius (arcsec)',
     '020 Lunar phase angle',
     '021 Sun-{planet} sky separation angle',
     '022 Lunar-{planet} sky separation angle',
@@ -663,7 +654,7 @@ EPHEM_COLUMNS_PREFIX = [
     '015 {planet} RA & Dec',
     '016 Earth RA & Dec',
     '017 Sun RA & Dec',
-    '019 {planet} projected equatorial radius',
+    '019 {planet} projected equatorial radius (deg)',
 ]
 EPHEM_MOONCOLS_EMPTY = [
     '003 Sub-observer latitude & rotating longitude',
@@ -689,9 +680,10 @@ EPHEM_MOONCOLS_PREFIX = [
 # ---------------------------------------------------------------------------
 
 
-# Bounds for time range and interval: ensure 2 <= ntimes <= MAX_STEPS.
-# Tracker limit 10000, ephemeris 100000; use 8000 to stay safe for both.
-_MAX_STEPS = 8000
+# Bounds for time range and interval: ensure 2 <= ntimes <= max_steps.
+# Tracker limit 10000, ephemeris 100000.
+_TRACKER_MAX_STEPS = 10000
+_EPHEM_MAX_STEPS = 100000
 _SECONDS_PER_DAY = 86400.0
 
 
@@ -808,6 +800,8 @@ def _combined_spice_range(
 def _random_time_range_and_interval(
     abbrev: str = '',
     observatory: str | None = None,
+    *,
+    max_steps: int = _EPHEM_MAX_STEPS,
 ) -> tuple[str, str, str, str]:
     """Return (start_str, stop_str, interval_str, time_unit) with valid step count.
 
@@ -869,8 +863,10 @@ def _random_time_range_and_interval(
         total_sec = delta_days * _SECONDS_PER_DAY
 
     time_unit = _pick(TIME_UNIT)
-    ntimes = random.randint(10, _MAX_STEPS)
+    ntimes = random.randint(10, max_steps)
     interval_sec = total_sec / ntimes
+    # Round up to whole minutes because this is what the tracker does
+    interval_sec = max(60.0, math.ceil(interval_sec / 60.0) * 60.0)
 
     mult = {
         'seconds': 1.0,
@@ -923,14 +919,13 @@ def _build_viewer_query(abbrev: str) -> str:
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
     params: dict[str, Any] = {}
-    use_legacy = _maybe(LEGACY_FORM_PROB)
 
     def _val(raw: str) -> str:
-        """Return value in new format (trimmed) or legacy format (leading space)."""
-        s = raw.strip()
-        return (' ' + s) if use_legacy and s else s
+        """Return value trimmed; no leading space (would encode as + in URL)."""
+        return raw.strip()
 
     # Viewpoint/observatory first (needed to constrain time for JWST etc.)
+    # Observatories: no leading space (FORTRAN/cgi expect exact match e.g. 'Voyager 1').
     if pre:
         params['viewpoint'] = 'observatory'
         mission_obs = {
@@ -940,12 +935,12 @@ def _build_viewer_query(abbrev: str) -> str:
             'JUICE/': 'JUICE',
             'Europa Clipper/': 'Europa Clipper',
         }
-        params['observatory'] = _val(mission_obs.get(pre, "Earth's center"))
+        params['observatory'] = mission_obs.get(pre, "Earth's center")
     else:
         if _maybe(0.8):
             params['viewpoint'] = 'observatory'
             obs_list = VIEWER_OBSERVATORIES_BY_PLANET.get(planet, OBSERVATORIES_EARTH)
-            params['observatory'] = _val(_pick(obs_list))
+            params['observatory'] = _pick(obs_list)
         else:
             params['viewpoint'] = 'latlon'
             params['latitude'] = _random_numeric(-90, 90, 4)
@@ -959,7 +954,8 @@ def _build_viewer_query(abbrev: str) -> str:
     params['ephem'] = EPHEM_BY_ABBREV[abbrev]
     params['fov'] = _random_numeric(0.001, 50.0)
     fov_opts = FOV_UNIT_COMMON + FOV_UNIT_PLANET.get(planet, [' Jupiter radii'])
-    params['fov_unit'] = _val(_pick(fov_opts))
+    # fov_unit: no leading space (FORTRAN expects e.g. 'degrees' not ' degrees').
+    params['fov_unit'] = _pick(fov_opts).strip()
     params['output'] = 'HTML'
 
     # Center: always set to avoid FORTRAN defaulting to star with empty center_star (Mars/Pluto).
@@ -968,21 +964,20 @@ def _build_viewer_query(abbrev: str) -> str:
     stars = _load_starlist(abbrev)
     if stars:
         center_opts.append('star')
-    if True:  # always set center
-        params['center'] = _pick(center_opts)
-        if params['center'] == 'body':
-            bodies = VIEWER_CENTER_BODY.get(planet, VIEWER_CENTER_BODY['Jupiter'])
-            params['center_body'] = _val(_pick(bodies))
-        elif params['center'] == 'ansa':
-            ansas = VIEWER_CENTER_ANSA.get(planet, VIEWER_CENTER_ANSA['Jupiter'])
-            params['center_ansa'] = _val(_pick(ansas))
-            params['center_ew'] = _val(_pick(CENTER_EW))
-        elif params['center'] == 'J2000':
-            params['center_ra'] = _random_numeric(0, 24, 4)
-            params['center_ra_type'] = _val(_pick(RA_TYPE))
-            params['center_dec'] = _random_numeric(-90, 90, 4)
-        elif params['center'] == 'star':
-            params['center_star'] = _pick(stars)
+    params['center'] = _pick(center_opts)
+    if params['center'] == 'body':
+        bodies = VIEWER_CENTER_BODY.get(planet, VIEWER_CENTER_BODY['Jupiter'])
+        params['center_body'] = _val(_pick(bodies))
+    elif params['center'] == 'ansa':
+        ansas = VIEWER_CENTER_ANSA.get(planet, VIEWER_CENTER_ANSA['Jupiter'])
+        params['center_ansa'] = _val(_pick(ansas))
+        params['center_ew'] = _val(_pick(CENTER_EW))
+    elif params['center'] == 'J2000':
+        params['center_ra'] = _random_numeric(0, 24, 4)
+        params['center_ra_type'] = _val(_pick(RA_TYPE))
+        params['center_dec'] = _random_numeric(-90, 90, 4)
+    elif params['center'] == 'star':
+        params['center_star'] = _pick(stars)
 
     # Moons (viewer uses single radio value)
     if planet in VIEWER_MOONS_RADIO:
@@ -1002,10 +997,9 @@ def _build_viewer_query(abbrev: str) -> str:
     if _maybe(0.4):
         params['title'] = 'Test plot'
     params['labels'] = _val(_pick(LABELS) if _maybe(0.7) else 'Small (6 points)')
-    if _maybe(0.3):
-        params['moonpts'] = str(random.randint(0, 5))
-    if not pre and _maybe(0.2):
-        params['blank'] = _pick(BLANK)
+    # Moon enlargement and blank disks: always present (viewer/form requirement).
+    params['moonpts'] = str(random.randint(0, 5))
+    params['blank'] = _pick(BLANK)
     if planet == 'Saturn':
         # SHTML always sends ring_plot_type with default Transparent.
         params['opacity'] = _pick(OPACITY) if _maybe(0.3) else 'Transparent'
@@ -1144,7 +1138,7 @@ def _build_tracker_query(abbrev: str) -> str:
             params['altitude'] = _random_numeric(0, 4500, 0)
 
     start_str, stop_str, interval_str, time_unit = _random_time_range_and_interval(
-        abbrev, observatory=params.get('observatory')
+        abbrev, observatory=params.get('observatory'), max_steps=_TRACKER_MAX_STEPS
     )
     params['start'] = start_str
     params['stop'] = stop_str
@@ -1160,9 +1154,14 @@ def _build_tracker_query(abbrev: str) -> str:
         rlist = TRACKER_RINGS[planet]
         params['rings'] = _pick_multi(rlist, min_n=1)
 
-    if _maybe(0.5):
-        params['xrange'] = _random_numeric(1, 50, 2)
-        params['xunit'] = _pick(XUNIT_PREFIX if pre else XUNIT_EMPTY)
+    # FORTRAN tracker requires xrange and xunit (plot_scale); xunit only arcsec or planet radii.
+    params['xrange'] = _random_numeric(1, 50, 2)
+    xunit_opts = (
+        ['degrees', f'{planet} radii']
+        if pre
+        else TRACKER_XUNIT_BY_PLANET.get(planet, ['arcsec', 'Jupiter radii'])
+    )
+    params['xunit'] = _pick(xunit_opts)
     if _maybe(0.3):
         params['title'] = 'Tracker test'
 

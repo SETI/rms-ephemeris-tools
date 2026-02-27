@@ -867,11 +867,18 @@ def _safe_float(value: str, default: float) -> float:
 def _is_ra_hours_from_raw(raw: str | None) -> bool:
     """Return True if RA value should be interpreted as hours (else degrees).
 
-    Matches FORTRAN: only first character 'd' or 'D' means degrees. Any other
-    first character (including '+' or space, e.g. from URL-encoded + or form
-    option text with leading space) means hours.
+    When the value (after strip) is exactly 'degrees' or 'hours', use that
+    (so URL-encoded +degrees → " degrees" → degrees). Literal leading '+'
+    means hours. Otherwise match FORTRAN: first character 'd'/'D' → degrees.
     """
     if not raw:
+        return True
+    stripped = raw.strip().lower()
+    if stripped == 'degrees':
+        return False
+    if stripped == 'hours':
+        return True
+    if raw[:1] == '+':
         return True
     return raw[:1] not in ('d', 'D')
 

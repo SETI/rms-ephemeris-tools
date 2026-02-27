@@ -132,7 +132,7 @@
                 <!--#if expr="v('PREFIX') == ''"-->
                 <li>
                     <label><input type=checkbox name="columns"
-                        value="018 <!--#echo var='PLANET'--> projected equatorial radius" autocomplete="on"/>
+                        value="018 <!--#echo var='PLANET'--> projected equatorial radius (arcsec)" autocomplete="on"/>
                             <!--#echo var='PLANET'--> projected equatorial radius (arcsec)</label>
                 </li>
                 <li>
@@ -163,7 +163,7 @@
                 </li>
                 <li>
                     <label><input type=checkbox name="columns"
-                        value="019 <!--#echo var='PLANET'--> projected equatorial radius" autocomplete="on"/>
+                        value="019 <!--#echo var='PLANET'--> projected equatorial radius (deg)" autocomplete="on"/>
                                    <!--#echo var='PLANET'--> projected equatorial radius (deg)</label>
                 </li>
                 <!--#endif-->
@@ -204,13 +204,13 @@
 
                     <!--#if expr="v('PREFIX') == ''"-->
                     <label><input type=checkbox name="mooncols"
-                        value="006 Offset RA & Dec from the moon" autocomplete="on"/>
+                        value="006 Offset RA & Dec from the moon (arcsec)" autocomplete="on"/>
                                    Offset RA & Dec from the moon (arcsec)</label>
                 </li>
                 <li>
                     <!--#else-->
                     <label><input type=checkbox name="mooncols"
-                        value="007 Offset RA & Dec from the moon" autocomplete="on"/>
+                        value="007 Offset RA & Dec from the moon (deg)" autocomplete="on"/>
                                    Offset RA & Dec from the moon (deg)</label>
                     <!--#endif-->
 

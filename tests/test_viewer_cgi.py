@@ -91,28 +91,28 @@ def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch: pytest.MonkeyPatc
     assert abs(params.center.dec_deg - (-21.980283333333334)) < 1e-9
 
 
-def test_viewer_params_from_env_j2000_center_ra_type_degrees_leading_space_is_hours(
+def test_viewer_params_from_env_j2000_center_ra_type_leading_space_degrees(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """J2000 center_ra_type ' degrees' (leading space) is hours to match FORTRAN/URL.
+    """J2000 center_ra_type ' degrees' (leading space) is degrees.
 
-    URL decoding turns + into space, so '+degrees' becomes ' degrees'. FORTRAN
-    uses first character only; space is not 'd', so hours.
+    URL decoding turns + into space; when stripped we get 'degrees', so RA is
+    interpreted as degrees (e.g. 16.9444 degrees not hours).
     """
     monkeypatch.setenv('NPLANET', '5')
-    monkeypatch.setenv('time', '2007-02-19 15:01:20')
+    monkeypatch.setenv('time', '2022-08-06 16:17:51')
     monkeypatch.setenv('center', 'J2000')
-    monkeypatch.setenv('center_ra', '3.2636')
+    monkeypatch.setenv('center_ra', '16.9444')
     monkeypatch.setenv('center_ra_type', ' degrees')
-    monkeypatch.setenv('center_dec', '67.5189')
+    monkeypatch.setenv('center_dec', '-31.4681')
     params = viewer_params_from_env()
     assert params is not None
     assert params.center.mode == 'J2000'
     ra_deg = params.center.ra_deg
     assert ra_deg is not None
-    assert abs(ra_deg - (3.2636 * 15)) < 1e-9
+    assert abs(ra_deg - 16.9444) < 1e-9
     assert params.center.dec_deg is not None
-    assert abs(params.center.dec_deg - 67.5189) < 1e-9
+    assert abs(params.center.dec_deg - (-31.4681)) < 1e-9
 
 
 def test_viewer_params_from_env_j2000_center_ra_type_plus_degrees_is_hours(

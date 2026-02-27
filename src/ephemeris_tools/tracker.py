@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import math
+import os
+import sys
 from typing import TextIO, TypedDict, cast
 
 from ephemeris_tools.params import Observer, TrackerParams
@@ -199,7 +201,19 @@ def _run_tracker_impl(
     if ntimes < 2:
         raise ValueError('Time range too short or interval too large')
     if ntimes > 10000:
-        raise ValueError('Number of time steps exceeds limit of 10000')
+        if output_ps is not None:
+            path = getattr(output_ps, 'name', None)
+            try:
+                output_ps.close()
+            except OSError:
+                pass
+            if path and isinstance(path, (str, os.PathLike)) and os.path.isfile(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+        print(' Error---Number of time steps exceeds limit of  10000', file=sys.stdout)
+        sys.exit(1)
 
     cfg = get_planet_config(planet_num)
     if cfg is None:

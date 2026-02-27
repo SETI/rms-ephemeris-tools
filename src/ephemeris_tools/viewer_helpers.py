@@ -123,6 +123,8 @@ def _label_points_from_selection(labels: str | None) -> float:
     if labels is None:
         return 0.0
     s = labels.strip().lower()
+    if not s or s == 'none':
+        return 0.0
     if 'small' in s:
         return _MOON_LABEL_SMALL_PTS
     if 'medium' in s:

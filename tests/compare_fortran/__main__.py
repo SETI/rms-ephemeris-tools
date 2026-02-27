@@ -26,6 +26,7 @@ import os
 import shutil
 import sys
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
@@ -67,6 +68,16 @@ _ABBREV_TO_PLANET: dict[str, int] = {
     'plu': 9,
 }
 
+# Absolute tolerance for tracker text-table ephemeris comparison (spacecraft ephemeris).
+TRACKER_EPHEMERIS_ABS_TOL = 0.06
+
+# Progress display: bar width, terminal fallback size, min columns when trimming, log interval.
+PROGRESS_BAR_WIDTH = 28
+TERMINAL_FALLBACK_COLS = 120
+TERMINAL_FALLBACK_LINES = 20
+PROGRESS_MIN_DISPLAY_COLS = 20
+PROGRESS_LOG_INTERVAL = 10
+
 
 def _format_duration(seconds: float) -> str:
     """Format duration seconds as MM:SS or HH:MM:SS."""
@@ -91,7 +102,7 @@ def _emit_progress(
     """Render progress for batch URL runs."""
     elapsed = max(0.0, time.monotonic() - started_at)
     fraction = (current / total) if total > 0 else 0.0
-    width = 28
+    width = PROGRESS_BAR_WIDTH
     filled = round(width * fraction)
     bar = f'[{"#" * filled}{"-" * (width - filled)}]'
     pct = 100.0 * fraction
@@ -105,15 +116,17 @@ def _emit_progress(
     )
 
     if is_tty:
-        term_cols = shutil.get_terminal_size(fallback=(120, 20)).columns
-        trimmed = line[: max(20, term_cols - 1)]
+        term_cols = shutil.get_terminal_size(
+            fallback=(TERMINAL_FALLBACK_COLS, TERMINAL_FALLBACK_LINES)
+        ).columns
+        trimmed = line[: max(PROGRESS_MIN_DISPLAY_COLS, term_cols - 1)]
         print(f'\r{trimmed}', end='', file=sys.stderr, flush=True)
         if current == total:
             print('', file=sys.stderr, flush=True)
         return
 
-    # Non-interactive logs: print first, every 10 cases, and final line.
-    if current == 1 or current == total or current % 10 == 0:
+    # Non-interactive logs: print first, every N cases, and final line.
+    if current == 1 or current == total or current % PROGRESS_LOG_INTERVAL == 0:
         print(line, file=sys.stderr, flush=True)
 
 
@@ -434,8 +447,8 @@ def _execute_spec(
                 else max(max_table_abs_diff, res.max_abs_diff)
             )
     if py_txt_use and fort_txt_use and py_txt_use.exists() and fort_txt_use.exists():
-        # Tracker text table: allow small spacecraft ephemeris differences (up to ~0.06)
-        txt_abs_tol = 0.06 if spec.tool == 'tracker' else None
+        # Tracker text table: allow small spacecraft ephemeris differences (up to TRACKER_EPHEMERIS_ABS_TOL).
+        txt_abs_tol = TRACKER_EPHEMERIS_ABS_TOL if spec.tool == 'tracker' else None
         res = compare_tables(
             py_txt_use,
             fort_txt_use,
@@ -470,10 +483,7 @@ def _execute_spec(
         )
         details.append(f'image: {res_img.message}')
         details.extend(res_img.details)
-        if spec.tool in ('viewer', 'tracker'):
-            all_ok = res_img.same
-        else:
-            all_ok = all_ok and res_img.same
+        all_ok = all_ok and res_img.same
     return (all_ok, details, max_table_abs_diff)
 
 
@@ -481,6 +491,7 @@ def _run_one_url(
     idx: int,
     url: str,
     repo_root: Path,
+    *,
     out_dir: Path,
     fortran_cmd_str: str | None,
     float_tol: int | None,
@@ -515,6 +526,17 @@ def _run_one_url(
 
 
 def main() -> int:
+    """Run Python (and optionally FORTRAN) with same inputs; compare outputs and exit.
+
+    Parses CLI for tool (ephemeris/tracker/viewer), URL or test file, and comparison
+    options. In URL/test-file mode runs each case (optionally in parallel), writes
+    summary and comparison files to the output directory, and optionally collects
+    failed case artifacts. In single-run mode invokes Python and optionally FORTRAN,
+    compares table/PostScript/image output, and prints results to stdout/stderr.
+
+    Returns:
+        Exit code: 0 on success, 1 on failure (e.g. comparison mismatch or run error).
+    """
     parser = argparse.ArgumentParser(
         description='Run Python (and optionally FORTRAN) with same inputs; compare outputs.',
     )
@@ -675,18 +697,30 @@ def main() -> int:
                         idx,
                         url,
                         repo_root,
-                        out_dir,
-                        args.fortran_cmd,
-                        float_tol,
-                        lsd_tol,
-                        args.viewer_image_min_similarity,
+                        out_dir=out_dir,
+                        fortran_cmd_str=args.fortran_cmd,
+                        float_tol=float_tol,
+                        lsd_tol=lsd_tol,
+                        viewer_min_similarity_pct=args.viewer_image_min_similarity,
                     ): idx
                     for idx, url in enumerate(urls, start=1)
                 }
                 for fut in as_completed(future_to_idx):
                     idx = future_to_idx[fut]
-                    _idx, url, ok, details, case_max_diff, case_dir, skipped = fut.result()
-                    result_by_idx[idx] = (url, ok, details, case_dir, case_max_diff, skipped)
+                    try:
+                        _idx, url, ok, details, case_max_diff, case_dir, skipped = fut.result()
+                        result_by_idx[idx] = (url, ok, details, case_dir, case_max_diff, skipped)
+                    except Exception:
+                        url = urls[idx - 1] if idx <= len(urls) else ""
+                        details = [f"exception in worker: {traceback.format_exc()}"]
+                        result_by_idx[idx] = (
+                            url,
+                            False,
+                            details,
+                            out_dir,
+                            None,
+                            False,
+                        )
                     n_done = len(result_by_idx)
                     _emit_progress(
                         current=n_done,
@@ -722,11 +756,11 @@ def main() -> int:
                     idx,
                     url,
                     repo_root,
-                    out_dir,
-                    args.fortran_cmd,
-                    float_tol,
-                    lsd_tol,
-                    args.viewer_image_min_similarity,
+                    out_dir=out_dir,
+                    fortran_cmd_str=args.fortran_cmd,
+                    float_tol=float_tol,
+                    lsd_tol=lsd_tol,
+                    viewer_min_similarity_pct=args.viewer_image_min_similarity,
                 )
                 all_details_lines.append(f'## case {idx}')
                 all_details_lines.append(url)
@@ -971,10 +1005,7 @@ def main() -> int:
             print(res_img.message)
             for d in res_img.details:
                 print(d)
-            if args.tool in ('viewer', 'tracker'):
-                if not res_img.same:
-                    exit_code = 1
-            elif not res_img.same:
+            if not res_img.same:
                 exit_code = 1
         return exit_code
 

@@ -233,9 +233,6 @@ def _run_viewer_impl(
     planet_ra, planet_dec = body_radec(et, cfg.planet_id)
     caption_center_body_id = cfg.planet_id
     caption_center_body_name = cfg.planet_name
-    centered_star_name: str | None = None
-    centered_star_ra_rad: float | None = None
-    centered_star_dec_rad: float | None = None
     if center_mode == 'J2000' and (center_ra != 0.0 or center_dec != 0.0):
         center_ra_rad = center_ra * _DEG2RAD
         center_dec_rad = center_dec * _DEG2RAD
@@ -282,9 +279,6 @@ def _run_viewer_impl(
                         if star.name == target_star:
                             center_ra_rad = star.ra
                             center_dec_rad = star.dec
-                            centered_star_name = star.name
-                            centered_star_ra_rad = star.ra
-                            centered_star_dec_rad = star.dec
                             found_center_star = True
                             break
                 except OSError:
@@ -615,16 +609,22 @@ def _run_viewer_impl(
         star_ras: list[float] = []
         star_decs: list[float] = []
         star_names: list[str] = []
-        if (
-            center_mode == 'star'
-            and show_standard_stars
-            and centered_star_name is not None
-            and centered_star_ra_rad is not None
-            and centered_star_dec_rad is not None
-        ):
-            star_ras.append(centered_star_ra_rad)
-            star_decs.append(centered_star_dec_rad)
-            star_names.append(centered_star_name)
+        if show_standard_stars:
+            starlist_candidates = [
+                Path(get_starlist_path()) / cfg.starlist_file,
+                Path(__file__).resolve().parents[2] / 'web' / 'tools' / cfg.starlist_file,
+            ]
+            for starlist_path in starlist_candidates:
+                if not starlist_path.exists():
+                    continue
+                try:
+                    for star in read_stars(starlist_path, max_stars=200):
+                        star_ras.append(star.ra)
+                        star_decs.append(star.dec)
+                        star_names.append(star.name)
+                except OSError:
+                    continue
+                break
         if extra_star_ra_deg is not None and extra_star_dec_deg is not None:
             star_ras.append(extra_star_ra_deg * _DEG2RAD)
             star_decs.append(extra_star_dec_deg * _DEG2RAD)

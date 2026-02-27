@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import parse_qs
 
 from ephemeris_tools.config import get_spice_path
-from tests.compare_fortran.spec import ABBREV_TO_PLANET, RunSpec
+from tests.compare_fortran.spec import ABBREV_TO_PLANET, RunSpec, _normalize_query_string
 
 
 def _env_from_query_string(query_string: str) -> dict[str, str]:
@@ -58,8 +58,8 @@ def run_python(
     if spec.params.get('query_string'):
         # URL/test-file: use the same env vars for both Python and FORTRAN.
         # Python is run with --cgi and reads from env; FORTRAN gets QUERY_STRING.
-        # We expand the query string into env key=value so both see identical params.
-        query_string = str(spec.params['query_string'])
+        # Normalize (strip values) so FORTRAN does not crash on leading space; both see same params.
+        query_string = _normalize_query_string(str(spec.params['query_string']))
         env.update(_env_from_query_string(query_string))
         # FORTRAN requires xrange/xunit for tracker; inject defaults so both get same params.
         if spec.tool == 'tracker':

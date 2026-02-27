@@ -11,10 +11,27 @@ if TYPE_CHECKING:
     from ephemeris_tools.params import EphemerisParams, TrackerParams, ViewerParams
 
 
-def _strip_cgi_code(s: str) -> str:
-    """Strip leading 'NNN ' (digits + space) from CGI form value; return rest."""
+def _strip_cgi_code(s: str | None) -> str:
+    """Strip leading 'NNN ' (three digits + space) from CGI form value; return rest.
+
+    None and empty strings are normalized to '' and returned as ''. For inputs
+    shorter than 4 characters, or not starting with three decimal digits followed
+    by a space, the stripped input is returned unchanged. If the string begins
+    with a three-digit code plus space (e.g. "200 foo"), returns s[4:].lstrip()
+    (e.g. "foo").
+
+    Parameters:
+        s: CGI form value (str or None). None and empty strings are accepted.
+
+    Returns:
+        str: The input with leading "NNN " removed and outer whitespace
+        normalized; never None. Empty string for None or empty input.
+
+    Raises:
+        Nothing. Callers can rely on no exceptions for any input.
+    """
     s = (s or '').strip()
-    if len(s) >= 4 and s[:4].replace(' ', '').isdigit():
+    if len(s) >= 4 and s[:3].isdecimal() and s[3] == ' ':
         return s[4:].lstrip()
     return s
 
@@ -26,6 +43,9 @@ def _w(stream: TextIO, line: str) -> None:
 
 # Match FORTRAN ephemeris stdout: interval unit always plural (e.g. "1 hours").
 _TIME_UNIT_PLURAL = {'hour': 'hours', 'day': 'days', 'min': 'minutes', 'sec': 'seconds'}
+
+# Default RA unit when not specified by display or args (used for diagram center RA).
+DEFAULT_RA_TYPE = 'degrees'
 
 
 def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) -> None:
@@ -97,7 +117,7 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
 
     # General columns
     planet_name = PLANET_NUM_TO_NAME.get(params.planet_num, 'planet')
-    if params.columns_display and len(params.columns_display) > 0:
+    if params.columns_display is not None and len(params.columns_display) > 0:
         for i, col_str in enumerate(params.columns_display):
             s = _strip_cgi_code(col_str)
             prefix = 'General columns: ' if i == 0 else '                 '
@@ -113,7 +133,7 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
     _w(stream, ' ')
 
     # Moon columns
-    if params.mooncols_display and len(params.mooncols_display) > 0:
+    if params.mooncols_display is not None and len(params.mooncols_display) > 0:
         for i, m in enumerate(params.mooncols_display):
             s = _strip_cgi_code(m)
             prefix = '   Moon columns: ' if i == 0 else '                 '
@@ -128,7 +148,7 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
     _w(stream, ' ')
 
     # Moon selection
-    if params.moons_display and len(params.moons_display) > 0:
+    if params.moons_display is not None and len(params.moons_display) > 0:
         for i, m in enumerate(params.moons_display):
             s = _strip_cgi_code(m)
             prefix = ' Moon selection: ' if i == 0 else '                 '
@@ -386,10 +406,9 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
         ra_type_display = getattr(display, 'center_ra_type_display', None)
         if ra_type_display is not None:
             ra_type = ra_type_display.strip()
-        elif hasattr(args, 'center_ra_type'):
-            ra_type = (getattr(args, 'center_ra_type', None) or 'hours').strip()
         else:
-            ra_type = 'degrees'
+            raw = getattr(args, 'center_ra_type', None)
+            ra_type = (raw.strip() if raw is not None else '') or DEFAULT_RA_TYPE
         _w(stream, f'    Diagram center: RA  = {center_ra_print} {ra_type}')
         _w(stream, f'                    Dec = {center_dec_print}')
     elif center == 'star':
