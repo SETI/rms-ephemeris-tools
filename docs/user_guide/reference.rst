@@ -3,7 +3,7 @@
 Argument reference
 ===================
 
-This page documents the accepted values for key CLI arguments.
+This page documents the accepted values for CLI arguments.
 
 You can pass **IDs** (integers) or **names** (case-insensitive strings) for
 ``--columns``, ``--mooncols``, ``--moons``, and ``--planet``, and mix them
@@ -38,15 +38,18 @@ name:
 Viewpoint and observatory (``--viewpoint``, ``--observatory``)
 ---------------------------------------------------------------
 
-The ``--viewpoint`` argument selects the *type* of observer position:
+``--viewpoint`` selects the *type* of observer: ``observatory`` (default) or
+``latlon``. It does not take a spacecraft name. To observe from a spacecraft,
+use ``--viewpoint observatory`` and set ``--observatory`` to the spacecraft or
+observatory name (e.g. ``--observatory Cassini``, not ``--viewpoint cas``).
 
 - ``observatory`` (default): Observe from a named observatory or spacecraft.
-  The specific name is given by ``--observatory`` (default: ``"Earth's center"``).
+  The name is given by ``--observatory`` (default: ``"Earth's center"``).
 - ``latlon``: Observe from a geographic position on Earth, specified with
   ``--latitude``, ``--longitude``, ``--lon-dir`` (east/west), and ``--altitude``.
 
-When ``--viewpoint`` is ``observatory``, the ``--observatory`` argument accepts
-the following spacecraft names or abbreviations (case-insensitive):
+When ``--viewpoint`` is ``observatory``, ``--observatory`` accepts the
+following spacecraft names or abbreviations (case-insensitive):
 
 .. list-table:: Accepted observatory/spacecraft names
    :header-rows: 1
@@ -179,70 +182,70 @@ raddeg, lphase, sunsep, lsep.
      - Name
      - Description
    * - 1
-     - ``COL_MJD``
+     - mjd
      - Modified Julian Date
    * - 2
-     - ``COL_YMDHM``
+     - ymdhm
      - Date/time (year-month-day hour:min)
    * - 3
-     - ``COL_YMDHMS``
+     - ymdhms
      - Date/time (year-month-day hour:min:sec)
    * - 4
-     - ``COL_YDHM``
+     - ydhm
      - Year and day-of-year + hour:min
    * - 5
-     - ``COL_YDHMS``
+     - ydhms
      - Year and day-of-year + hour:min:sec
    * - 6
-     - ``COL_OBSDIST``
+     - obsdist
      - Observer–planet distance (km)
    * - 7
-     - ``COL_SUNDIST``
+     - sundist
      - Sun–planet distance (km)
    * - 8
-     - ``COL_PHASE``
+     - phase
      - Phase angle (deg)
    * - 9
-     - ``COL_OBSOPEN``
+     - obsopen
      - Ring opening angle to observer (deg)
    * - 10
-     - ``COL_SUNOPEN``
+     - sunopen
      - Ring opening angle to Sun (deg)
    * - 11
-     - ``COL_OBSLON``
+     - obslon
      - Sub-observer longitude (deg)
    * - 12
-     - ``COL_SUNLON``
+     - sunlon
      - Sub-solar longitude (deg)
    * - 13
-     - ``COL_SUBOBS``
+     - subobs
      - Sub-observer latitude (deg)
    * - 14
-     - ``COL_SUBSOL``
+     - subsol
      - Sub-solar latitude (deg)
    * - 15
-     - ``COL_RADEC``
+     - radec
      - RA and Dec (deg)
    * - 16
-     - ``COL_EARTHRD``
+     - earthrd
      - Earth range and declination (deg)
    * - 17
-     - ``COL_SUNRD``
+     - sunrd
      - Sun range and declination (deg)
    * - 18
-     - ``COL_RADIUS``
+     - radius
      - Apparent radius (arcsec)
    * - 19
-     - ``COL_RADDEG``
+     - raddeg
      - Apparent radius (deg)
    * - 20
-     - ``COL_LPHASE``
+     - lphase
      - Lunar phase angle (deg)
    * - 21
-     - ``COL_SUNSEP``
+     - sunsep
      - Sun separation (deg)
    * - 22
-     - ``COL_LSEP``
+     - lsep
      - Lunar separation (deg)
 
 Moon column index (``--mooncols``)
@@ -261,31 +264,31 @@ orblon, orbopen.
      - Name
      - Description
    * - 1
-     - ``MCOL_OBSDIST``
+     - obsdist
      - Observer–moon distance (km)
    * - 2
-     - ``MCOL_PHASE``
+     - phase
      - Phase angle (deg)
    * - 3
-     - ``MCOL_SUBOBS``
+     - subobs
      - Sub-observer lat (deg)
    * - 4
-     - ``MCOL_SUBSOL``
+     - subsol
      - Sub-solar lat (deg)
    * - 5
-     - ``MCOL_RADEC``
+     - radec
      - RA and Dec (deg)
    * - 6
-     - ``MCOL_OFFSET``
+     - offset
      - Offset from planet (arcsec)
    * - 7
-     - ``MCOL_OFFDEG``
+     - offdeg
      - Offset (deg)
    * - 8
-     - ``MCOL_ORBLON``
+     - orblon
      - Orbital longitude (deg)
    * - 9
-     - ``MCOL_ORBOPEN``
+     - orbopen
      - Orbital opening angle (deg)
 
 Moon index (``--moons``)

@@ -51,7 +51,6 @@ Example:
    Values: ``4`` / ``mars``, ``5`` / ``jupiter``, ``6`` / ``saturn``,
    ``7`` / ``uranus``, ``8`` / ``neptune``, ``9`` / ``pluto``.
    Default: ``6`` (Saturn).
-   Env: ``NPLANET``.
 
    .. code-block:: bash
 
@@ -61,7 +60,6 @@ Example:
 ``--start``
    Start time as a date/time string.
    Default: ``""`` (empty; required for a meaningful run).
-   Env: ``start`` or ``START_TIME``.
 
    .. code-block:: bash
 
@@ -70,7 +68,6 @@ Example:
 ``--stop``
    Stop time as a date/time string.
    Default: ``""`` (empty; required for a meaningful run).
-   Env: ``stop`` or ``STOP_TIME``.
 
    .. code-block:: bash
 
@@ -79,7 +76,6 @@ Example:
 ``--interval``
    Time step size (in units given by ``--time-unit``).
    Default: ``1.0``.
-   Env: ``interval``.
 
    .. code-block:: bash
 
@@ -89,7 +85,6 @@ Example:
    Unit for ``--interval``.
    Values: ``sec``, ``min``, ``hour``, ``day``.
    Default: ``hour``.
-   Env: ``time_unit``.
 
    .. code-block:: bash
 
@@ -97,8 +92,8 @@ Example:
 
 ``--ephem``
    Ephemeris version number.  ``0`` selects the latest available version.
+   Available versions are listed in ``SPICE_planets.txt`` under ``SPICE_PATH``.
    Default: ``0``.
-   Env: ``ephem``.
 
    .. code-block:: bash
 
@@ -112,7 +107,6 @@ Example:
    to observe from a geographic position on Earth (specified by
    ``--latitude`` / ``--longitude`` / ``--altitude``).
    Default: ``observatory``.
-   Env: ``viewpoint``.
 
    .. code-block:: bash
 
@@ -126,7 +120,6 @@ Example:
    ``Voyager 2`` (``VG2``), ``Galileo`` (``GLL``), ``Cassini`` (``CAS``),
    ``New Horizons`` (``NH``), ``Juno`` (``JNO``), ``Europa Clipper`` (``EC``),
    ``JUICE`` (``JCE``), ``JWST``, ``HST``.
-   Env: ``observatory``.
 
    .. code-block:: bash
 
@@ -136,7 +129,6 @@ Example:
 ``--latitude``
    Observer latitude in degrees (used when ``--viewpoint`` is ``latlon``).
    Default: not set.
-   Env: ``latitude``.
 
    .. code-block:: bash
 
@@ -145,7 +137,6 @@ Example:
 ``--longitude``
    Observer longitude in degrees (used when ``--viewpoint`` is ``latlon``).
    Default: not set.
-   Env: ``longitude``.
 
    .. code-block:: bash
 
@@ -155,7 +146,6 @@ Example:
    Whether ``--longitude`` is measured east or west of the prime meridian.
    Values: ``east``, ``west``.
    Default: ``east``.
-   Env: ``lon_dir``.
 
    .. code-block:: bash
 
@@ -165,7 +155,6 @@ Example:
    Observer altitude in metres above sea level (used when ``--viewpoint``
    is ``latlon``).
    Default: not set (treated as 0).
-   Env: ``altitude``.
 
    .. code-block:: bash
 
@@ -174,7 +163,6 @@ Example:
 ``--sc-trajectory``
    Spacecraft trajectory file variant (used with spacecraft observers).
    Default: ``0``.
-   Env: ``sc_trajectory``.
 
    .. code-block:: bash
 
@@ -186,7 +174,6 @@ Example:
    Columns to include in the ephemeris table.  Accepts integer IDs, string
    names, or a mix.  See :ref:`reference` for the full list.
    Default: ``1 2 3 15 8`` (MJD, YMDHM, YMDHMS, RA/Dec, phase angle).
-   Env: ``columns``.
 
    .. code-block:: bash
 
@@ -197,7 +184,6 @@ Example:
    Columns to include for each moon in the ephemeris table.  Accepts integer
    IDs, string names, or a mix.  See :ref:`reference` for the full list.
    Default: ``5 6 8 9`` (RA offset, Dec offset, distance, phase angle).
-   Env: ``mooncols``.
 
    .. code-block:: bash
 
@@ -208,7 +194,6 @@ Example:
    Moons to include.  Accepts 1-based indices, NAIF IDs (>=100), or
    case-insensitive names.  See :ref:`reference` for per-planet moon lists.
    Default: none.
-   Env: ``moons``.
 
    .. code-block:: bash
 
@@ -222,7 +207,6 @@ Example:
    Write the ephemeris table to a file.  If not given, output is written to
    stdout.
    Default: stdout.
-   Env: ``EPHEM_FILE``.
 
    .. code-block:: bash
 
@@ -301,7 +285,6 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
    mixed.  The available options depend on the planet; see :ref:`reference`
    for the full list.
    Default: none.
-   Env: ``rings``.
 
    .. code-block:: bash
 
@@ -313,7 +296,6 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``--xrange``
    Half-range of the x-axis in units given by ``--xunit``.
    Default: ``180.0`` (auto-set for tracker).
-   Env: ``xrange``.
 
    .. code-block:: bash
 
@@ -323,7 +305,6 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
    Units for the x-axis.
    Values: ``arcsec``, ``radii``.
    Default: ``arcsec``.
-   Env: ``xunit``.
 
    .. code-block:: bash
 
@@ -332,7 +313,6 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``--title``
    Plot title string.
    Default: ``""`` (no title).
-   Env: ``title``.
 
    .. code-block:: bash
 
@@ -343,7 +323,6 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``-o`` / ``--output``
    Write the PostScript plot to a file.
    Default: none (no PS output).
-   Env: ``TRACKER_POSTFILE``.
 
    .. code-block:: bash
 
@@ -352,7 +331,6 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``--output-txt``
    Write an accompanying text table to a file.
    Default: none (no text output).
-   Env: ``TRACKER_TEXTFILE``.
 
    .. code-block:: bash
 
@@ -386,7 +364,6 @@ Example:
 ``--time``
    Observation time as a date/time string.
    Default: ``""`` (required).
-   Env: ``time``.
 
    .. code-block:: bash
 
@@ -400,7 +377,6 @@ Example:
 ``--fov``
    Field of view size (in units given by ``--fov-unit``).
    Default: ``1.0``.
-   Env: ``fov``.
 
    .. code-block:: bash
 
@@ -410,7 +386,6 @@ Example:
    Unit for ``--fov``.
    Values: ``deg``, ``arcmin``, ``arcsec``.
    Default: ``deg``.
-   Env: ``fov_unit``.
 
    .. code-block:: bash
 
@@ -422,7 +397,6 @@ Example:
    What the diagram is centered on.
    Values: ``body``, ``ansa``, ``J2000``, ``star``.
    Default: ``body``.
-   Env: ``center``.
 
    .. code-block:: bash
 
@@ -433,7 +407,6 @@ Example:
 ``--center-body``
    Body name when ``--center`` is ``body``.
    Default: ``""`` (the planet itself).
-   Env: ``center_body``.
 
    .. code-block:: bash
 
@@ -442,7 +415,6 @@ Example:
 ``--center-ansa``
    Ring ansa name when ``--center`` is ``ansa``.
    Default: ``""``.
-   Env: ``center_ansa``.
 
    .. code-block:: bash
 
@@ -451,7 +423,6 @@ Example:
 ``--center-ew``
    East or west ansa when ``--center`` is ``ansa``.
    Default: ``east``.
-   Env: ``center_ew``.
 
    .. code-block:: bash
 
@@ -460,7 +431,6 @@ Example:
 ``--center-ra``
    Right ascension in degrees for ``J2000`` centering.
    Default: ``0.0``.
-   Env: ``center_ra``.
 
    .. code-block:: bash
 
@@ -469,12 +439,10 @@ Example:
 ``--center-dec``
    Declination in degrees for ``J2000`` centering.
    Default: ``0.0``.
-   Env: ``center_dec``.
 
 ``--center-ra-type``
    RA input format.
    Default: ``hours``.
-   Env: ``center_ra_type``.
 
    .. code-block:: bash
 
@@ -483,7 +451,6 @@ Example:
 ``--center-star``
    Star name when ``--center`` is ``star``.
    Default: ``""``.
-   Env: ``center_star``.
 
    .. code-block:: bash
 
@@ -508,13 +475,11 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``--moremoons``
    Additional moon selection string (planet-specific).
    Default: none.
-   Env: ``moremoons``.
 
 ``--rings``
    Ring display option codes or case-insensitive names (planet-specific).
    Integers and names can be mixed; see :ref:`reference` for the full list.
    Default: none.
-   Env: ``rings``.
 
    .. code-block:: bash
 
@@ -524,44 +489,36 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``--standard``
    Standard star catalog to overlay.
    Default: none.
-   Env: ``standard``.
 
 ``--additional``
    Additional star catalog or identifier.
    Default: none.
-   Env: ``additional``.
 
 ``--extra-name``
    Name for a user-specified extra star.
    Default: none.
-   Env: ``extra_name``.
 
 ``--extra-ra``
    Right ascension for the extra star (string, parsed per ``--extra-ra-type``).
    Default: none.
-   Env: ``extra_ra``.
 
 ``--extra-ra-type``
    RA format for the extra star (e.g. ``hours``, ``degrees``).
    Default: none.
-   Env: ``extra_ra_type``.
 
 ``--extra-dec``
    Declination for the extra star.
    Default: none.
-   Env: ``extra_dec``.
 
 ``--other``
    Other bodies to overlay (list of strings, e.g. additional asteroid names).
    Default: none.
-   Env: ``other``.
 
 **Plot options**
 
 ``--title``
    Diagram title string.
    Default: ``""`` (no title).
-   Env: ``title``.
 
    .. code-block:: bash
 
@@ -570,18 +527,15 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``--labels``
    Moon label style.
    Default: none (planet default).
-   Env: ``labels``.
 
 ``--moonpts``
    Moon marker enlargement in points.
    Default: none (planet default).
-   Env: ``moonpts``.
 
 ``--blank``
    Whether to blank (white-out) planet/moon disks.
    Values: ``yes``, ``no`` (or ``y``/``n``/``true``/``false``/``1``/``0``).
    Default: ``no``.
-   Env: ``blank``.
 
    .. code-block:: bash
 
@@ -590,39 +544,32 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 ``--opacity``
    Ring plot type (controls ring opacity rendering).
    Default: none (planet default).
-   Env: ``opacity``.
 
 ``--peris``
    Pericenter markers.
    Default: none.
-   Env: ``peris``.
 
 ``--peripts``
    Pericenter marker size in points.
    Default: none.
-   Env: ``peripts``.
 
 ``--meridians``
    Show prime meridians.
    Default: none.
-   Env: ``meridians``.
 
 ``--arcmodel``
    Arc model for Neptune ring arcs.
    Default: none.
-   Env: ``arcmodel``.
 
 ``--arcpts``
    Arc weight in points for Neptune ring arcs.
    Default: none.
-   Env: ``arcpts``.
 
 **Output**
 
 ``-o`` / ``--output``
    Write the PostScript diagram to a file.
    Default: none (no PS output).
-   Env: ``VIEWER_POSTFILE``.
 
    .. code-block:: bash
 
@@ -646,17 +593,31 @@ parameters via ``QUERY_STRING`` (or as individual environment variables).
 Use ``--cgi`` on the ephemeris command so parameters are read from the
 environment instead of the command line.
 
-Key environment variables:
+All CGI environment variables read by each tool:
 
-- ``NPLANET``: Planet number (4-9)
-- ``start``, ``stop``: Start/stop time strings
-- ``interval``, ``time_unit``: Time step and unit
-- ``ephem``, ``EPHEM_FILE``: Ephemeris version and output path
-- ``viewpoint``, ``observatory``: Observer type and name
-- ``latitude``, ``longitude``, ``lon_dir``, ``altitude``: Geographic coords
-- ``columns``, ``mooncols``, ``moons``: Column/moon selections
-- ``TRACKER_POSTFILE``, ``TRACKER_TEXTFILE``: Tracker output files
-- ``VIEWER_POSTFILE``: Viewer output file
+**Ephemeris** (``ephemeris-tools ephemeris --cgi``): ``NPLANET``, ``start``,
+``stop`` (or ``START_TIME``/``STOP_TIME``), ``interval``, ``time_unit``,
+``ephem``, ``viewpoint``, ``observatory``, ``latitude``, ``longitude``,
+``lon_dir``, ``altitude``, ``sc_trajectory``, ``columns``, ``mooncols``,
+``moons``, ``EPHEM_FILE``.
 
-See :ref:`reference` for column IDs, moon names, and observatory/spacecraft
-names.
+**Tracker** (``ephemeris-tools tracker --cgi``): ``NPLANET``, ``start``,
+``stop``, ``interval``, ``time_unit``, ``ephem``, ``viewpoint``,
+``observatory``, ``latitude``, ``longitude``, ``lon_dir``, ``altitude``,
+``sc_trajectory``, ``moons``, ``rings``, ``xrange``, ``xunit``, ``title``,
+``TRACKER_POSTFILE``, ``TRACKER_TEXTFILE``.
+
+**Viewer** (``ephemeris-tools viewer --cgi``): ``NPLANET``, ``time``,
+``fov``, ``fov_unit``, ``center``, ``center_body``, ``center_ansa``,
+``center_ew``, ``center_ra``, ``center_ra_type``, ``center_dec``,
+``center_star``, ``viewpoint``, ``observatory``, ``latitude``,
+``longitude``, ``lon_dir``, ``altitude``, ``moons`` (or ``moremoons``),
+``rings``, ``blank``, ``meridians``, ``opacity``, ``peris``, ``peripts``,
+``arcmodel``, ``arcpts``, ``other``, ``labels``, ``moonpts``, ``title``,
+``standard``, ``additional``, ``extra_name``, ``extra_ra``,
+``extra_ra_type``, ``extra_dec``, ``ephem``, ``torus``, ``torus_inc``,
+``torus_rad``, ``VIEWER_POSTFILE``.
+
+See the Developer's Guide :ref:`cgi_parameter_reference` for possible
+values and per-tool details. See :ref:`reference` for column IDs, moon
+names, and observatory/spacecraft names.

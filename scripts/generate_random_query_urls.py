@@ -7,8 +7,8 @@ ephem3_xxx.pl?) with mandatory fields always set and optional fields randomly
 included with random valid values. Output is one URL per line to the given file.
 
 Usage:
-    python scripts/generate_random_cgi_queries.py -n 100 -o urls.txt
-    python scripts/generate_random_cgi_queries.py -n 50 -o viewer.txt --tool viewer
+    python scripts/generate_random_query_urls.py -n 100 -o urls.txt
+    python scripts/generate_random_query_urls.py -n 50 -o viewer.txt --tool viewer
 """
 
 from __future__ import annotations
@@ -123,8 +123,7 @@ def _prefix(abbrev: str) -> str:
 
 
 # Mission date limits for SPICE kernel availability (from web/tools/EPHEMERIS_INFO.shtml).
-# (min_date, max_date) inclusive. Spacecraft kernels exist only for past times;
-# max_date is capped to "today" at runtime so we never generate future dates.
+# (min_date, max_date) inclusive.
 MISSION_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
     'jupc': (datetime(2000, 6, 1, tzinfo=timezone.utc), datetime(2001, 6, 1, tzinfo=timezone.utc)),
     'jupj': (datetime(2016, 8, 15, tzinfo=timezone.utc), datetime(2025, 10, 31, tzinfo=timezone.utc)),
@@ -161,8 +160,8 @@ OBSERVATORY_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
         datetime(2034, 9, 3, tzinfo=timezone.utc),
     ),
     'JUICE': (
-        datetime(2023, 4, 5, tzinfo=timezone.utc),  # launch
-        datetime(2035, 10, 5, tzinfo=timezone.utc),
+        datetime(2023, 4, 7, tzinfo=timezone.utc),  # launch
+        datetime(2035, 10, 2, tzinfo=timezone.utc),
     ),
     'Cassini': (
         datetime(2004, 1, 1, tzinfo=timezone.utc),  # Saturn arrival
@@ -191,7 +190,7 @@ OBSERVATORY_ABBREV_DATE_RANGES: dict[tuple[str, str], tuple[datetime, datetime]]
     ),
     ('jupj', 'Juno'): (
         datetime(2016, 8, 15, tzinfo=timezone.utc),
-        datetime(2025, 10, 31, tzinfo=timezone.utc),
+        datetime(2025, 10, 19, tzinfo=timezone.utc),
     ),
     ('jupjc', 'JUICE'): (
         datetime(2023, 4, 5, tzinfo=timezone.utc),
@@ -820,53 +819,50 @@ def _random_time_range_and_interval(
     date_range = obs_range if obs_range else mission_range
     if date_range:
         min_dt, max_dt = date_range
-        # Spacecraft kernels exist only for past times; never generate future dates.
         now = datetime.now(timezone.utc)
-        max_dt = min(max_dt, now)
-        span_days = (max_dt - min_dt).days
-        if span_days < 0:
-            # Mission not started yet; use recent past to avoid future dates
+        if max_dt <= min_dt:
+            # Mission not started yet or invalid range; use recent past.
             max_dt = now
             min_dt = now - timedelta(days=30)
-            span_days = 30
-        delta_days = random.randint(2, min(30, max(2, span_days)))
-        start_dt = min_dt + timedelta(
-            days=random.randint(0, max(0, span_days - delta_days))
-        )
-        start_dt = start_dt.replace(
-            hour=random.randint(0, 23),
-            minute=random.randint(0, 59),
-            second=random.randint(0, 59),
-        )
-        stop_dt = start_dt + timedelta(days=delta_days)
-        if stop_dt > max_dt:
-            stop_dt = max_dt
-            start_dt = stop_dt - timedelta(days=delta_days)
-            if start_dt < min_dt:
-                start_dt = min_dt
-                delta_days = (stop_dt - start_dt).days
-        start_str = start_dt.strftime('%Y-%m-%d %H:%M:%S')
-        stop_str = stop_dt.strftime('%Y-%m-%d %H:%M:%S')
-        total_sec = delta_days * _SECONDS_PER_DAY
     else:
-        delta_days = random.randint(2, 30)
-        start_str = _random_datetime()
-        year = int(start_str[:4])
-        month = int(start_str[5:7])
-        day = int(start_str[8:10])
-        hour = int(start_str[11:13])
-        minute = int(start_str[14:16])
-        second = int(start_str[17:19])
-        start_dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
-        stop_dt = start_dt + timedelta(days=delta_days)
-        stop_str = stop_dt.strftime('%Y-%m-%d %H:%M:%S')
-        total_sec = delta_days * _SECONDS_PER_DAY
+        # No constrained range; use a broad recent span.
+        max_dt = datetime.now(timezone.utc)
+        min_dt = max_dt - timedelta(days=3650)
+
+    span_sec_full = int((max_dt - min_dt).total_seconds())
+    if span_sec_full < 60:
+        # Ensure we can always draw two points at least one minute apart.
+        min_dt = max_dt - timedelta(minutes=1)
+        span_sec_full = 60
+
+    # Pick two random timestamps in the available span; keep trying until they
+    # are at least 60 seconds apart.
+    start_dt = min_dt
+    stop_dt = max_dt
+    for _ in range(200):
+        offset_a = random.randint(0, span_sec_full)
+        offset_b = random.randint(0, span_sec_full)
+        a = min_dt + timedelta(seconds=offset_a)
+        b = min_dt + timedelta(seconds=offset_b)
+        lo, hi = (a, b) if a <= b else (b, a)
+        if (hi - lo).total_seconds() >= 60:
+            start_dt, stop_dt = lo, hi
+            break
+    else:
+        start_dt = min_dt
+        stop_dt = min_dt + timedelta(seconds=60)
+
+    total_sec = max(60.0, (stop_dt - start_dt).total_seconds())
+    start_str = start_dt.strftime('%Y-%m-%d %H:%M:%S')
+    stop_str = stop_dt.strftime('%Y-%m-%d %H:%M:%S')
 
     time_unit = _pick(TIME_UNIT)
-    ntimes = random.randint(10, max_steps)
-    interval_sec = total_sec / ntimes
+    nsteps = random.randint(1, max_steps)
+    interval_sec = total_sec / nsteps
     # Round up to whole minutes because this is what the tracker does
-    interval_sec = max(60.0, math.ceil(interval_sec / 60.0) * 60.0)
+    interval_sec = math.ceil(interval_sec / 60.0) * 60.0
+    if interval_sec <= 0:
+        interval_sec = 60.0
 
     mult = {
         'seconds': 1.0,

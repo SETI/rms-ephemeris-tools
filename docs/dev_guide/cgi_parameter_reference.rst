@@ -1,3 +1,5 @@
+.. _cgi_parameter_reference:
+
 CGI Parameter Reference
 =======================
 
@@ -158,33 +160,33 @@ Field of View
 
    Possible values (all planets):
 
-   - ``" seconds of arc"``
-   - ``" degrees"``
-   - ``" milliradians"``
-   - ``" microradians"``
-   - ``" kilometers"``
+   - ``"seconds of arc"``
+   - ``"degrees"``
+   - ``"milliradians"``
+   - ``"microradians"``
+   - ``"kilometers"``
 
    Planet-specific values (selected by default for each planet):
 
-   - ``" Mars radii"`` (Mars)
-   - ``" Jupiter radii"`` (Jupiter)
-   - ``" Saturn radii"`` (Saturn)
-   - ``" Uranus radii"`` (Uranus)
-   - ``" Neptune radii"`` (Neptune)
-   - ``" Pluto radii (1153 km)"`` (Pluto)
-   - ``" Pluto-Charon separations (19,571 km)"`` (Pluto, default)
+   - ``"Mars radii"`` (Mars)
+   - ``"Jupiter radii"`` (Jupiter)
+   - ``"Saturn radii"`` (Saturn)
+   - ``"Uranus radii"`` (Uranus)
+   - ``"Neptune radii"`` (Neptune)
+   - ``"Pluto radii (1153 km)"`` (Pluto)
+   - ``"Pluto-Charon separations (19,571 km)"`` (Pluto, default)
 
    Instrument-specific values (only when PREFIX is empty or matches
    mission):
 
-   - ``" Voyager ISS wide angle FOVs"`` (Jupiter, Saturn, Uranus, Neptune)
-   - ``" Voyager ISS narrow angle FOVs"`` (Jupiter, Saturn, Uranus, Neptune)
-   - ``" Galileo SSI FOVs"`` (Jupiter only)
-   - ``" Cassini ISS wide angle FOVs"`` (Jupiter, Saturn)
-   - ``" Cassini ISS narrow angle FOVs"`` (Jupiter, Saturn)
-   - ``" Cassini VIMS 64x64 FOVs"`` (Jupiter, Saturn)
-   - ``" Cassini UVIS slit widths"`` (Jupiter, Saturn)
-   - ``" LORRI FOVs"`` (Pluto only)
+   - ``"Voyager ISS wide angle FOVs"`` (Jupiter, Saturn, Uranus, Neptune)
+   - ``"Voyager ISS narrow angle FOVs"`` (Jupiter, Saturn, Uranus, Neptune)
+   - ``"Galileo SSI FOVs"`` (Jupiter only)
+   - ``"Cassini ISS wide angle FOVs"`` (Jupiter, Saturn)
+   - ``"Cassini ISS narrow angle FOVs"`` (Jupiter, Saturn)
+   - ``"Cassini VIMS 64x64 FOVs"`` (Jupiter, Saturn)
+   - ``"Cassini UVIS slit widths"`` (Jupiter, Saturn)
+   - ``"LORRI FOVs"`` (Pluto only)
 
 Diagram Center
 ~~~~~~~~~~~~~~
@@ -204,155 +206,155 @@ Diagram Center
 
    Mars:
 
-   - ``" Mars"``
-   - ``" Phobos (M1)"``
-   - ``" Deimos (M2)"``
+   - ``"Mars"``
+   - ``"Phobos (M1)"``
+   - ``"Deimos (M2)"``
 
    Jupiter:
 
-   - ``" Jupiter"``
-   - ``" Io (J1)"``
-   - ``" Europa (J2)"``
-   - ``" Ganymede (J3)"``
-   - ``" Callisto (J4)"``
-   - ``" Amalthea (J5)"``
-   - ``" Thebe (J14)"``
-   - ``" Adrastea (J15)"``
-   - ``" Metis (J16)"``
+   - ``"Jupiter"``
+   - ``"Io (J1)"``
+   - ``"Europa (J2)"``
+   - ``"Ganymede (J3)"``
+   - ``"Callisto (J4)"``
+   - ``"Amalthea (J5)"``
+   - ``"Thebe (J14)"``
+   - ``"Adrastea (J15)"``
+   - ``"Metis (J16)"``
 
    Saturn:
 
-   - ``" Saturn"``
-   - ``" Mimas (S1)"``
-   - ``" Enceladus (S2)"``
-   - ``" Tethys (S3)"``
-   - ``" Dione (S4)"``
-   - ``" Rhea (S5)"``
-   - ``" Titan (S6)"``
-   - ``" Hyperion (S7)"``
-   - ``" Iapetus (S8)"``
-   - ``" Phoebe (S9)"``
-   - ``" Janus (S10)"``
-   - ``" Epimetheus (S11)"``
-   - ``" Helene (S12)"``
-   - ``" Telesto (S13)"``
-   - ``" Calypso (S14)"``
-   - ``" Atlas (S15)"``
-   - ``" Prometheus (S16)"``
-   - ``" Pandora (S17)"``
-   - ``" Pan (S18)"``
-   - ``" Methone (S32)"``
-   - ``" Pallene (S33)"``
-   - ``" Polydeuces (S34)"``
-   - ``" Daphnis (S35)"``
-   - ``" Anthe (S49)"``
-   - ``" Aegaeon (S53)"``
+   - ``"Saturn"``
+   - ``"Mimas (S1)"``
+   - ``"Enceladus (S2)"``
+   - ``"Tethys (S3)"``
+   - ``"Dione (S4)"``
+   - ``"Rhea (S5)"``
+   - ``"Titan (S6)"``
+   - ``"Hyperion (S7)"``
+   - ``"Iapetus (S8)"``
+   - ``"Phoebe (S9)"``
+   - ``"Janus (S10)"``
+   - ``"Epimetheus (S11)"``
+   - ``"Helene (S12)"``
+   - ``"Telesto (S13)"``
+   - ``"Calypso (S14)"``
+   - ``"Atlas (S15)"``
+   - ``"Prometheus (S16)"``
+   - ``"Pandora (S17)"``
+   - ``"Pan (S18)"``
+   - ``"Methone (S32)"``
+   - ``"Pallene (S33)"``
+   - ``"Polydeuces (S34)"``
+   - ``"Daphnis (S35)"``
+   - ``"Anthe (S49)"``
+   - ``"Aegaeon (S53)"``
 
    Uranus:
 
-   - ``" Uranus"``
-   - ``" Miranda (U5)"``
-   - ``" Ariel (U1)"``
-   - ``" Umbriel (U2)"``
-   - ``" Titania (U3)"``
-   - ``" Oberon (U4)"``
-   - ``" Cordelia (U6)"``
-   - ``" Ophelia (U7)"``
-   - ``" Bianca (U8)"``
-   - ``" Cressida (U9)"``
-   - ``" Desdemona (U10)"``
-   - ``" Juliet (U11)"``
-   - ``" Portia (U12)"``
-   - ``" Rosalind (U13)"``
-   - ``" Belinda (U14)"``
-   - ``" Puck (U15)"``
-   - ``" Perdita (U25)"``
-   - ``" Mab (U26)"``
-   - ``" Cupid (U27)"``
+   - ``"Uranus"``
+   - ``"Miranda (U5)"``
+   - ``"Ariel (U1)"``
+   - ``"Umbriel (U2)"``
+   - ``"Titania (U3)"``
+   - ``"Oberon (U4)"``
+   - ``"Cordelia (U6)"``
+   - ``"Ophelia (U7)"``
+   - ``"Bianca (U8)"``
+   - ``"Cressida (U9)"``
+   - ``"Desdemona (U10)"``
+   - ``"Juliet (U11)"``
+   - ``"Portia (U12)"``
+   - ``"Rosalind (U13)"``
+   - ``"Belinda (U14)"``
+   - ``"Puck (U15)"``
+   - ``"Perdita (U25)"``
+   - ``"Mab (U26)"``
+   - ``"Cupid (U27)"``
 
    Neptune:
 
-   - ``" Neptune"``
-   - ``" Triton (N1)"``
-   - ``" Nereid (N2)"``
-   - ``" Naiad (N3)"``
-   - ``" Thalassa (N4)"``
-   - ``" Despina (N5)"``
-   - ``" Galatea (N6)"``
-   - ``" Larissa (N7)"``
-   - ``" Proteus (N8)"``
-   - ``" Hippocamp (N14)"``
+   - ``"Neptune"``
+   - ``"Triton (N1)"``
+   - ``"Nereid (N2)"``
+   - ``"Naiad (N3)"``
+   - ``"Thalassa (N4)"``
+   - ``"Despina (N5)"``
+   - ``"Galatea (N6)"``
+   - ``"Larissa (N7)"``
+   - ``"Proteus (N8)"``
+   - ``"Hippocamp (N14)"``
 
    Pluto:
 
-   - ``" Barycenter"``
-   - ``" Pluto"``
-   - ``" Charon (P1)"``
-   - ``" Nix (P2)"``
-   - ``" Hydra (P3)"``
-   - ``" Kerberos (P4)"``
-   - ``" Styx (P5)"``
+   - ``"Barycenter"``
+   - ``"Pluto"``
+   - ``"Charon (P1)"``
+   - ``"Nix (P2)"``
+   - ``"Hydra (P3)"``
+   - ``"Kerberos (P4)"``
+   - ``"Styx (P5)"``
 
 ``center_ansa`` (select, when center="ansa")
    Ring to center on.  Leading space from HTML formatting.
 
    Mars:
 
-   - ``" Phobos Ring"``
-   - ``" Deimos Ring"``
+   - ``"Phobos Ring"``
+   - ``"Deimos Ring"``
 
    Jupiter:
 
-   - ``" Halo"``
-   - ``" Main Ring"``
-   - ``" Amalthea Ring"``
-   - ``" Thebe Ring"``
+   - ``"Halo"``
+   - ``"Main Ring"``
+   - ``"Amalthea Ring"``
+   - ``"Thebe Ring"``
 
    Saturn:
 
-   - ``" C Ring"``
-   - ``" B Ring"``
-   - ``" A Ring"``
-   - ``" F Ring"``
-   - ``" G Ring"``
-   - ``" E Ring core"``
+   - ``"C Ring"``
+   - ``"B Ring"``
+   - ``"A Ring"``
+   - ``"F Ring"``
+   - ``"G Ring"``
+   - ``"E Ring core"``
 
    Uranus:
 
-   - ``" 6 Ring"``
-   - ``" 5 Ring"``
-   - ``" 4 Ring"``
-   - ``" Alpha Ring"``
-   - ``" Beta Ring"``
-   - ``" Eta Ring"``
-   - ``" Gamma Ring"``
-   - ``" Delta Ring"``
-   - ``" Lambda Ring"``
-   - ``" Epsilon Ring"``
-   - ``" Nu Ring"``
-   - ``" Mu Ring"``
+   - ``"6 Ring"``
+   - ``"5 Ring"``
+   - ``"4 Ring"``
+   - ``"Alpha Ring"``
+   - ``"Beta Ring"``
+   - ``"Eta Ring"``
+   - ``"Gamma Ring"``
+   - ``"Delta Ring"``
+   - ``"Lambda Ring"``
+   - ``"Epsilon Ring"``
+   - ``"Nu Ring"``
+   - ``"Mu Ring"``
 
    Neptune:
 
-   - ``" Galle Ring"``
-   - ``" LeVerrier Ring"``
-   - ``" Arago Ring"``
-   - ``" Adams Ring"``
+   - ``"Galle Ring"``
+   - ``"LeVerrier Ring"``
+   - ``"Arago Ring"``
+   - ``"Adams Ring"``
 
    Pluto:
 
-   - ``" Styx"``
-   - ``" Nix"``
-   - ``" Kerberos"``
-   - ``" Hydra"``
+   - ``"Styx"``
+   - ``"Nix"``
+   - ``"Kerberos"``
+   - ``"Hydra"``
 
 ``center_ew`` (select, when center="ansa")
    Ansa direction.
 
    Possible values:
 
-   - ``" east"``
-   - ``" west"``
+   - ``"east"``
+   - ``"west"``
 
 ``center_ra`` (text, when center="J2000")
    Right ascension for diagram center.  Free-text numeric.
@@ -360,7 +362,7 @@ Diagram Center
 ``center_ra_type`` (select, when center="J2000")
    RA unit. Forms use ``value="hours"`` and ``value="degrees"`` (no leading
    space). Parsing: if the value after stripping is exactly ``degrees`` or
-   ``hours``, that is used (so URL-encoded ``+degrees`` → ``" degrees"`` →
+   ``hours``, that is used (so URL-encoded ``+degrees`` → ``"degrees"`` →
    degrees). A literal leading ``+`` means hours. Otherwise first character
    ``d``/``D`` → degrees.
 
@@ -406,18 +408,18 @@ Viewpoint
 
    Common options (all Earth-based forms):
 
-   - ``" Earth's center"`` (form may send with leading space; normalized to this)
-   - ``" HST"``
-   - ``" JWST"``
-   - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
-   - ``" Kitt Peak National Observatory (31.958833, -111.594694, 2058.4)"``
-   - ``" Lowell Observatory (35.097, -111.537, 2200.)"``
-   - ``" Mauna Kea Observatory (19.827, -155.472, 4215.)"``
-   - ``" McDonald Observatory (30.671500, -104.022611, 2076.)"``
-   - ``" Mt. Evans Observatory (39.587, -105.640, 4305.)"``
-   - ``" NMSU Observatory (32.27631, -106.746556, 0.)"``
-   - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
-   - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
+   - ``"Earth's center"`` (form may send with leading space; normalized to this)
+   - ``"HST"``
+   - ``"JWST"``
+   - ``"Apache Point Observatory (32.780361, -105.820417, 2674.)"``
+   - ``"Kitt Peak National Observatory (31.958833, -111.594694, 2058.4)"``
+   - ``"Lowell Observatory (35.097, -111.537, 2200.)"``
+   - ``"Mauna Kea Observatory (19.827, -155.472, 4215.)"``
+   - ``"McDonald Observatory (30.671500, -104.022611, 2076.)"``
+   - ``"Mt. Evans Observatory (39.587, -105.640, 4305.)"``
+   - ``"NMSU Observatory (32.27631, -106.746556, 0.)"``
+   - ``"Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
+   - ``"Yerkes Observatory (42.57, -88.557, 334.)"``
 
    Spacecraft as observatory options appear only in the Jupiter, Saturn,
    Uranus, and Neptune viewer forms (via ``VIEWPOINT.shtml`` with
@@ -425,7 +427,7 @@ Viewpoint
    New Horizons, Juno, JUICE, Europa Clipper; Saturn has Voyager 1,
    Voyager 2, Cassini; Uranus and Neptune have Voyager 2. Mars viewer has
    no spacecraft. Pluto viewer uses its own viewpoint section and
-   includes only ``" New Horizons"`` in addition to the common list.
+   includes only ``"New Horizons"`` in addition to the common list.
 
 ``latitude`` (text, when viewpoint="latlon")
    Observer latitude in degrees.  Free-text numeric.
@@ -438,8 +440,8 @@ Viewpoint
 
    Possible values:
 
-   - ``" east"``
-   - ``" west"``
+   - ``"east"``
+   - ``"west"``
 
 ``altitude`` (text, when viewpoint="latlon")
    Observer altitude in meters.  Free-text numeric.
@@ -588,8 +590,8 @@ Background Objects
 
    Possible values:
 
-   - ``" hours"``
-   - ``" degrees"``
+   - ``"hours"``
+   - ``"degrees"``
 
 ``extra_dec`` (text)
    Additional star declination in degrees.  Free-text numeric.
@@ -844,18 +846,18 @@ Viewpoint
 
    When PREFIX is empty (Earth-based forms), this is a select with:
 
-   - ``" Earth's center"`` (form may send with leading space; normalized to this)
-   - ``" HST"``
-   - ``" JWST"``
-   - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
-   - ``" Kitt Peak National Observatory (31.958833, -111.594694, 2058.4)"``
-   - ``" Lowell Observatory (35.097, -111.537, 2200.)"``
-   - ``" Mauna Kea Observatory (19.827, -155.472, 4215.)"``
-   - ``" McDonald Observatory (30.671500, -104.022611, 2076.)"``
-   - ``" Mt. Evans Observatory (39.587, -105.640, 4305.)"``
-   - ``" NMSU Observatory (32.27631, -106.746556, 0.)"``
-   - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
-   - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
+   - ``"Earth's center"`` (form may send with leading space; normalized to this)
+   - ``"HST"``
+   - ``"JWST"``
+   - ``"Apache Point Observatory (32.780361, -105.820417, 2674.)"``
+   - ``"Kitt Peak National Observatory (31.958833, -111.594694, 2058.4)"``
+   - ``"Lowell Observatory (35.097, -111.537, 2200.)"``
+   - ``"Mauna Kea Observatory (19.827, -155.472, 4215.)"``
+   - ``"McDonald Observatory (30.671500, -104.022611, 2076.)"``
+   - ``"Mt. Evans Observatory (39.587, -105.640, 4305.)"``
+   - ``"NMSU Observatory (32.27631, -106.746556, 0.)"``
+   - ``"Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
+   - ``"Yerkes Observatory (42.57, -88.557, 334.)"``
 
    The tracker form includes ``VIEWPOINT.shtml`` with ``TOOL=tracker3``,
    so the spacecraft block in that include is not rendered. The tracker
@@ -873,8 +875,8 @@ Viewpoint
 
    Possible values:
 
-   - ``" east"``
-   - ``" west"``
+   - ``"east"``
+   - ``"west"``
 
 ``altitude`` (text, when viewpoint="latlon")
    Observer altitude in meters.  Free-text numeric.
@@ -1016,22 +1018,22 @@ Plot Options
 
    Possible values (when PREFIX is empty):
 
-   - ``" arcsec"``
-   - ``" Mars radii"`` (Mars)
-   - ``" Jupiter radii"`` (Jupiter)
-   - ``" Saturn radii"`` (Saturn)
-   - ``" Uranus radii"`` (Uranus)
-   - ``" Neptune radii"`` (Neptune)
-   - ``" Pluto radii"`` (Pluto)
+   - ``"arcsec"``
+   - ``"Mars radii"`` (Mars)
+   - ``"Jupiter radii"`` (Jupiter)
+   - ``"Saturn radii"`` (Saturn)
+   - ``"Uranus radii"`` (Uranus)
+   - ``"Neptune radii"`` (Neptune)
+   - ``"Pluto radii"`` (Pluto)
 
    Possible values (when PREFIX is set):
 
-   - ``" degrees"``
-   - ``" Jupiter radii"`` (Jupiter)
-   - ``" Saturn radii"`` (Saturn)
-   - ``" Uranus radii"`` (Uranus)
-   - ``" Neptune radii"`` (Neptune)
-   - ``" Pluto radii"`` (Pluto)
+   - ``"degrees"``
+   - ``"Jupiter radii"`` (Jupiter)
+   - ``"Saturn radii"`` (Saturn)
+   - ``"Uranus radii"`` (Uranus)
+   - ``"Neptune radii"`` (Neptune)
+   - ``"Pluto radii"`` (Pluto)
 
 ``title`` (text)
    Plot title.  Free text, max 60 characters.
@@ -1147,18 +1149,18 @@ Viewpoint
 
    When PREFIX is empty (Earth-based forms), this is a select with:
 
-   - ``" Earth's center"`` (form may send with leading space; normalized to this)
-   - ``" HST"``
-   - ``" JWST"``
-   - ``" Apache Point Observatory (32.780361, -105.820417, 2674.)"``
-   - ``" Kitt Peak National Observatory (31.958833, -111.594694, 2058.4)"``
-   - ``" Lowell Observatory (35.097, -111.537, 2200.)"``
-   - ``" Mauna Kea Observatory (19.827, -155.472, 4215.)"``
-   - ``" McDonald Observatory (30.671500, -104.022611, 2076.)"``
-   - ``" Mt. Evans Observatory (39.587, -105.640, 4305.)"``
-   - ``" NMSU Observatory (32.27631, -106.746556, 0.)"``
-   - ``" Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
-   - ``" Yerkes Observatory (42.57, -88.557, 334.)"``
+   - ``"Earth's center"`` (form may send with leading space; normalized to this)
+   - ``"HST"``
+   - ``"JWST"``
+   - ``"Apache Point Observatory (32.780361, -105.820417, 2674.)"``
+   - ``"Kitt Peak National Observatory (31.958833, -111.594694, 2058.4)"``
+   - ``"Lowell Observatory (35.097, -111.537, 2200.)"``
+   - ``"Mauna Kea Observatory (19.827, -155.472, 4215.)"``
+   - ``"McDonald Observatory (30.671500, -104.022611, 2076.)"``
+   - ``"Mt. Evans Observatory (39.587, -105.640, 4305.)"``
+   - ``"NMSU Observatory (32.27631, -106.746556, 0.)"``
+   - ``"Paranal Observatory/VLT (-24.625417, -70.402806, 2635.)"``
+   - ``"Yerkes Observatory (42.57, -88.557, 334.)"``
 
    The ephemeris form includes ``VIEWPOINT.shtml`` with ``TOOL=ephem3``,
    so the spacecraft block in that include is not rendered. The ephemeris
@@ -1176,8 +1178,8 @@ Viewpoint
 
    Possible values:
 
-   - ``" east"``
-   - ``" west"``
+   - ``"east"``
+   - ``"west"``
 
 ``altitude`` (text, when viewpoint="latlon")
    Observer altitude in meters.  Free-text numeric.

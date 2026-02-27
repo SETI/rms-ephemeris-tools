@@ -88,6 +88,10 @@ Testing and quality
 -------------------
 
 - **pytest**: Unit and integration tests under ``tests/``.
+- **FORTRAN comparison**: Run Python vs FORTRAN with identical inputs.  Use
+  ``scripts/run-fortran-comparison-test-files.sh`` for the predefined URL lists
+  in ``test_files/``, or ``scripts/run-random-fortran-comparisons.sh`` for
+  random URLs.  See :ref:`comparison_workflows`.
 - **ruff**: Linting and formatting (line length 100).
 - **mypy**: Static type checking; all public APIs annotated.
 - **Sphinx**: Documentation under ``docs/``; build with ``cd docs && make html``.

@@ -43,9 +43,9 @@ logger = logging.getLogger(__name__)
 
 
 def _configure_logging(verbose: bool = False) -> None:
-    """Configure logging for CLI (stderr, level from --verbose or EPHEMERIS_TOOLS_LOG)."""
+    """Configure logging for CLI (stderr, level from --verbose or EPHEMERIS_TOOLS_LOG_LEVEL)."""
     level = logging.DEBUG if verbose else logging.WARNING
-    env_level = os.environ.get('EPHEMERIS_TOOLS_LOG', '').upper()
+    env_level = os.environ.get('EPHEMERIS_TOOLS_LOG_LEVEL', '').upper()
     if env_level in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
         level = getattr(logging, env_level)
     logging.basicConfig(

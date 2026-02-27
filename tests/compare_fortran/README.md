@@ -5,7 +5,7 @@ Run the same ephemeris/tracker/viewer scenario under both the **FORTRAN** tools 
 ## Prerequisites
 
 - **Python**: Install the project (`pip install -e .` or use the repo venv). SPICE kernels must be configured (see main README).
-- **FORTRAN** (optional): To compare against FORTRAN, build the FORTRAN tools from `fortran/Tools/` (see Makefiles there). The framework **auto-detects** the executable from `repo_root/fortran/Tools/` (e.g. `ephem3_xxx.bin`, `tracker3_xxx.bin`, `viewer3_sat.bin` by tool and `--planet`). Use `--fortran-cmd` to override. FORTRAN binaries read parameters from **environment variables**; this framework sets those and the output paths (`EPHEM_FILE`, `TRACKER_POSTFILE`, etc.).
+- **FORTRAN**: To compare against FORTRAN, build the FORTRAN tools from `fortran/Tools/` (see Makefiles there). The framework **auto-detects** the executable from `repo_root/fortran/Tools/` (e.g. `ephem3_xxx.bin`, `tracker3_xxx.bin`, `viewer3_sat.bin` by tool and `--planet`). Use `--fortran-cmd` to override. FORTRAN binaries read parameters from **environment variables**; this framework sets those and the output paths (`EPHEM_FILE`, `TRACKER_POSTFILE`, etc.).
 
 ## Usage
 
@@ -25,6 +25,13 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
 
 # Run multiple URLs from a file in parallel (e.g. 4 jobs)
 python -m tests.compare_fortran viewer --test-file urls.txt -o /tmp/compare -j 4
+
+# Run all three tools using the predefined URL lists in test_files/
+./scripts/run-fortran-comparison-test-files.sh --jobs 8
+
+# Run random URLs for all three tools (output under /tmp by default; use --dir to override)
+./scripts/run-random-fortran-comparisons.sh 100 --jobs 8
+./scripts/run-random-fortran-comparisons.sh 50 --dir /path/to/my/dir --jobs 4
 ```
 
 ## Complete command-line options
@@ -110,8 +117,18 @@ percent, pass/fail/skip counts, elapsed time, and ETA.
   - PostScript/stdout differences do not fail viewer/tracker when this image
     threshold passes.
 - `--collect-failed-to DIR`: after batch/query runs, copy all files from each
-  failed case (`comparison.txt`, stdout, PS, PNG, tables/text) into `DIR` with
-  case-prefixed filenames.
+  failed case into `DIR` with case-prefixed filenames (e.g. `ephemeris_001_python_table.txt`).
+  Collected artifacts by tool:
+  - **Ephemeris**: `comparison.txt`, `python_stdout.txt`, `fortran_stdout.txt`,
+    `python_table.txt`, `fortran_table.txt`. The runner explicitly ensures
+    table and stdout files are copied for ephemeris failures even when only
+    summary artifacts might otherwise be present.
+  - **Tracker**: `comparison.txt`, `python_stdout.txt`, `fortran_stdout.txt`,
+    `python.ps`, `fortran.ps`, `python_tracker.txt`, `fortran_tracker.txt`,
+    and any generated PNGs.
+  - **Viewer**: `comparison.txt`, `python_stdout.txt`, `fortran_stdout.txt`,
+    `python.ps`, `fortran.ps`, `python_viewer.txt`, `fortran_viewer.txt`,
+    and any generated PNGs.
 
 ### Arguments and environment
 

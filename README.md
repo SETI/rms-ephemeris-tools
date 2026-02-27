@@ -30,81 +30,37 @@
 
 # Introduction
 
-Planetary ephemeris generator, moon tracker, and planet viewer (Python port of
-the PDS Ring-Moon Systems Node FORTRAN tools).
+Planetary ephemeris generator, moon tracker, and planet viewer (Python port of the PDS Ring-Moon Systems Node FORTRAN tools).
 
-# Quick Start
+Full documentation: [Read the Docs](https://rms-ephemeris-tools.readthedocs.io).
 
-## Environment setup
+# For users
 
-### 1. Python and virtual environment
+## Install
 
-- **Python**: 3.10 or newer.
-- Use an isolated environment; do not install into system Python.
+Create a virtual environment and install the package into it (do not install into system Python):
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-# or:  .venv\Scripts\activate   # Windows
+source .venv/bin/activate
+pip install rms-ephemeris-tools
 ```
 
-### 2. Install the package
+This provides the `ephemeris-tools` command.
 
-```bash
-pip install -e .
-```
-
-For development (tests, linting, type-checking):
-
-```bash
-pip install -e ".[dev]"
-```
-
-Optional rendering backend (matplotlib):
-
-```bash
-pip install -e ".[render]"
-```
-
-### 3. Environment variables
+## Environment variables
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| **`SPICE_PATH`** | Root directory for SPICE kernels. Must contain `SPICE_planets.txt`, `SPICE_spacecraft.txt`, and kernel files (e.g. `leapseconds.ker`, planet/moon SPKs). | `/var/www/SPICE/` |
+| **SPICE_PATH** | Root directory for SPICE kernels. Must contain `SPICE_planets.txt`, `SPICE_spacecraft.txt`, and kernel files (e.g. `leapseconds.ker`, planet/moon SPKs). | `/var/www/SPICE/` |
 | `TEMP_PATH` | Directory for temporary or output files. | `/var/www/work/` |
 | `STARLIST_PATH` | Directory for star catalog files (e.g. `starlist_sat.txt`). | `/var/www/documents/tools/` |
-| `JULIAN_LEAPSECS` | Path to a **NAIF LSK** leap-second file (e.g. `naif0012.tls`). If unset, the code looks for `naif0012.tls` (or similar) under `SPICE_PATH`, then `leapsecs.txt`. If that file is missing or not in LSK format, rms-julian’s bundled LSK is used. | (see above) |
-| `EPHEMERIS_TOOLS_LOG` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. | (default: WARNING) |
+| `JULIAN_LEAPSECS` | Path to a NAIF LSK leap-second file. If unset, the code looks under `SPICE_PATH`, then `leapsecs.txt`; if missing or not LSK format, rms-julian’s bundled LSK is used. | (see above) |
+| `EPHEMERIS_TOOLS_LOG_LEVEL` | Logging level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. | `WARNING` |
 
-**Example (Linux/macOS):**
-
-```bash
-export SPICE_PATH=/path/to/your/SPICE
-export TEMP_PATH=/tmp
-```
-
-**Example (.env or shell):**
-
-```bash
-SPICE_PATH=/data/SPICE
-```
-
-Ensure `SPICE_PATH` contains (or points to) the expected config and kernel files so that `load_spice_files()` and `load_spacecraft()` can find them.
-
-### 4. SPICE kernel layout
-
-Under `SPICE_PATH` the code expects:
-
-- `SPICE_planets.txt` — planet/ephemeris version and kernel filenames.
-- `SPICE_spacecraft.txt` — spacecraft IDs and kernel filenames (for observer).
-- `leapseconds.ker` (or `leapsecs.txt` for rms-julian) — leap seconds.
-- Kernel files referenced in the config (e.g. planetary SPKs, LSK).
-
-Without these, ephemeris/tracker/viewer runs will fail when loading kernels.
+Ensure `SPICE_PATH` contains (or points to) the expected config and kernel files. Without these, ephemeris/tracker/viewer runs will fail when loading kernels.
 
 ## Running the tools
-
-CLI entry point:
 
 ```bash
 ephemeris-tools <command> [options]
@@ -113,24 +69,70 @@ ephemeris-tools <command> [options]
 ### Ephemeris table
 
 ```bash
-ephemeris-tools ephemeris --planet 6 --start "2025-01-01 00:00" --stop "2025-01-01 02:00" --interval 1 --time-unit hour -o ephem.txt
+ephemeris-tools ephemeris --planet saturn --start "2025-01-01 00:00" --stop "2025-01-01 02:00" --interval 1 --time-unit hour -o ephem.txt
 ```
 
-- `--planet`: 4=Mars, 5=Jupiter, 6=Saturn, 7=Uranus, 8=Neptune, 9=Pluto.
-- `--cgi`: read parameters from environment (e.g. for CGI/web).
-- `-v` / `--verbose`: set log level to INFO (otherwise WARNING and above go to stderr).
+`--planet` accepts a name (`mars`, `jupiter`, `saturn`, `uranus`, `neptune`, `pluto`) or number 4–9. Use `-v` / `--verbose` for INFO-level logging.
 
 ### Moon tracker
 
 ```bash
-ephemeris-tools tracker --planet 6 --start "2025-01-01 00:00" --stop "2025-01-02 00:00" -o tracker.ps
+ephemeris-tools tracker --planet saturn --start "2025-01-01 00:00" --stop "2025-01-02 00:00" -o tracker.ps
+```
+
+To convert the PostScript output to PNG (requires Ghostscript):
+
+```bash
+gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=tracker.png tracker.ps
 ```
 
 ### Planet viewer
 
 ```bash
-ephemeris-tools viewer --planet 6 --time "2025-01-01 12:00" -o view.ps
+ephemeris-tools viewer --planet saturn --time "2025-01-01 12:00" -o view.ps
 ```
+
+To convert the PostScript output to PNG (requires Ghostscript):
+
+```bash
+gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=view.png view.ps
+```
+
+# For developers
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/SETI/rms-ephemeris-tools.git
+   cd rms-ephemeris-tools
+   ```
+
+2. Create and activate a virtual environment:
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Install the package in editable mode with dev extras:
+
+   ```bash
+   pip install -e ".[dev]"
+   ```
+
+4. Set up environment variables: configure all of the variables listed in the user section (`SPICE_PATH`, `TEMP_PATH`, `STARLIST_PATH`, `JULIAN_LEAPSECS`, `EPHEMERIS_TOOLS_LOG_LEVEL`) as needed so ephemeris, tracker, and viewer runs (and tests that need kernels) can find config and kernel files.
+
+## Documentation
+
+Documentation is built with Sphinx and published at [Read the Docs](https://rms-ephemeris-tools.readthedocs.io). To build locally (dev extras include Sphinx):
+
+```bash
+cd docs && make html
+```
+
+Output is in `docs/_build/html`.
 
 ## Testing
 
@@ -140,13 +142,7 @@ With the dev extras installed:
 pytest tests/ -v
 ```
 
-Tests that do not require SPICE (e.g. params, record formatting) run without `SPICE_PATH`. Tests or commands that load kernels need a valid `SPICE_PATH` and kernel set.
-
-To run a quick check without SPICE:
-
-```bash
-pytest tests/test_ephemeris.py -v
-```
+Tests that require SPICE kernels but cannot find them (e.g. missing or invalid `SPICE_PATH`) will be **skipped**. Tests that do not need kernels run without any SPICE setup.
 
 Lint and type-check:
 
@@ -156,64 +152,55 @@ ruff format src tests
 mypy src
 ```
 
-# Installation
+## Comparison scripts
 
-## Setup
+The repository includes scripts for generating random query URLs and running FORTRAN-vs-Python comparisons.
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/SETI/rms-ephemeris-tools.git
-   cd rms-ephemeris-tools
-   ```
-
-2. Create and activate a virtual environment (recommended):
-
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install the package (editable with dev tools):
-
-   ```bash
-   pip install -e ".[dev]"
-   ```
-
-   Or install only runtime dependencies: `pip install -e .`
-
-4. Set up SPICE kernels:
-   - Download the required SPICE kernels for your mission
-   - Set the `SPICE_PATH` environment variable to point to your kernels directory:
-
-     ```bash
-     export SPICE_PATH=/path/to/your/spice/kernels
-     ```
-
-> **Note**: To fix mypy operability with editable pip installs:
->
-> ```bash
-> export SETUPTOOLS_ENABLE_FEATURES="legacy-editable"
-> ```
-
-# Documentation
-
-Comprehensive documentation is available in the `docs` directory.
-
-To build the documentation:
+### Generate random URLs
 
 ```bash
-cd docs
-make html
+python scripts/generate_random_query_urls.py -n 100 -o /tmp/random_urls.txt --tool viewer
 ```
 
-The built documentation will be available in `docs/_build/html`.
+### Run FORTRAN comparison with predefined test files
+
+To run the comparison using the hand-written URL lists in ``test_files/``:
+
+```bash
+./scripts/run-fortran-comparison-test-files.sh --jobs 8
+```
+
+Uses ``test_files/ephemeris-test-urls.txt``, ``test_files/tracker-test-urls.txt``, and ``test_files/viewer-test-urls.txt``. Output and failure directories are the same as for random comparisons (and are rotated if they already exist).
+
+### Run FORTRAN comparison manually
+
+To compare Python output against FORTRAN for a single URL or a file of URLs:
+
+```bash
+python -m tests.compare_fortran viewer --test-file /tmp/random_urls.txt -o /tmp/compare -j 4
+```
+
+Use `ephemeris`, `tracker`, or `viewer` as the tool; pass `--url <url>` for a single URL or `--test-file <path>` for a list. With multiple URLs, use `-j N` for parallel runs. See the Developer's Guide for full options.
+
+### Random comparisons (ephemeris, tracker, viewer)
+
+The script below generates random URLs for all three tools and runs the FORTRAN comparison for each (i.e. it runs both URL generation and `tests.compare_fortran` per tool):
+
+```bash
+./scripts/run-random-fortran-comparisons.sh 100 --jobs 8
+./scripts/run-random-fortran-comparisons.sh 50 --dir /path/to/my/dir --jobs 4
+```
+
+- Positional argument: number of random queries per tool.
+- Optional `--jobs N` is passed through to `tests.compare_fortran`.
+- Optional `--dir DIR`: top-level directory for output and query files (default: `/tmp`). Uses `DIR/<tool>_out`, `DIR/<tool>_failed`, and `DIR/random_queries_<tool>.txt`.
+- Output directories (under `/tmp` or `--dir`): `ephemeris_out`, `tracker_out`, `viewer_out`, and `ephemeris_failed`, `tracker_failed`, `viewer_failed`.
+- If a target directory already exists, it is renamed with a single timestamp suffix per run (e.g. `viewer_out_20260226_185932`).
 
 # Contributing
 
-Information on contributing to this package can be found in the
-[Contributing Guide](https://github.com/SETI/rms-ephemeris-tools/blob/main/CONTRIBUTING.md).
+See the [Contributing Guide](https://github.com/SETI/rms-ephemeris-tools/blob/main/CONTRIBUTING.md).
 
 # Licensing
 
-This code is licensed under the [Apache License v2.0](https://github.com/SETI/rms-ephemeris-tools/blob/main/LICENSE).
+Licensed under the [Apache License v2.0](https://github.com/SETI/rms-ephemeris-tools/blob/main/LICENSE).

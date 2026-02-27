@@ -11,6 +11,9 @@ import uuid
 import warnings
 
 
+_TEST_FILES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
+                               'test_files')
+
 def compare_tests_against_golden(ephem, test_files, subtests, store_failures,
                                  known_failures, golden_location, server):
     """Compare test versions to golden copies of chosen tools.
@@ -519,96 +522,102 @@ def select_server(server):
     return selected_server
 
 
-warnings.simplefilter('ignore', urllib3.exceptions.InsecureRequestWarning)
-logging.getLogger('urllib3').setLevel(logging.WARNING)
+def main() -> None:
+    """Parse command-line arguments and run comparison or golden-copy replacement."""
+    warnings.simplefilter('ignore', urllib3.exceptions.InsecureRequestWarning)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--run-ephemeris-type', type=str, choices=['test',
-                                                               'current'],
-                    default='current',
-                    help='Select which SPICE kernels are being used on '
-                         'the server. The "test" type will use the most recent '
-                         'defaults. The "current" type will use what is '
-                         'available on the chosen server. The default is '
-                         '"current".')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--run-ephemeris-type', type=str, choices=['test',
+                                                                    'current'],
+                        default='current',
+                        help='Select which SPICE kernels are being used on '
+                             'the server. The "test" type will use the most recent '
+                             'defaults. The "current" type will use what is '
+                             'available on the chosen server. The default is '
+                             '"current".')
 
-parser.add_argument('--replace', action='store_true', default=False,
-                    help='Replace stored versions of chosen ephemeris '
-                         'tools. All versions stored are generated from the '
-                         'current staging server.')
+    parser.add_argument('--replace', action='store_true', default=False,
+                        help='Replace stored versions of chosen ephemeris '
+                             'tools. All versions stored are generated from the '
+                             'current staging server.')
 
-parser.add_argument('--test-file-paths', type=str, nargs='+',
-                    default=[os.path.join('test_files',
-                                          'viewer-unit-tests.txt'),
-                             os.path.join('test_files',
-                                          'moon-tracker-unit-tests.txt'),
-                             os.path.join('test_files',
-                                          'ephemeris-generator-unit-tests.txt')
-                             ],
-                    help='The files containing the URLs to test, one per tool.')
+    parser.add_argument('--test-file-paths', type=str, nargs='+',
+                        default=[os.path.join(_TEST_FILES_DIR,
+                                              'viewer-test-urls.txt'),
+                                 os.path.join(_TEST_FILES_DIR,
+                                              'tracker-test-urls.txt'),
+                                 os.path.join(_TEST_FILES_DIR,
+                                              'ephemeris-test-urls.txt')
+                                 ],
+                        help='The files containing the URLs to test, one per tool.')
 
-parser.add_argument('--golden-directory', type=str,
-                    default='golden_copies',
-                    help='Path to the directory containing the golden copies.')
+    parser.add_argument('--golden-directory', type=str,
+                        default='golden_copies',
+                        help='Path to the directory containing the golden copies.')
 
-parser.add_argument('--limit-tests', action='store',
-                    nargs='+',
-                    help='The indices to specify which subset of tests to run '
-                         'within a set of URL tests. Use the format '
-                         '"start:end". Refer to the indices within the log '
-                         'file to determine which tests to rerun. Only one '
-                         'test file can be specified to use this command.')
+    parser.add_argument('--limit-tests', action='store',
+                        nargs='+',
+                        help='The indices to specify which subset of tests to run '
+                             'within a set of URL tests. Use the format '
+                             '"start:end". Refer to the indices within the log '
+                             'file to determine which tests to rerun. Only one '
+                             'test file can be specified to use this command.')
 
-parser.set_defaults(testsubset=None)
+    parser.set_defaults(testsubset=None)
 
-parser.add_argument('--server', type=str, default='production',
-                    help='The server you wish to generate the current tests '
-                         'for comparison. If you choose "other", please enter '
-                         'the URL prefix for the server you wish to use.')
+    parser.add_argument('--server', type=str, default='production',
+                        help='The server you wish to generate the current tests '
+                             'for comparison. If you choose "other", please enter '
+                             'the URL prefix for the server you wish to use.')
 
-parser.add_argument('--logfile-filename', type=str,
-                    help='Allows for a custom logfile name.')
+    parser.add_argument('--logfile-filename', type=str,
+                        help='Allows for a custom logfile name.')
 
-parser.add_argument('--save-failing-tests', action='store_true', default=False,
-                    help='Saves failed test files that do not match to their '
-                         'golden copy equivalents.')
+    parser.add_argument('--save-failing-tests', action='store_true', default=False,
+                        help='Saves failed test files that do not match to their '
+                             'golden copy equivalents.')
 
-parser.add_argument('--hide-known-failures', action='store',
-                    nargs='+',
-                    help='The indices to specify which known failure tests to '
-                         'comment out of the logfile. Use the format '
-                         '"start:end". Refer to the indices within the log '
-                         'file to determine which tests to hide. Multiple sets '
-                         'of indices are allowed. Only one test file can be '
-                         'run at a time when using this feature.')
+    parser.add_argument('--hide-known-failures', action='store',
+                        nargs='+',
+                        help='The indices to specify which known failure tests to '
+                             'comment out of the logfile. Use the format '
+                             '"start:end". Refer to the indices within the log '
+                             'file to determine which tests to hide. Multiple sets '
+                             'of indices are allowed. Only one test file can be '
+                             'run at a time when using this feature.')
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-if args.logfile_filename is None:
-    current_time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-    args.logfile_filename = f'ephem_tools_unit_test_{current_time}.log'
-logging.basicConfig(filename=args.logfile_filename,
-                    encoding='utf-8',
-                    level=logging.DEBUG,
-                    format='%(asctime)s.%(msecs)03d | %(levelname)s | '
-                    '%(message)s',
-                    datefmt='%y-%m-%d %H:%M:%S',
-                    force=True)
+    if args.logfile_filename is None:
+        current_time = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        args.logfile_filename = f'ephem_tools_unit_test_{current_time}.log'
+    logging.basicConfig(filename=args.logfile_filename,
+                        encoding='utf-8',
+                        level=logging.DEBUG,
+                        format='%(asctime)s.%(msecs)03d | %(levelname)s | '
+                        '%(message)s',
+                        datefmt='%y-%m-%d %H:%M:%S',
+                        force=True)
 
-if args.save_failing_tests:
-    os.makedirs('failed_tests', exist_ok=True)
+    if args.save_failing_tests:
+        os.makedirs('failed_tests', exist_ok=True)
 
-if args.replace:
-    os.makedirs(args.golden_directory, exist_ok=True)
-    replace_golden_copies(args.run_ephemeris_type,
-            args.test_file_paths,
-            range_of_tests(args.limit_tests),
-            args.golden_directory)
-else:
-    compare_tests_against_golden(args.run_ephemeris_type,
-            args.test_file_paths,
-            range_of_tests(args.limit_tests),
-            args.save_failing_tests,
-            range_of_tests(args.hide_known_failures),
-            args.golden_directory,
-            select_server(args.server))
+    if args.replace:
+        os.makedirs(args.golden_directory, exist_ok=True)
+        replace_golden_copies(args.run_ephemeris_type,
+                             args.test_file_paths,
+                             range_of_tests(args.limit_tests),
+                             args.golden_directory)
+    else:
+        compare_tests_against_golden(args.run_ephemeris_type,
+                                    args.test_file_paths,
+                                    range_of_tests(args.limit_tests),
+                                    args.save_failing_tests,
+                                    range_of_tests(args.hide_known_failures),
+                                    args.golden_directory,
+                                    select_server(args.server))
+
+
+if __name__ == '__main__':
+    main()

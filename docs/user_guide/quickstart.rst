@@ -31,10 +31,10 @@ Key options (see :ref:`cli-ephemeris` for the full list):
 - ``--start``, ``--stop``: Start/stop time strings (required).
 - ``--interval``: Time step size. Default: ``1.0``.
 - ``--time-unit``: Unit for interval (``sec``/``min``/``hour``/``day``). Default: ``hour``.
+- ``--ephem``: Ephemeris version index; available versions are listed in ``SPICE_planets.txt``. Default: ``0``.
 - ``--columns``: Column IDs or names (e.g. ``ymdhms radec phase``). Default: ``1 2 3 15 8``.
 - ``--moons``: Moon indices or names (e.g. ``mimas titan``). Default: none.
 - ``-o``: Output file (default: stdout).
-- ``--cgi``: Read parameters from environment (for CGI/web use).
 - ``-v`` / ``--verbose``: Set log level to INFO.
 
 Moon tracker
@@ -73,6 +73,14 @@ Key options (see :ref:`cli-viewer` for the full list):
 - ``--moons``: Moon indices or names. Default: planet default.
 - ``-o``: PostScript output file.
 - ``--output-txt``: Field-of-view text table file.
+
+Converting PostScript to PNG (Ghostscript):
+
+.. code-block:: bash
+
+   gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=view.png view.ps
+
+Use the same pattern for tracker output (e.g. ``tracker.ps`` → ``tracker.png``).
 
 For detailed per-argument documentation, see :ref:`cli`.
 For column IDs, moon names, and observatory names, see :ref:`reference`.

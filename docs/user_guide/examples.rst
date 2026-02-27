@@ -31,14 +31,16 @@ Viewer with FOV table
 
 .. code-block:: bash
 
-   ephemeris-tools viewer --planet saturn --time "2025-01-01 12:00" --fov 1 --fov-unit deg -o view.ps --output-txt fov_table.txt
+   ephemeris-tools viewer --planet saturn --time "2025-01-01 12:00" --fov 0.1 --fov-unit deg -o view.ps --output-txt fov_table.txt
 
 See :ref:`reference` for column IDs, planet names, and moon index-to-name mappings.
 
 Programmatic use
 ----------------
 
-You can call the core functions from Python instead of the CLI:
+You can call the core functions from Python instead of the CLI. SPICE kernels
+are loaded automatically when you call these functions (no need to call
+load functions first). Set ``SPICE_PATH`` so the code can find kernel files.
 
 .. code-block:: python
 
@@ -46,7 +48,7 @@ You can call the core functions from Python instead of the CLI:
    from ephemeris_tools.ephemeris import generate_ephemeris
 
    params = EphemerisParams(
-       planet_num=6,
+       planet_num=6,  # 6 = Saturn
        start_time="2025-01-01 00:00",
        stop_time="2025-01-02 00:00",
        interval=1.0,
@@ -62,34 +64,31 @@ You can call the core functions from Python instead of the CLI:
 
 .. code-block:: python
 
+   from ephemeris_tools.params import TrackerParams
    from ephemeris_tools.tracker import run_tracker
 
-   run_tracker(
-       planet_num=6,
+   params = TrackerParams(
+       planet_num=6,  # 6 = Saturn
        start_time="2025-01-01 00:00",
        stop_time="2025-01-02 00:00",
        interval=1.0,
        time_unit="hour",
-       viewpoint="Earth",
-       moon_ids=[601, 602, 603],
+       moon_ids=[601, 602, 603],  # Mimas, Enceladus, Tethys
        output_ps=open("tracker.ps", "w"),
        output_txt=None,
    )
+   run_tracker(params)
 
 .. code-block:: python
 
+   from ephemeris_tools.params import ViewerParams
    from ephemeris_tools.viewer import run_viewer
 
-   run_viewer(
-       planet_num=6,
+   params = ViewerParams(
+       planet_num=6,  # 6 = Saturn
        time_str="2025-01-01 12:00",
-       fov=1.0,
-       center_ra=0.0,
-       center_dec=0.0,
-       viewpoint="Earth",
+       fov_value=1.0,
        output_ps=open("view.ps", "w"),
        output_txt=None,
    )
-
-Ensure SPICE kernels are loaded (e.g. via :py:func:`ephemeris_tools.spice.load.load_spice_files`)
-before calling these functions.
+   run_viewer(params)

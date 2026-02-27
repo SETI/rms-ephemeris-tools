@@ -4,7 +4,7 @@
 # for ephemeris, tracker, and viewer.
 #
 # Usage:
-#   ./scripts/run-random-fortran-comparisons.sh <count> [--jobs N]
+#   ./scripts/run-random-fortran-comparisons.sh <count> [--jobs N] [--dir DIR]
 #
 
 set -euo pipefail
@@ -15,13 +15,15 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 usage() {
     cat <<'EOF'
 Usage:
-  ./scripts/run-random-fortran-comparisons.sh <count> [--jobs N]
+  ./scripts/run-random-fortran-comparisons.sh <count> [--jobs N] [--dir DIR]
 
 Arguments:
   <count>      Number of random queries per tool (positive integer).
 
 Options:
   --jobs N     Parallel jobs passed to tests.compare_fortran (default: 1).
+  --dir DIR    Top-level directory for output and query files (default: /tmp).
+               Uses DIR/<tool>_out, DIR/<tool>_failed, DIR/random_queries_<tool>.txt.
   -h, --help   Show this help.
 EOF
 }
@@ -33,6 +35,7 @@ fi
 
 COUNT=""
 JOBS=1
+BASE_DIR="/tmp"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -46,6 +49,14 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             JOBS="$2"
+            shift 2
+            ;;
+        --dir)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --dir requires a value." >&2
+                exit 1
+            fi
+            BASE_DIR="$2"
             shift 2
             ;;
         -*)
@@ -75,12 +86,15 @@ if ! [[ "$JOBS" =~ ^[0-9]+$ ]] || [[ "$JOBS" -le 0 ]]; then
     exit 1
 fi
 
+BASE_DIR="$(cd "$BASE_DIR" && pwd)"
+mkdir -p "$BASE_DIR"
+
 rotate_if_exists() {
     local dir_path="$1"
     if [[ -e "$dir_path" ]]; then
         local base
         base="$(basename "$dir_path")"
-        local rotated="/tmp/${base}_${RUN_STAMP}"
+        local rotated="${BASE_DIR}/${base}_${RUN_STAMP}"
         if [[ -e "$rotated" ]]; then
             rotated="${rotated}_$$"
         fi
@@ -96,9 +110,9 @@ declare -A TOOL_STATUS
 RUN_STAMP="$(date +"%Y%m%d_%H%M%S")"
 
 for tool in "${TOOLS[@]}"; do
-    out_dir="/tmp/${tool}_out"
-    failure_dir="/tmp/${tool}_failed"
-    query_file="/tmp/random_queries_${tool}.txt"
+    out_dir="${BASE_DIR}/${tool}_out"
+    failure_dir="${BASE_DIR}/${tool}_failed"
+    query_file="${BASE_DIR}/random_queries_${tool}.txt"
 
     rotate_if_exists "$out_dir"
     rotate_if_exists "$failure_dir"
@@ -106,7 +120,7 @@ for tool in "${TOOLS[@]}"; do
 
     echo
     echo "=== ${tool}: generating ${COUNT} random queries ==="
-    if ! python "$PROJECT_ROOT/scripts/generate_random_cgi_queries.py" \
+    if ! python "$PROJECT_ROOT/scripts/generate_random_query_urls.py" \
         -n "$COUNT" \
         -o "$query_file" \
         --tool "$tool"; then
@@ -134,10 +148,10 @@ for tool in "${TOOLS[@]}"; do
 done
 
 echo
-echo "All comparisons finished. Directories:"
+echo "All comparisons finished. Directories (base: $BASE_DIR):"
 for tool in "${TOOLS[@]}"; do
-    echo "  ${tool}: /tmp/${tool}_out (status: ${TOOL_STATUS[$tool]:-not_run})"
-    echo "  ${tool}: /tmp/${tool}_failed"
+    echo "  ${tool}: ${BASE_DIR}/${tool}_out (status: ${TOOL_STATUS[$tool]:-not_run})"
+    echo "  ${tool}: ${BASE_DIR}/${tool}_failed"
 done
 
 exit "$EXIT_CODE"

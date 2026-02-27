@@ -16,4 +16,7 @@ Contents
    modules
    porting
    fortran_compatibility
+   comparison_workflows
+   fortran_comparison
+   server_comparison
    cgi_parameter_reference

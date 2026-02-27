@@ -1,4 +1,4 @@
-"""Tests for scripts/generate_random_cgi_queries.py."""
+"""Tests for scripts/generate_random_query_urls.py."""
 
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ import pytest
 
 
 def _load_generator_module() -> ModuleType:
-    """Load generate_random_cgi_queries as a module from scripts/."""
-    script = Path(__file__).resolve().parent.parent / 'scripts' / 'generate_random_cgi_queries.py'
-    spec = importlib.util.spec_from_file_location('generate_random_cgi_queries', script)
+    """Load generate_random_query_urls as a module from scripts/."""
+    script = Path(__file__).resolve().parent.parent / 'scripts' / 'generate_random_query_urls.py'
+    spec = importlib.util.spec_from_file_location('generate_random_query_urls', script)
     assert spec is not None
     assert spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
@@ -73,7 +73,7 @@ def test_generate_one_url_invalid_tool_raises() -> None:
 def test_cli_writes_count_lines(tmp_path: Path) -> None:
     """CLI -n N -o FILE writes exactly N full URLs per line."""
     out = tmp_path / 'urls.txt'
-    script = Path(__file__).resolve().parent.parent / 'scripts' / 'generate_random_cgi_queries.py'
+    script = Path(__file__).resolve().parent.parent / 'scripts' / 'generate_random_query_urls.py'
     result = subprocess.run(
         [sys.executable, str(script), '-n', '7', '-o', str(out), '--seed', '1'],
         capture_output=True,
@@ -93,7 +93,7 @@ def test_cli_writes_count_lines(tmp_path: Path) -> None:
 def test_cli_tool_filter(tmp_path: Path) -> None:
     """CLI --tool viewer produces only viewer full URLs (time, fov, viewer3 path)."""
     out = tmp_path / 'viewer_only.txt'
-    script = Path(__file__).resolve().parent.parent / 'scripts' / 'generate_random_cgi_queries.py'
+    script = Path(__file__).resolve().parent.parent / 'scripts' / 'generate_random_query_urls.py'
     result = subprocess.run(
         [sys.executable, str(script), '-n', '3', '-o', str(out), '--tool', 'viewer', '--seed', '2'],
         capture_output=True,
