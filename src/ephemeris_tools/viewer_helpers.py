@@ -307,11 +307,18 @@ def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[flo
 
         _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
         planet_time = et - dt
-        planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
-        sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
         rotmat = bodmat(state.planet_id, planet_time)
         eq_pole = (rotmat[2][0], rotmat[2][1], rotmat[2][2])
-        anti_sun = (-sun_dpv[0], -sun_dpv[1], -sun_dpv[2])
+        # Match FORTRAN viewer3_mar.f: use Mars relative to Sun with 'NONE' (no aberration)
+        # so ring antisun direction matches SPKEZ(PLANET_ID, planet_time, 'J2000', 'NONE', SUN_ID).
+        mars_from_sun, _ = cspyce.spkpos(
+            str(state.planet_id),
+            planet_time,
+            'J2000',
+            'NONE',
+            str(SUN_ID),
+        )
+        anti_sun = (mars_from_sun[0], mars_from_sun[1], mars_from_sun[2])
         dot = eq_pole[0] * anti_sun[0] + eq_pole[1] * anti_sun[1] + eq_pole[2] * anti_sun[2]
         antisun = [
             anti_sun[0] - dot * eq_pole[0],
@@ -965,8 +972,15 @@ def _resolve_center_ansa_radius_km(cfg: PlanetConfig, center_ansa_name: str | No
         if saturn_index is not None and saturn_index < len(cfg.rings):
             return cfg.rings[saturn_index].outer_km
     # FORTRAN viewer3_ura.f uses a custom mapping for Uranus center ansa:
-    # Epsilon -> average of rings 10 and 11, Nu -> ring 13, Mu -> ring 16.
+    # first char '6'/'5'/'4' -> ring_rads(1)/(2)/(3); then Alpha, Beta, ...; Epsilon, Nu, Mu.
     if cfg.planet_num == 7:
+        first_char = center_ansa_name.strip().lower()[:1]
+        if first_char == '6' and len(cfg.rings) >= 1:
+            return cfg.rings[0].outer_km
+        if first_char == '5' and len(cfg.rings) >= 2:
+            return cfg.rings[1].outer_km
+        if first_char == '4' and len(cfg.rings) >= 3:
+            return cfg.rings[2].outer_km
         if target == 'epsilon' and len(cfg.rings) >= 11:
             return 0.5 * (cfg.rings[9].outer_km + cfg.rings[10].outer_km)
         if target == 'nu' and len(cfg.rings) >= 13:

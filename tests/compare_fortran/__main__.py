@@ -804,12 +804,27 @@ def main() -> int:
         if args.collect_failed_to and failed_dirs:
             collect_dir = Path(args.collect_failed_to)
             collect_dir.mkdir(parents=True, exist_ok=True)
+
+            def _copy_with_prefix(src: Path, *, prefix: str) -> None:
+                if not src.is_file():
+                    return
+                dest = collect_dir / (prefix + src.name)
+                shutil.copy2(src, dest)
+
             for case_dir in failed_dirs:
                 prefix = case_dir.name + '_'
                 for path in case_dir.iterdir():
                     if path.is_file():
-                        dest = collect_dir / (prefix + path.name)
-                        shutil.copy2(path, dest)
+                        _copy_with_prefix(path, prefix=prefix)
+
+                # Ensure ephemeris failed cases include output tables and stdout files
+                # in the collected failure directory even if only summary artifacts are
+                # present by default.
+                if case_dir.name.startswith('ephemeris_'):
+                    _copy_with_prefix(case_dir / 'python_table.txt', prefix=prefix)
+                    _copy_with_prefix(case_dir / 'fortran_table.txt', prefix=prefix)
+                    _copy_with_prefix(case_dir / 'python_stdout.txt', prefix=prefix)
+                    _copy_with_prefix(case_dir / 'fortran_stdout.txt', prefix=prefix)
         return 1 if failed_count > 0 else 0
 
     if args.tool is None:

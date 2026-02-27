@@ -903,6 +903,10 @@ def _get_keys_env(key: str) -> list[str]:
             break
         if '#' in v:
             if from_single_key:
+                for part in v.split('#'):
+                    part = part.strip()
+                    if part:
+                        out.append(part)
                 break
             v = v.split('#')[0].strip()
         out.append(v)

@@ -163,7 +163,10 @@ def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, floa
             f'Ring ansa calculation undefined for edge-on geometry: obs_dist*cos(obs_b)={denom!r}'
         )
     ratio = radius_km / denom
-    ratio = max(-1.0, min(1.0, ratio))
+    # Match observed FORTRAN behavior for invalid ansa geometry
+    # (observer too close / extreme opening): axis labels are centered at 0.
+    if not (-1.0 <= ratio <= 1.0):
+        return (0.0, 0.0)
     offset = math.asin(ratio)
     if is_right:
         lon = 0.5 * math.pi - offset

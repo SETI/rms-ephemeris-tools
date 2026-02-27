@@ -75,6 +75,12 @@ dev = [
   "sphinxcontrib-mermaid",
   "sphinx-rtd-theme"
 ]
+docs = [
+  "myst-parser",
+  "sphinx>=7",
+  "sphinxcontrib-mermaid",
+  "sphinx-rtd-theme"
+]
 
 [project.scripts]
 ephemeris-tools = "ephemeris_tools.cli.main:main"

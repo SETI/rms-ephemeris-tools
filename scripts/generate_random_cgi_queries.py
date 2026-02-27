@@ -683,7 +683,7 @@ EPHEM_MOONCOLS_PREFIX = [
 # Bounds for time range and interval: ensure 2 <= ntimes <= max_steps.
 # Tracker limit 10000, ephemeris 100000.
 _TRACKER_MAX_STEPS = 10000
-_EPHEM_MAX_STEPS = 100000
+_EPHEM_MAX_STEPS = 10000
 _SECONDS_PER_DAY = 86400.0
 
 

@@ -329,9 +329,12 @@ def _rspk_draw_bodies(
             eubody(ibody, 1, 0, 1, bl1, bl2, 0, euclid_state, view_state, escher_state)
             eubody(ibody, 0, 0, 1, 0, 0, 0, euclid_state, view_state, escher_state)
         escher_state.drawn = False
+        segbuf_len_before = len(view_state.segbuf)
         eslwid(body_diampts - bpts, escher_state)
         eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, view_state, escher_state)
-        if update_names and bvis and not escher_state.drawn and bi < len(body_names):
+        drew_body = escher_state.drawn or len(view_state.segbuf) > segbuf_len_before
+        no_line_pass = bl1 == NO_LINE and bl2 == NO_LINE and bl3 == NO_LINE
+        if update_names and bvis and not (drew_body or no_line_pass) and bi < len(body_names):
             body_names[bi] = ' '
     eslwid(0.0, escher_state)
 
