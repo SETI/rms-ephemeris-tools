@@ -83,11 +83,12 @@ def test_cli_writes_count_lines(tmp_path: Path) -> None:
     assert result.returncode == 0
     lines = out.read_text().strip().splitlines()
     assert len(lines) == 7
+    raw = out.read_text()
+    assert raw.count('\n') == 7, 'expected exactly 7 newline-separated URLs'
     for line in lines:
         assert line.startswith('https://pds-rings.seti.org/cgi-bin/tools/')
         assert '?' in line
         assert '=' in line
-        assert '\n' not in line.strip()
 
 
 def test_cli_tool_filter(tmp_path: Path) -> None:

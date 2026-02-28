@@ -912,6 +912,21 @@ def _pick_multi(lst: list[str], min_n: int = 0, max_n: int | None = None) -> lis
 
 
 def _build_viewer_query(abbrev: str) -> str:
+    """Build URL-encoded viewer query parameters for a given body abbreviation.
+
+    Viewpoint, observatory (or lat/lon), center, moons, rings, and diagram options
+    are chosen via helpers (_planet, _prefix, _maybe, _pick, _pick_multi,
+    _random_datetime, _load_starlist) and constants (EPHEM_BY_ABBREV, etc.).
+    SPICE coverage is computed with _combined_spice_range; if the selected
+    "other" bodies lack coverage, fallbacks omit or reselect them. Time is
+    chosen within the combined SPICE range when available.
+
+    Parameters:
+        abbrev: Body abbreviation (e.g. 'sat', 'jup').
+
+    Returns:
+        URL-encoded query string via urlencode(params, doseq=True, encoding='utf-8').
+    """
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
     params: dict[str, Any] = {}
@@ -1096,6 +1111,18 @@ def _build_viewer_query(abbrev: str) -> str:
 
 
 def _build_tracker_query(abbrev: str) -> str:
+    """Build URL-encoded tracker query parameters for a given body abbreviation.
+
+    Sets viewpoint, observatory or lat/lon, start/stop/interval via
+    _random_time_range_and_interval, and optionally moons, rings, and xunit.
+    Uses _planet, _prefix, _maybe, _pick and urlencode.
+
+    Parameters:
+        abbrev: Body abbreviation (e.g. 'sat', 'jup').
+
+    Returns:
+        URL-encoded query string.
+    """
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
     params: dict[str, Any] = {}
@@ -1165,6 +1192,19 @@ def _build_tracker_query(abbrev: str) -> str:
 
 
 def _build_ephemeris_query(abbrev: str) -> str:
+    """Build and return a URL-encoded ephemeris query string for a body abbreviation.
+
+    Uses _planet, _prefix, _random_time_range_and_interval, EPHEM_BY_ABBREV,
+    OBSERVATORIES_EARTH, TRACKER_MOONS; may set viewpoint, observatory, columns,
+    mooncols, moons, start/stop/interval/time_unit and output. Requires at least
+    one general column or both moons and mooncols for a valid query.
+
+    Parameters:
+        abbrev: Body abbreviation (str).
+
+    Returns:
+        URL-encoded query string (urlencode with doseq=True, encoding='utf-8').
+    """
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
     params: dict[str, Any] = {}
@@ -1266,6 +1306,12 @@ def generate_one_url(tool: str) -> str:
 
 
 def main() -> int:
+    """Generate N random CGI query strings and write them to an output file.
+
+    Uses argparse: --count (N), --output (file), --tool (viewer/tracker/ephemeris),
+    --seed (optional). Sets random.seed when --seed is given. Writes one URL per
+    line via generate_one_url. Returns 0 on success, 1 on I/O error.
+    """
     parser = argparse.ArgumentParser(
         description='Generate random CGI query strings for Viewer, Tracker, and Ephemeris tools.',
     )

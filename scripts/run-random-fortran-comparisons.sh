@@ -86,8 +86,8 @@ if ! [[ "$JOBS" =~ ^[0-9]+$ ]] || [[ "$JOBS" -le 0 ]]; then
     exit 1
 fi
 
-BASE_DIR="$(cd "$BASE_DIR" && pwd)"
 mkdir -p "$BASE_DIR"
+BASE_DIR="$(cd "$BASE_DIR" && pwd)"
 
 rotate_if_exists() {
     local dir_path="$1"

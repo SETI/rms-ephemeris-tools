@@ -79,6 +79,13 @@ load functions first). Set ``SPICE_PATH`` so the code can find kernel files.
    )
    run_tracker(params)
 
+**Expected output:** ``run_tracker(params)`` writes a PostScript file named
+``tracker.ps`` (via the ``output_ps`` parameter in ``TrackerParams``). The file
+contains plotted ephemeris tracks for Saturn (``planet_num=6``) and labeled
+moon positions for ``moon_ids=[601, 602, 603]`` (Mimas, Enceladus, Tethys). A
+typical ``tracker.ps`` begins with a PostScript header (e.g. ``%!PS-Adobe-3.0``),
+page size/comments, and then drawing commands for the trajectories and labels.
+
 .. code-block:: python
 
    from ephemeris_tools.params import ViewerParams
@@ -92,3 +99,10 @@ load functions first). Set ``SPICE_PATH`` so the code can find kernel files.
        output_txt=None,
    )
    run_viewer(params)
+
+**Expected output:** ``run_viewer(ViewerParams(...))`` creates a PostScript file
+named ``view.ps`` via the ``output_ps`` parameter. The file starts with a header
+such as ``%!PS-Adobe-3.0`` and bounding box comments; it contains a sky projection
+of Saturn at 2025-01-01 12:00 with the configured FOV (e.g. 1.0°). Readers can
+expect ``view.ps`` to be a valid PostScript document suitable for conversion to
+PDF or PNG.

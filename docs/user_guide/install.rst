@@ -6,6 +6,8 @@ Installation
 Install
 -------
 
+Requires **Python 3.10 or higher**.
+
 Create a virtual environment and install the package into it (do not install
 into system Python):
 
@@ -16,6 +18,19 @@ into system Python):
    pip install rms-ephemeris-tools
 
 This provides the ``ephemeris-tools`` command.
+
+Optional dependencies
+~~~~~~~~~~~~~~~~~~~~~
+
+Install extras for development or documentation:
+
+.. code-block:: bash
+
+   pip install rms-ephemeris-tools[dev]
+   pip install rms-ephemeris-tools[docs]
+
+Use ``[dev]`` for testing, linting, type-checking, and coverage; use ``[docs]``
+for building Sphinx documentation.
 
 Web tools (CGI forms and samples)
 ---------------------------------

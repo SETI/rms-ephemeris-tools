@@ -7,6 +7,7 @@ import re
 import sys
 import uuid
 import warnings
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 
 import requests
@@ -20,20 +21,32 @@ _STAGING_URL_PREFIX = 'https://staging.pds.seti.org/'
 
 
 def compare_tests_against_golden(
-    ephem, test_files, subtests, store_failures, known_failures, golden_location, server
-):
+    ephem: str,
+    test_files: Sequence[str],
+    subtests: set[int] | None,
+    *,
+    store_failures: bool = False,
+    known_failures: set[int] | None = None,
+    golden_location: str = '',
+    server: str = '',
+) -> None:
     """Compare test versions to golden copies of chosen tools.
 
-    This function takes arguments for the ephemeris type ("current" or "test"),
-    the paths to the tool test files you choose to compare, the range of tests
-    within the tool test file, the range(s) of known failing tests to be
-    excluded from the log, the path to the directory containing the golden
-    copies, and the server from which you want to pull the test versions.
-    A quality check is in place that ensures that test URLs generate HTML
-    files before modifying the tests to create PostScript or TAB files; an
-    error is thrown if an original test does not end with 'output=HTML'. The
-    correct tools are generated, cleaned, then matched against their golden
-    copy versions. Returns the results in the generated log file.
+    Parameters:
+        ephem: Ephemeris type ("current" or "test").
+        test_files: Paths to tool test files (one URL per line).
+        subtests: Optional set of test indices to run; None means all.
+        store_failures: If True, write failing test content to failed_tests/.
+        known_failures: Optional set of indices to treat as known failures (log only).
+        golden_location: Directory containing golden copy files.
+        server: Base URL of the server to fetch test output from.
+
+    Returns:
+        None. Results are written to the log via the logging module.
+
+    Raises:
+        SystemExit: On missing test file, URL not ending with 'output=HTML',
+            connection/timeout errors, or missing golden file.
     """
     warnings.simplefilter('ignore', urllib3.exceptions.InsecureRequestWarning)
     tests_final = []
@@ -47,6 +60,8 @@ def compare_tests_against_golden(
             print(f'A {test_file} test file does not exist')
             sys.exit(1)
 
+        if len(test_urls) == 0:
+            continue
         if 'viewer3' in test_urls[0]:
             viewer_urls = [url.strip() for url in test_urls]
             viewer_urls = [url.removeprefix(_STAGING_URL_PREFIX) for url in viewer_urls]
@@ -140,9 +155,10 @@ def compare_tests_against_golden(
 
     if ephem == 'test':
         suffix = '&ephem=+-1+TEST&sc_trajectory=+-1+TEST'
-    else:
-        assert ephem == 'current'
+    elif ephem == 'current':
         suffix = ''
+    else:
+        raise ValueError(f"ephem must be 'test' or 'current', got: {ephem!r}")
 
     for test in tests_final:
         if 'viewer3' in test:
@@ -199,8 +215,10 @@ def compare_tests_against_golden(
                         f'{tool_type} at line {index}'
                     )
                     sys.exit(1)
-            except SystemExit:
-                sys.exit(0)
+            except SystemExit as e:
+                if e.code is not None:
+                    sys.exit(e.code)
+                raise
         else:
             continue
 
@@ -251,12 +269,15 @@ def compare_tests_against_golden(
             logging.info(f'{file_type} {tool_type} {name} at line {index} matches')
 
 
-def html_file_cleaner(ephem, raw_content):
-    """Clean HTML products of all material that is negligible between tests.
+def html_file_cleaner(ephem: str, raw_content: str) -> str:
+    """Clean HTML output by removing material that varies between test runs.
 
-    Parameters are the chosen ephemeris type and content of a file
-    generated from the test URL. This cleaning code covers all three tools.
-    The return value is the cleaned version of the input string.
+    Parameters:
+        ephem: Ephemeris type ("current" or "test"); used for tool-specific logic.
+        raw_content: Raw UTF-8 HTML string from the test URL.
+
+    Returns:
+        Cleaned HTML string with titles, links, and variable content stripped.
     """
     clean = re.sub('/></a><br/>', '', raw_content)
     clean = re.sub(
@@ -372,12 +393,15 @@ def html_file_cleaner(ephem, raw_content):
     return clean
 
 
-def ps_file_cleaner(ephem, raw_content):
-    """Clean PostScript products of negligible material between tests.
+def ps_file_cleaner(ephem: str, raw_content: str) -> str:
+    """Clean PostScript output by removing variable headers and titles.
 
-    Parameters are the chosen ephemeris mode and the UTF-8 content of a file
-    generated from the test URL. This cleaning code covers all three tools.
-    The return value is the cleaned version of the string.
+    Parameters:
+        ephem: Ephemeris type ("current" or "test"); test mode strips TEST markers.
+        raw_content: Raw UTF-8 PostScript content from the test URL.
+
+    Returns:
+        Cleaned PostScript string with generator text and titles removed.
     """
     clean = re.sub(r'\(Generated by .+\)', '', raw_content)
     if ephem == 'test':
@@ -394,12 +418,15 @@ def ps_file_cleaner(ephem, raw_content):
     return clean
 
 
-def tab_file_cleaner(ephem, raw_content):
-    """Clean TAB products of negligible material between tests.
+def tab_file_cleaner(_ephem: str, raw_content: str) -> str:
+    """Clean TAB output by removing variable content (e.g. server address in errors).
 
-    Parameters are the chosen ephemeris mode and the UTF-8 content of a file
-    generated from the test URL. This cleaning code covers all three tools.
-    The return value is the cleaned version of the string.
+    Parameters:
+        _ephem: Ephemeris type; unused for TAB cleaning, kept for API consistency.
+        raw_content: Raw UTF-8 tabular content from the test URL.
+
+    Returns:
+        Cleaned string with address and other variable parts removed.
     """
     # This removes the server name from a 500 Internal Server Error
     clean = re.sub(r'<address>(.+)</address>', '', raw_content)
@@ -407,19 +434,39 @@ def tab_file_cleaner(ephem, raw_content):
     return clean
 
 
-def replace_golden_copies(ephem, test_files, subtests, golden_copies_path):
+def replace_golden_copies(
+    ephem: str,
+    test_files: Sequence[str],
+    subtests: set[int] | None,
+    golden_copies_path: str,
+) -> None:
     """Replace golden copies of tests within a chosen directory.
 
-    Parameters are the test files according to args.test_file_paths. For each
-    URL within those tests, the URLs are generated and saved as multiple
-    filetypes according to the tool the URL test originates from. These files
-    are saved within the golden_copies_location path.
+    For each test file, reads URLs (one per line), generates HTML/PS/TAB
+    variants per tool, fetches content from the staging server, and writes
+    files into golden_copies_path. Only URLs in subtests (if set) are used.
+
+    Parameters:
+        ephem: Ephemeris type ("test" or "current"); appended to URLs when "test".
+        test_files: Paths to test URL list files.
+        subtests: Optional set of test indices to include; None means all.
+        golden_copies_path: Directory where golden files are written.
+
+    Returns:
+        None.
+
+    Raises:
+        SystemExit: If a URL does not end with '&output=HTML' or on I/O error.
     """
     for test_file in test_files:
-        with open(test_file) as test_urls:
-            test_urls = test_urls.readlines()
-            test_urls = [url.strip() for url in test_urls]
-            test_urls = [url.removeprefix(_STAGING_URL_PREFIX) for url in test_urls]
+        try:
+            with open(test_file) as f:
+                test_urls = f.readlines()
+        except FileNotFoundError:
+            logging.error(f'Test file not found: {test_file}')
+            continue
+        test_urls = [url.strip() for url in test_urls]
+        test_urls = [url.removeprefix(_STAGING_URL_PREFIX) for url in test_urls]
 
         for url in test_urls:
             if not url.endswith('&output=HTML'):
@@ -515,7 +562,7 @@ def replace_golden_copies(ephem, test_files, subtests, golden_copies_path):
                     file += '&ephem=+-1+TEST&sc_trajectory=+-1+TEST'
                 name = str(uuid.uuid5(uuid.NAMESPACE_URL, file))
                 file = 'https://staging.pds.seti.org/' + file
-                grab = requests.get(file, verify=False)
+                grab = requests.get(file, verify=False, timeout=5.0)
                 content = grab.content
                 content = content.decode('utf8')
                 with open(os.path.join(golden_copies_path, name), 'w') as goldfile:
@@ -523,8 +570,18 @@ def replace_golden_copies(ephem, test_files, subtests, golden_copies_path):
                     logging.info(f'File {name} at line {index} generated')
 
 
-def range_of_tests(selected_tests):
-    """Create set of indices for limiting tests or hiding known failures."""
+def range_of_tests(
+    selected_tests: Iterable[str] | None,
+) -> set[int] | None:
+    """Create set of indices for limiting tests or hiding known failures.
+
+    Parameters:
+        selected_tests: Optional iterable of "start:end" range strings or
+            single-index strings (e.g. "3:7" or "2"). Empty/None returns None.
+
+    Returns:
+        Set of test indices, or None if selected_tests is None/empty (meaning no filter).
+    """
     subtests = None
     if selected_tests is not None:
         subtests = set()
@@ -615,8 +672,6 @@ def main() -> None:
         'test file can be specified to use this command.',
     )
 
-    parser.set_defaults(testsubset=None)
-
     parser.add_argument(
         '--server',
         type=str,
@@ -677,10 +732,10 @@ def main() -> None:
             args.run_ephemeris_type,
             args.test_file_paths,
             range_of_tests(args.limit_tests),
-            args.save_failing_tests,
-            range_of_tests(args.hide_known_failures),
-            args.golden_directory,
-            select_server(args.server),
+            store_failures=args.save_failing_tests,
+            known_failures=range_of_tests(args.hide_known_failures),
+            golden_location=args.golden_directory,
+            server=select_server(args.server),
         )
 
 
