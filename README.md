@@ -48,6 +48,17 @@ pip install rms-ephemeris-tools
 
 This provides the `ephemeris-tools` command.
 
+To deploy the bundled web forms and sample files (e.g. for a CGI server), use the
+`install_ephemeris_tools_files` command with a target directory:
+
+```bash
+install_ephemeris_tools_files /path/to/htdocs/tools
+```
+
+Files from the package’s `web/tools` tree are copied into the given directory
+(subdirectories such as `samples/` are preserved). Works when the package is
+installed from PyPI or from source.
+
 ## Environment variables
 
 | Variable | Purpose | Default |

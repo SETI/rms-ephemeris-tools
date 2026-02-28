@@ -17,6 +17,21 @@ into system Python):
 
 This provides the ``ephemeris-tools`` command.
 
+Web tools (CGI forms and samples)
+---------------------------------
+
+To deploy the bundled web forms and sample files (e.g. for a CGI-capable server),
+run the ``install_ephemeris_tools_files`` command with a target directory:
+
+.. code-block:: bash
+
+   install_ephemeris_tools_files /path/to/htdocs/tools
+
+All files from the package's ``web/tools`` tree are copied into the given
+directory (subdirectories such as ``samples/`` are preserved). This works when
+the package is installed from PyPI or from source. Use ``-v`` for verbose
+(log) output.
+
 .. _install_env:
 
 Environment variables

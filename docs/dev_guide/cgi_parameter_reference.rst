@@ -6,7 +6,9 @@ CGI Parameter Reference
 This document catalogs every CGI environment variable that the web forms
 can send to the three tools (Viewer, Tracker, Ephemeris Generator), with
 every possible value listed explicitly.  It is derived from the SHTML
-form definitions in ``web/tools/``.
+form definitions in ``web/tools/``. When the package is installed via pip,
+copy those files to a target directory with:
+``install_ephemeris_tools_files /path/to/htdocs/tools``.
 
 The Perl ``newcgi.pm`` module parses the query string and exports each
 ``key=value`` pair as an environment variable.  The FORTRAN binary (or,

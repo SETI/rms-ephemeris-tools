@@ -9,6 +9,12 @@ After installation and setting ``SPICE_PATH``, use the CLI entry point:
 
    ephemeris-tools <command> [options]
 
+To install the bundled web forms and sample files (for CGI deployment), run:
+
+.. code-block:: bash
+
+   install_ephemeris_tools_files /path/to/your/tools/dir
+
 Commands
 --------
 

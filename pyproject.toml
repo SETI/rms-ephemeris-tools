@@ -49,11 +49,22 @@ pythonpath = [
 ]
 
 [tool.setuptools]
-[tool.setuptools.packages.find]
-where = ["src"]
+# Map _web_tools to repo web/tools so files are included from source (no copy).
+package-dir = {"" = "src", "ephemeris_tools._web_tools" = "web/tools"}
+packages = [
+  "ephemeris_tools",
+  "ephemeris_tools.cli",
+  "ephemeris_tools.planets",
+  "ephemeris_tools.rendering",
+  "ephemeris_tools.rendering.escher",
+  "ephemeris_tools.rendering.euclid",
+  "ephemeris_tools.spice",
+  "ephemeris_tools._web_tools",
+]
 
 [tool.setuptools.package-data]
 "ephemeris_tools" = ["py.typed"]
+"ephemeris_tools._web_tools" = ["*", "samples/*"]
 
 [tool.setuptools_scm]
 local_scheme = "no-local-version"
@@ -84,6 +95,7 @@ docs = [
 
 [project.scripts]
 ephemeris-tools = "ephemeris_tools.cli.main:main"
+install_ephemeris_tools_files = "ephemeris_tools.install_web_tools:main"
 
 # Tool configuration
 
