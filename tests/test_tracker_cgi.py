@@ -24,6 +24,7 @@ def test_tracker_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     assert params is not None
     assert params.planet_num == 6
     assert params.start_time == '2025-01-01 00:00'
+    assert params.observer.name == "Earth's center"
     assert params.stop_time == '2025-01-02 00:00'
     assert params.moon_ids == [601]
     assert params.ring_names == ['061 Main Rings']

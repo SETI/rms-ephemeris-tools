@@ -82,8 +82,16 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         if not args.output:
             args.output = os.environ.get('EPHEM_FILE', None)
     else:
-        start = (args.start or '').strip() or _get_env('start', '') or _get_env('START_TIME', '')
-        stop = (args.stop or '').strip() or _get_env('stop', '') or _get_env('STOP_TIME', '')
+        start = (
+            (args.start or '').strip()
+            or (_get_env('start', '') or '').strip()
+            or (_get_env('START_TIME', '') or '').strip()
+        ).strip()
+        stop = (
+            (args.stop or '').strip()
+            or (_get_env('stop', '') or '').strip()
+            or (_get_env('STOP_TIME', '') or '').strip()
+        ).strip()
         if not start or not stop:
             parser.error(
                 '--start and --stop are required when not using --cgi '
@@ -702,8 +710,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             if first == 'body' and args.center_body is not None:
                 center = parse_center(args.planet, [str(args.center_body)])
             elif first == 'j2000':
-                ra_type_raw = getattr(args, 'center_ra_type', None) or 'hours'
-                is_ra_hours = _is_ra_hours_from_raw(ra_type_raw)
+                is_ra_hours = _is_ra_hours_from_raw(args.center_ra_type)
                 ra_deg = (
                     float(args.center_ra) * DEGREES_PER_HOUR_RA
                     if is_ra_hours

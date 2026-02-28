@@ -253,6 +253,9 @@ def get_moon_display_name(planet_num: int, moon_id: int) -> str | None:
 
     Returns:
         Display string (name + letter index) or None if unknown.
+
+    Raises:
+        None. Invalid planet_num or moon_id yields None; no exceptions are raised.
     """
     cfg = _PLANET_CONFIGS.get(planet_num)
     if cfg is None:
@@ -261,7 +264,10 @@ def get_moon_display_name(planet_num: int, moon_id: int) -> str | None:
     if moon is None:
         return None
     idx = moon_id % 100
-    letter = _PLANET_LETTER.get(planet_num, '?')
+    if planet_num not in _PLANET_LETTER:
+        logger.warning('Missing _PLANET_LETTER for planet_num=%s; moon=%s', planet_num, moon.name)
+        return None
+    letter = _PLANET_LETTER[planet_num]
     return f'{moon.name} ({letter}{idx})'
 
 

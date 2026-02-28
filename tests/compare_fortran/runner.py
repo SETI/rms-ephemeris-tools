@@ -11,6 +11,10 @@ from urllib.parse import parse_qs
 from ephemeris_tools.config import get_spice_path
 from tests.compare_fortran.spec import ABBREV_TO_PLANET, RunSpec, _normalize_query_string
 
+# Defaults for tracker when QUERY_STRING omits them (FORTRAN requires xrange/xunit).
+DEFAULT_TRACKER_XRANGE = '180'
+DEFAULT_TRACKER_XUNIT = 'arcsec'
+
 
 def _env_from_query_string(query_string: str) -> dict[str, str]:
     """Build CGI-style env from a query string to match parse_cgi.sh behavior.
@@ -28,6 +32,15 @@ def _env_from_query_string(query_string: str) -> dict[str, str]:
       this #-joined form when reading multi-valued keys.
     - We do not set key#1, key#2, ... ; real CGI only exports the single
       key with #-joined value, so we match that to exercise the same code path.
+
+    Parameters:
+        query_string: URL query string (e.g. key1=val1&key2=val2). Multi-valued
+            keys yield a single env entry with values joined by '#'; empty
+            values are preserved.
+
+    Returns:
+        dict[str, str]: Environment-like mapping of parameter names to string
+        values (one key per query param, #-joined for multi-valued).
     """
     parsed = parse_qs(query_string, keep_blank_values=True)
     env: dict[str, str] = {}
@@ -36,7 +49,7 @@ def _env_from_query_string(query_string: str) -> dict[str, str]:
             continue
         # Same as parse_cgi.sh: multi-valued params get #-joined; empty
         # values are still exported (use first value or '').
-        env[key] = '#'.join(values) if values else ''
+        env[key] = '#'.join(values)
     return env
 
 
@@ -63,10 +76,12 @@ def run_python(
         env.update(_env_from_query_string(query_string))
         # FORTRAN requires xrange/xunit for tracker; inject defaults so both get same params.
         if spec.tool == 'tracker':
-            if not (env.get('xrange') or '').strip():
-                env['xrange'] = '180'
-            if not (env.get('xunit') or '').strip():
-                env['xunit'] = 'arcsec'
+            xrange_val = env.get('xrange')
+            if xrange_val is None or len(xrange_val) == 0 or xrange_val == '':
+                env['xrange'] = DEFAULT_TRACKER_XRANGE
+            xunit_val = env.get('xunit')
+            if xunit_val is None or len(xunit_val) == 0 or xunit_val == '':
+                env['xunit'] = DEFAULT_TRACKER_XUNIT
 
         # Match real CGI: shell scripts set NPLANET from abbrev (abbrev_to_planet)
         # and export it; the form sends abbrev=, not NPLANET. So when the query

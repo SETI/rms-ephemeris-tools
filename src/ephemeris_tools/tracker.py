@@ -7,6 +7,7 @@ import os
 import sys
 from typing import TextIO, TypedDict, cast
 
+from ephemeris_tools.constants import SPACECRAFT_IDS, SPACECRAFT_NAMES
 from ephemeris_tools.params import Observer, TrackerParams
 from ephemeris_tools.spice.common import get_state
 
@@ -73,9 +74,22 @@ def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int
 
 
 def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs:
-    """Convert a ``TrackerParams`` object to legacy ``run_tracker`` kwargs."""
+    """Convert a TrackerParams object to legacy run_tracker keyword arguments.
+
+    Parameters:
+        params: TrackerParams with planet_num, start_time, stop_time, interval,
+            time_unit, observer, moon_ids, ring_names, xrange, xunit, etc.
+            observer.name is used for viewpoint; if None, defaults to 'Earth'.
+            viewpoint_display is passed through when set (lat/lon caption).
+
+    Returns:
+        _RunTrackerKwargs mapping with the same fields, suitable for run_tracker.
+
+    Raises:
+        None.
+    """
     viewpoint = params.observer.name if params.observer.name is not None else 'Earth'
-    viewpoint_display = getattr(params, 'viewpoint_display', None)
+    viewpoint_display = params.viewpoint_display
     xunit = params.xunit.lower()
     ring_options = None
     if params.ring_names:
@@ -230,7 +244,6 @@ def _run_tracker_impl(
 
     # FORTRAN uses degrees for spacecraft observers (RSPK_TrackMoonC), arcsec for
     # Earth/JWST/HST (RSPK_TrackMoons).
-    from ephemeris_tools.constants import SPACECRAFT_IDS, SPACECRAFT_NAMES
 
     obs_is_spacecraft = False
     obs_vp = (viewpoint or '').strip()

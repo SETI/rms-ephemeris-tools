@@ -117,7 +117,12 @@ def tdb_from_tai(tai: float) -> float:
     """
     try:
         return float(cast(Any, cspyce).unitim(tai, 'TAI', 'TDB'))
-    except Exception:
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError) as e:
+        logger.debug(
+            'cspyce.unitim(tai, TAI, TDB) failed (%s), using rms-julian fallback: %s',
+            type(e).__name__,
+            e,
+        )
         return float(julian.tdb_from_tai(tai))
 
 

@@ -125,13 +125,34 @@ def _prefix(abbrev: str) -> str:
 # Mission date limits for SPICE kernel availability (from web/tools/EPHEMERIS_INFO.shtml).
 # (min_date, max_date) inclusive.
 MISSION_DATE_RANGES: dict[str, tuple[datetime, datetime]] = {
-    'jupc': (datetime(2000, 6, 1, tzinfo=timezone.utc), datetime(2001, 6, 1, tzinfo=timezone.utc)),
-    'jupj': (datetime(2016, 8, 15, tzinfo=timezone.utc), datetime(2025, 10, 31, tzinfo=timezone.utc)),
-    'jupjc': (datetime(2023, 4, 5, tzinfo=timezone.utc), datetime(2035, 10, 5, tzinfo=timezone.utc)),
-    'jupnh': (datetime(2007, 1, 1, tzinfo=timezone.utc), datetime(2007, 3, 15, tzinfo=timezone.utc)),
-    'jupec': (datetime(2024, 12, 20, tzinfo=timezone.utc), datetime(2034, 9, 3, tzinfo=timezone.utc)),
-    'satc': (datetime(2004, 1, 1, tzinfo=timezone.utc), datetime(2017, 9, 15, tzinfo=timezone.utc)),
-    'plunh': (datetime(2015, 1, 1, tzinfo=timezone.utc), datetime(2015, 8, 31, tzinfo=timezone.utc)),
+    'jupc': (
+        datetime(2000, 6, 1, tzinfo=timezone.utc),
+        datetime(2001, 6, 1, tzinfo=timezone.utc),
+    ),
+    'jupj': (
+        datetime(2016, 8, 15, tzinfo=timezone.utc),
+        datetime(2025, 10, 31, tzinfo=timezone.utc),
+    ),
+    'jupjc': (
+        datetime(2023, 4, 5, tzinfo=timezone.utc),
+        datetime(2035, 10, 5, tzinfo=timezone.utc),
+    ),
+    'jupnh': (
+        datetime(2007, 1, 1, tzinfo=timezone.utc),
+        datetime(2007, 3, 15, tzinfo=timezone.utc),
+    ),
+    'jupec': (
+        datetime(2024, 12, 20, tzinfo=timezone.utc),
+        datetime(2034, 9, 3, tzinfo=timezone.utc),
+    ),
+    'satc': (
+        datetime(2004, 1, 1, tzinfo=timezone.utc),
+        datetime(2017, 9, 15, tzinfo=timezone.utc),
+    ),
+    'plunh': (
+        datetime(2015, 1, 1, tzinfo=timezone.utc),
+        datetime(2015, 8, 31, tzinfo=timezone.utc),
+    ),
 }
 
 # Observatory date limits for SPICE kernel availability (when observatory is used).
@@ -229,7 +250,7 @@ OBSERVATORY_ABBREV_DATE_RANGES: dict[tuple[str, str], tuple[datetime, datetime]]
         datetime(1989, 9, 28, tzinfo=timezone.utc),
     ),
     ('jup', 'Voyager 1'): (
-        datetime(1978, 12, 12, tzinfo=timezone.utc),
+        datetime(1979, 2, 1, tzinfo=timezone.utc),
         datetime(1979, 3, 15, tzinfo=timezone.utc),
     ),
     ('sat', 'Voyager 1'): (
@@ -327,7 +348,8 @@ OBSERVATORIES_EARTH = [
 
 # Viewer only: spacecraft options per planet (from VIEWPOINT.shtml with TOOL=viewer3).
 # Mars has no spacecraft; Pluto has New Horizons; Jupiter/Saturn/Uranus/Neptune have more.
-VIEWER_OBSERVATORIES_JUPITER = OBSERVATORIES_EARTH + [
+VIEWER_OBSERVATORIES_JUPITER = [
+    *OBSERVATORIES_EARTH,
     'Voyager 1',
     'Voyager 2',
     'Galileo',
@@ -337,10 +359,10 @@ VIEWER_OBSERVATORIES_JUPITER = OBSERVATORIES_EARTH + [
     'JUICE',
     'Europa Clipper',
 ]
-VIEWER_OBSERVATORIES_SATURN = OBSERVATORIES_EARTH + ['Voyager 1', 'Voyager 2', 'Cassini']
-VIEWER_OBSERVATORIES_URANUS = OBSERVATORIES_EARTH + ['Voyager 2']
-VIEWER_OBSERVATORIES_NEPTUNE = OBSERVATORIES_EARTH + ['Voyager 2']
-VIEWER_OBSERVATORIES_PLUTO = OBSERVATORIES_EARTH + ['New Horizons']
+VIEWER_OBSERVATORIES_SATURN = [*OBSERVATORIES_EARTH, 'Voyager 1', 'Voyager 2', 'Cassini']
+VIEWER_OBSERVATORIES_URANUS = [*OBSERVATORIES_EARTH, 'Voyager 2']
+VIEWER_OBSERVATORIES_NEPTUNE = [*OBSERVATORIES_EARTH, 'Voyager 2']
+VIEWER_OBSERVATORIES_PLUTO = [*OBSERVATORIES_EARTH, 'New Horizons']
 
 VIEWER_OBSERVATORIES_BY_PLANET: dict[str, list[str]] = {
     'Mars': OBSERVATORIES_EARTH,
@@ -872,8 +894,8 @@ def _random_time_range_and_interval(
     }[time_unit]
     interval_val = interval_sec / mult
 
-    if interval_val == int(interval_val):
-        interval_str = str(int(interval_val))
+    if math.isclose(interval_val, round(interval_val), rel_tol=1e-9, abs_tol=0.0):
+        interval_str = str(round(interval_val))
     else:
         interval_str = f'{interval_val:.4f}'.rstrip('0').rstrip('.')
 
@@ -926,6 +948,9 @@ def _build_viewer_query(abbrev: str) -> str:
 
     Returns:
         URL-encoded query string via urlencode(params, doseq=True, encoding='utf-8').
+
+    Raises:
+        None.
     """
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
@@ -1122,6 +1147,9 @@ def _build_tracker_query(abbrev: str) -> str:
 
     Returns:
         URL-encoded query string.
+
+    Raises:
+        None.
     """
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
@@ -1204,6 +1232,9 @@ def _build_ephemeris_query(abbrev: str) -> str:
 
     Returns:
         URL-encoded query string (urlencode with doseq=True, encoding='utf-8').
+
+    Raises:
+        None.
     """
     planet = _planet(abbrev)
     pre = _prefix(abbrev)
@@ -1275,7 +1306,8 @@ def _build_ephemeris_query(abbrev: str) -> str:
             moon_list = TRACKER_MOONS[planet]
             params['moons'] = _pick_multi(moon_list, min_n=1, max_n=min(4, len(moon_list)))
         else:
-            cols = [c.format(planet=planet) for c in (EPHEM_COLUMNS_PREFIX if pre else EPHEM_COLUMNS_EMPTY)]
+            template = EPHEM_COLUMNS_PREFIX if pre else EPHEM_COLUMNS_EMPTY
+            cols = [c.format(planet=planet) for c in template]
             params['columns'] = _pick_multi(cols, min_n=1, max_n=8)
 
     return urlencode(params, doseq=True, encoding='utf-8')
@@ -1285,10 +1317,15 @@ def generate_one_url(tool: str) -> str:
     """Generate a single random full URL for the given tool.
 
     Parameters:
-        tool: One of "viewer", "tracker", "ephemeris".
+        tool: One of "viewer", "tracker", "ephemeris". Looked up in TOOL_CGI_SCRIPT
+            to select the CGI script name.
 
     Returns:
         Full URL (e.g. https://pds-rings.seti.org/cgi-bin/tools/ephem3_xxx.pl?key=val&...).
+
+    Raises:
+        ValueError: If tool is not one of "viewer", "tracker", or "ephemeris",
+            with message ``f'Unknown tool: {tool}'``.
     """
     if tool == 'viewer':
         abbrev = _pick(VIEWER_ABBREVS)
@@ -1306,11 +1343,17 @@ def generate_one_url(tool: str) -> str:
 
 
 def main() -> int:
-    """Generate N random CGI query strings and write them to an output file.
+    """Generate random CGI query strings and write them to an output file.
 
-    Uses argparse: --count (N), --output (file), --tool (viewer/tracker/ephemeris),
-    --seed (optional). Sets random.seed when --seed is given. Writes one URL per
-    line via generate_one_url. Returns 0 on success, 1 on I/O error.
+    Reads argparse args: count (N), output (file path), tool (viewer/tracker/
+    ephemeris or None for random), seed (optional; sets random.seed when given).
+    Writes one URL per line via generate_one_url to the output file.
+
+    Returns:
+        0 on success, 1 on write error.
+
+    Side effects:
+        Writes URLs to args.output; prints progress/status to stderr.
     """
     parser = argparse.ArgumentParser(
         description='Generate random CGI query strings for Viewer, Tracker, and Ephemeris tools.',

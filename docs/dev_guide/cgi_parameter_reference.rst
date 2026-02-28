@@ -74,8 +74,9 @@ Multi-valued parameters
 When multiple checkboxes share the same ``name`` attribute (e.g.
 ``moons``, ``columns``, ``mooncols``, ``rings``, ``other``), the
 ``newcgi.pm`` CGI wrapper joins their values with ``#`` into a single
-environment variable.  For example, selecting Io and Europa produces
-``moons=001 Io (J1)#002 Europa (J2)``.
+environment variable.  For example, selecting Io and Europa produces::
+
+  moons=001 Io (J1)#002 Europa (J2)
 
 
 Viewer Parameters
@@ -363,10 +364,13 @@ Diagram Center
 
 ``center_ra_type`` (select, when center="J2000")
    RA unit. Forms use ``value="hours"`` and ``value="degrees"`` (no leading
-   space). Parsing: if the value after stripping is exactly ``degrees`` or
-   ``hours``, that is used (so URL-encoded ``+degrees`` → ``"degrees"`` →
-   degrees). A literal leading ``+`` means hours. Otherwise first character
-   ``d``/``D`` → degrees.
+   space). The backend strips leading and trailing whitespace before applying
+   the parsing rule. After stripping, if the value is exactly ``degrees`` or
+   ``hours``, that is used (so ``" degrees"`` → ``degrees`` parses as degrees).
+   A literal leading ``+`` (e.g. from URL-encoded space) is treated as hours.
+   Otherwise the first character determines units: ``d``/``D`` → degrees
+   (the ``center_ra_type`` first-character rule is applied to the stripped
+   string).
 
 ``center_dec`` (text, when center="J2000")
    Declination in degrees for diagram center.  Free-text numeric.

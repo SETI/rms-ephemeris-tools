@@ -465,9 +465,9 @@ def tracker_params_from_env() -> TrackerParams | None:
         lon_s = _get_env('longitude')
         lon_dir = _get_env('lon_dir', 'east')
         alt_s = _get_env('altitude')
-        if lat_s or lon_s or alt_s:
+        if lat_s and lon_s and alt_s:
             # Match FORTRAN: '(' // lat // ',' // ' ' // lon // ' ' // lon_dir // ',' // alt // ')'
-            viewpoint_display = f'({lat_s or ""}, {lon_s or ""} {lon_dir}, {alt_s or ""})'
+            viewpoint_display = f'({lat_s}, {lon_s} {lon_dir}, {alt_s})'
     return TrackerParams(
         planet_num=planet_num,
         start_time=start_time,

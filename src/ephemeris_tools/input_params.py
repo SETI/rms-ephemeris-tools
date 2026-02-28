@@ -41,6 +41,11 @@ def _w(stream: TextIO, line: str) -> None:
     stream.write(line + '\n')
 
 
+def _html_escape_title(s: str) -> str:
+    """Escape < and > for tracker Title line to match FORTRAN WWW_Lookup sanitization."""
+    return s.replace('<', '&lt;').replace('>', '&gt;')
+
+
 # Match FORTRAN ephemeris stdout: interval unit always plural (e.g. "1 hours").
 _TIME_UNIT_PLURAL = {'hour': 'hours', 'day': 'days', 'min': 'minutes', 'sec': 'seconds'}
 
@@ -202,9 +207,7 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
     _w(stream, f'       Interval: {interval_s} {time_unit_display}')
     ephem_display = getattr(args, 'ephem_display', None)
     if ephem_display and str(ephem_display).strip():
-        s = str(ephem_display).strip()
-        if len(s) >= 4 and s[:4].replace(' ', '').isdigit():
-            s = s[4:].lstrip()
+        s = _strip_cgi_code(str(ephem_display))
         _w(stream, f'      Ephemeris: {s}')
     else:
         _w(stream, f'      Ephemeris: {getattr(args, "ephem", 0)}')
@@ -248,9 +251,7 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
     moons_display = getattr(args, 'moons_display', None)
     if moons_display and len(moons_display) > 0:
         for i, m in enumerate(moons_display):
-            s = (m or '').strip()
-            if len(s) > 4 and s[:4].replace(' ', '').isdigit():
-                s = s[4:].lstrip()
+            s = _strip_cgi_code(m)
             prefix = ' Moon selection: ' if i == 0 else '                 '
             _w(stream, f'{prefix}{s}')
     else:
@@ -270,18 +271,14 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
         rings_display = getattr(args, 'rings_display', None)
         if rings_display and len(rings_display) > 0:
             for i, r in enumerate(rings_display):
-                s = (r or '').strip()
-                if len(s) > 4 and s[:4].replace(' ', '').isdigit():
-                    s = s[4:].lstrip()
+                s = _strip_cgi_code(r)
                 prefix = ' Ring selection: ' if i == 0 else '                 '
                 _w(stream, f'{prefix}{s}')
         else:
             rings = getattr(args, 'rings', None) or getattr(args, 'ring_names', None) or []
             if rings:
                 for i, r in enumerate(rings):
-                    s = (r or '').strip()
-                    if len(s) > 4 and s[:4].replace(' ', '').isdigit():
-                        s = s[4:].lstrip()
+                    s = _strip_cgi_code(r)
                     prefix = ' Ring selection: ' if i == 0 else '                 '
                     _w(stream, f'{prefix}{s}')
             else:
@@ -302,9 +299,9 @@ def write_input_parameters_tracker(stream: TextIO, args: Namespace | TrackerPara
         xunit_display = xunit
     _w(stream, f'     Plot scale: {xrange_s} {xunit_display}')
 
-    # Title (empty -> "")
+    # Title (empty -> ""). Escape < and > to match FORTRAN WWW_GetKey (WWW_Lookup sanitization).
     title = (getattr(args, 'title', None) or '').strip()
-    _w(stream, f'          Title: "{title}"')
+    _w(stream, f'          Title: "{_html_escape_title(title)}"')
     _w(stream, ' ')
 
 
@@ -332,9 +329,7 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
     display = getattr(args, 'display', None)
     ephem_display = getattr(display, 'ephem_display', None) or getattr(args, 'ephem_display', None)
     if ephem_display and str(ephem_display).strip():
-        s = ephem_display.strip()
-        if len(s) > 4 and s[0:4].replace(' ', '').isdigit():
-            s = s[4:].lstrip()
+        s = _strip_cgi_code(ephem_display)
         _w(stream, f'         Ephemeris: {s}')
     else:
         _w(stream, f'         Ephemeris: {getattr(args, "ephem", 0)}')
@@ -543,9 +538,9 @@ def write_input_parameters_viewer(stream: TextIO, args: Namespace | ViewerParams
             prefix = '      Other bodies: ' if i == 0 else '                    '
             _w(stream, f'{prefix}{o}')
 
-    # Title (FORTRAN: 13 spaces)
+    # Title (FORTRAN: 13 spaces). Escape < and > to match FORTRAN WWW_GetKey sanitization.
     title = (getattr(args, 'title', None) or '').strip()
-    _w(stream, f'             Title: "{title}"')
+    _w(stream, f'             Title: "{_html_escape_title(title)}"')
 
     # Moon labels (FORTRAN: 7 spaces)
     labels = (getattr(args, 'labels', None) or 'Small (6 points)').strip()

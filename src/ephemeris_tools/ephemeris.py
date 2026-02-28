@@ -83,9 +83,25 @@ MAXSECS = 360.0 * 60.0 * 60.0
 def _set_observer_from_params(params: EphemerisParams, *, sc_loaded_early: bool = False) -> None:
     """Set SPICE observer from params (ephem3_xxx.f observer setup).
 
-    Uses latlon if viewpoint is latlon; else observatory name or Earth.
-    When sc_loaded_early is True, spacecraft kernels were already loaded in
-    generate_ephemeris; only set_observer_id is needed (load_spice_files resets it).
+    Selection order: if viewpoint is latlon and latitude_deg/longitude_deg are
+    set, use set_observer_location; else if observatory is set and maps to a
+    spacecraft code, use that (with load_spacecraft unless sc_loaded_early);
+    otherwise observer remains Earth.
+
+    Parameters:
+        params: EphemerisParams with viewpoint, latitude_deg, longitude_deg,
+            altitude_m, observatory, planet_num, sc_trajectory. Expected types
+            match the EphemerisParams dataclass.
+        sc_loaded_early: If True, spacecraft kernels were already loaded in
+            generate_ephemeris; only set_observer_id is called (no kernel reload).
+
+    Returns:
+        None.
+
+    Raises:
+        May propagate ValueError or SPICE errors from observer lookup or
+        spacecraft/body ID resolution when observer name is invalid or
+        kernels are missing.
     """
     if (
         params.viewpoint == 'latlon'
@@ -450,7 +466,7 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                         rec.append(f'{ra * HPR:9.6f}{dec * DPR:10.5f}')
                 elif mcol == MCOL_OFFSET:
                     if irec == 0:
-                        rec.append(' ' + prefix + 'dra ' + prefix + 'ddec')
+                        rec.append('  ' + prefix + 'dra  ' + prefix + 'ddec')
                     else:
                         ra, dec = body_radec(et, mid)
                         ddec = SPR * (dec - planet_dec)
@@ -460,10 +476,10 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                         if dra > 0.5 * MAXSECS:
                             dra -= MAXSECS
                         dra *= cosdec
-                        rec.append(f'{dra:9.3f}{ddec:10.3f}')
+                        rec.append(f'{dra:10.3f}{ddec:11.3f}')
                 elif mcol == MCOL_OFFDEG:
                     if irec == 0:
-                        rec.append(' ' + prefix + 'dra ' + prefix + 'ddec')
+                        rec.append('  ' + prefix + 'dra  ' + prefix + 'ddec')
                     else:
                         ra, dec = body_radec(et, mid)
                         ddec = DPR * (dec - planet_dec)
@@ -474,7 +490,7 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                         if dra > 180.0:
                             dra -= 180.0
                         dra *= cosdec
-                        rec.append(f'{dra:9.5f}{ddec:10.5f}')
+                        rec.append(f'{dra:10.5f}{ddec:11.5f}')
                 elif mcol == MCOL_ORBLON:
                     if irec == 0:
                         rec.append(prefix + 'orbit')

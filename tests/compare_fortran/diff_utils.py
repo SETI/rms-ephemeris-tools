@@ -14,6 +14,26 @@ logger = logging.getLogger(__name__)
 # Epsilon for LSD-based float comparison to absorb representation noise (e.g. 12.27-12.269).
 LSD_EPSILON = 1e-12
 
+# PostScript line comparison: default tolerance for numeric tokens and pixel-like values.
+POSTSCRIPT_NUMERIC_TOLERANCE = 0.02
+POSTSCRIPT_PIXEL_TOLERANCE = 2.0
+
+# Axis/footer masking for viewer image comparison (ignore axis lines and footer text).
+AXIS_FOOTER_SEARCH_RATIO = 0.92  # Start footer search at this fraction of image height.
+AXIS_LINE_THRESHOLD_RATIO = 0.20  # Row/col count >= this fraction of dimension to be axis.
+AXIS_LINE_MIN_COUNT = 200  # Minimum dark pixels in row/col to consider axis candidate.
+AXIS_BAND_MIN_PX = 3  # Minimum band width around axis lines (px).
+DPI_AXIS_BAND_DIVISOR = 24  # band = max(AXIS_BAND_MIN_PX, dpi / this).
+TICK_PAD_MIN_PX = 8  # Minimum padding around ticks (px).
+TICK_PAD_DPI_DIVISOR = 10  # tick_pad = max(TICK_PAD_MIN_PX, dpi / this).
+AXIS_EXTRA_DPI_DIVISOR = 8  # Extra padding for footer_search_start (dpi / this).
+FOOTER_ROW_THRESHOLD_RATIO = 0.01  # Footer row: dark count >= this fraction of width.
+FOOTER_MIN_ROW_COUNT = 10  # Minimum dark pixels in row to be footer candidate.
+FOOTER_PAD_MIN_PX = 4  # Padding above/below footer band (px).
+FOOTER_PAD_DPI_DIVISOR = 20  # footer_pad = max(FOOTER_PAD_MIN_PX, dpi / this).
+FOOTER_FALLBACK_MIN_ROWS = 25  # Fallback: mask this many bottom rows if no footer detected.
+FOOTER_FALLBACK_DPI_DIVISOR = 4  # Fallback rows = max(FOOTER_FALLBACK_MIN_ROWS, dpi / this).
+
 
 @dataclass
 class CompareResult:
@@ -45,8 +65,19 @@ def _is_fortran_overflow_token(token: str) -> bool:
 def _lsd_from_printed(s: str) -> float:
     """Infer least-significant-digit magnitude from the printed form.
 
-    E.g. "1.001" -> 0.001, "10.5" -> 0.1, "7" -> 1, "5.0523E+09" -> 100000.
-    Used for LSD-based tolerance: values match if |a-b| <= lsd_units * lsd.
+    Parameters:
+        s: String representation of a number. Allowed forms: decimal (e.g. "1.001",
+            "10.5", "7"), optional leading sign, optional scientific notation
+            (e.g. "5.0523E+09"). Leading/trailing whitespace is stripped. Empty or
+            non-numeric strings are handled (no decimal/sci match yields 1.0).
+
+    Returns:
+        float: LSD magnitude. Examples: "1.001" -> 0.001; "10.5" -> 0.1; "7" -> 1;
+        "5.0523E+09" -> 100000. Used for LSD-based tolerance: values match if
+        |a-b| <= lsd_units * lsd.
+
+    Raises:
+        None.
     """
     s = s.strip()
     sci = re.match(r'^([+-]?\d*\.?\d+)[eE]([+-]?\d+)$', s)
@@ -152,13 +183,11 @@ def compare_tables(
     E.g. 1.001 with lsd_tolerance=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1.
 
     If abs_tolerance is set (and lsd_tolerance is not), numeric fields
-    match when |a-b| <= abs_tolerance. Kept for backward compatibility.
+    match when |a-b| <= abs_tolerance.
 
-    If ignore_column_suffixes is set (e.g. ("_orbit", "_open")), the first
+    If ignore_column_suffixes is set (e.g. ("_foo", "_bar")), the first
     line is treated as a header; when comparing data lines, fields whose
-    header column name ends with any of these suffixes are ignored (known
-    FORTRAN bugs). Use for ephemeris table comparison when moon columns
-    include orbit/open.
+    header column name ends with any of these suffixes are skipped.
     """
     pa = Path(path_a)
     pb = Path(path_b)
@@ -355,14 +384,25 @@ def _postscript_lines_match(
     la: str,
     lb: str,
     *,
-    numeric_tolerance: float = 0.02,
-    pixel_tolerance: float = 2.0,
+    numeric_tolerance: float = POSTSCRIPT_NUMERIC_TOLERANCE,
+    pixel_tolerance: float = POSTSCRIPT_PIXEL_TOLERANCE,
 ) -> bool:
     """Compare two PostScript lines; numeric tokens may differ within tolerance.
 
-    numeric_tolerance: for floating-point values (e.g. plot coordinates).
-    pixel_tolerance: for integer-like values (pixel/position coords); allows
-        differences of 1-2 pixels to be ignored.
+    Parameters:
+        la: First PostScript line (string).
+        lb: Second PostScript line (string).
+        numeric_tolerance: Max allowed absolute difference for floating-point
+            tokens (e.g. plot coordinates). Default POSTSCRIPT_NUMERIC_TOLERANCE.
+        pixel_tolerance: For integer-like tokens (pixel/position coords), max
+            allowed difference; allows 1-2 pixel drift. Default
+            POSTSCRIPT_PIXEL_TOLERANCE.
+
+    Returns:
+        True if lines match (identical or numeric diff within tolerances).
+
+    Raises:
+        None.
     """
     if la == lb:
         return True
@@ -392,8 +432,8 @@ def compare_postscript(
     path_a: Path | str,
     path_b: Path | str,
     normalize_creator_date: bool = True,
-    numeric_tolerance: float = 0.05,
-    pixel_tolerance: float = 2.0,
+    numeric_tolerance: float = POSTSCRIPT_NUMERIC_TOLERANCE,
+    pixel_tolerance: float = POSTSCRIPT_PIXEL_TOLERANCE,
 ) -> CompareResult:
     """Compare two PostScript files with optional normalization of variable headers.
 
@@ -576,9 +616,9 @@ def compare_postscript_images(
         common_dark = dark_a & dark_b
         row_counts = common_dark.sum(axis=1)
         col_counts = common_dark.sum(axis=0)
-        footer_search_start = round(0.92 * h)
-        row_thresh = max(200, int(0.20 * w))
-        col_thresh = max(200, int(0.20 * h))
+        footer_search_start = round(AXIS_FOOTER_SEARCH_RATIO * h)
+        row_thresh = max(AXIS_LINE_MIN_COUNT, int(AXIS_LINE_THRESHOLD_RATIO * w))
+        col_thresh = max(AXIS_LINE_MIN_COUNT, int(AXIS_LINE_THRESHOLD_RATIO * h))
         row_candidates = np.where(row_counts >= row_thresh)[0]
         col_candidates = np.where(col_counts >= col_thresh)[0]
         if row_candidates.size >= 2 and col_candidates.size >= 2:
@@ -586,8 +626,8 @@ def compare_postscript_images(
             bottom = int(row_candidates[-1])
             left = int(col_candidates[0])
             right = int(col_candidates[-1])
-            band = max(3, round(dpi / 24))  # ~6 px at 150 dpi
-            tick_pad = max(8, round(dpi / 10))  # ~15 px at 150 dpi
+            band = max(AXIS_BAND_MIN_PX, round(dpi / DPI_AXIS_BAND_DIVISOR))
+            tick_pad = max(TICK_PAD_MIN_PX, round(dpi / TICK_PAD_DPI_DIVISOR))
             y0 = max(0, top - band - tick_pad)
             y1 = min(h, top + band + tick_pad + 1)
             y2 = max(0, bottom - band - tick_pad)
@@ -600,9 +640,10 @@ def compare_postscript_images(
             ignore_mask[y2:y3, :] = True
             ignore_mask[:, x0:x1] = True
             ignore_mask[:, x2:x3] = True
+            extra = max(FOOTER_PAD_MIN_PX, round(dpi / AXIS_EXTRA_DPI_DIVISOR))
             footer_search_start = max(
                 footer_search_start,
-                bottom + tick_pad + band + max(4, round(dpi / 8)),
+                bottom + tick_pad + band + extra,
             )
             details.append(
                 '  Axis mask: enabled '
@@ -615,12 +656,12 @@ def compare_postscript_images(
         # a common dark text band in the lower image region and mask that strip.
         footer_search_start = min(footer_search_start, h - 1)
         footer_row_counts = common_dark[footer_search_start:, :].sum(axis=1)
-        footer_row_thresh = max(10, round(0.01 * w))
+        footer_row_thresh = max(FOOTER_MIN_ROW_COUNT, round(FOOTER_ROW_THRESHOLD_RATIO * w))
         footer_candidates = np.where(footer_row_counts >= footer_row_thresh)[0]
         if footer_candidates.size > 0:
             footer_top = footer_search_start + int(footer_candidates[0])
             footer_bottom = footer_search_start + int(footer_candidates[-1])
-            footer_pad = max(4, round(dpi / 20))
+            footer_pad = max(FOOTER_PAD_MIN_PX, round(dpi / FOOTER_PAD_DPI_DIVISOR))
             fy0 = max(0, footer_top - footer_pad)
             fy1 = min(h, footer_bottom + footer_pad + 1)
             ignore_mask[fy0:fy1, :] = True
@@ -629,7 +670,7 @@ def compare_postscript_images(
                 f'(padded to {fy0}-{fy1 - 1}; Generated by...)'
             )
         else:
-            footer_rows = max(25, round(dpi / 4))
+            footer_rows = max(FOOTER_FALLBACK_MIN_ROWS, round(dpi / FOOTER_FALLBACK_DPI_DIVISOR))
             ignore_mask[h - footer_rows : h, :] = True
             details.append(f'  Footer mask: fallback bottom {footer_rows} rows (Generated by...)')
 

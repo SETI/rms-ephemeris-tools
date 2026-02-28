@@ -80,7 +80,14 @@ PROGRESS_LOG_INTERVAL = 10
 
 
 def _format_duration(seconds: float) -> str:
-    """Format duration seconds as MM:SS or HH:MM:SS."""
+    """Format duration in seconds as MM:SS or HH:MM:SS.
+
+    Parameters:
+        seconds: Duration in seconds (int or float); non-negative values only.
+
+    Returns:
+        str: Formatted string "MM:SS" or "HH:MM:SS" (hours included when > 0).
+    """
     total = max(0, round(seconds))
     hours, rem = divmod(total, 3600)
     minutes, secs = divmod(rem, 60)
@@ -99,7 +106,20 @@ def _emit_progress(
     started_at: float,
     is_tty: bool,
 ) -> None:
-    """Render progress for batch URL runs."""
+    """Render progress for batch URL runs.
+
+    Parameters:
+        current: Number of URLs processed so far.
+        total: Total number of URLs to process.
+        passed: Count of comparisons that passed.
+        failed: Count of comparisons that failed.
+        skipped: Count of comparisons skipped.
+        started_at: Monotonic start time (e.g. time.monotonic()).
+        is_tty: Whether stderr is a TTY (controls bar vs plain output).
+
+    Returns:
+        None.
+    """
     elapsed = max(0.0, time.monotonic() - started_at)
     fraction = (current / total) if total > 0 else 0.0
     width = PROGRESS_BAR_WIDTH
@@ -435,7 +455,6 @@ def _execute_spec(
             fort_table_use,
             float_tolerance=float_tol,
             lsd_tolerance=lsd_tol,
-            ignore_column_suffixes=('_orbit', '_open'),
         )
         details.append(f'table: {res.message}')
         details.extend(res.details)
@@ -500,7 +519,25 @@ def _run_one_url(
 ) -> tuple[int, str, bool, list[str], float | None, Path, bool]:
     """Execute one URL comparison; return (idx, url, passed, details, max_diff, case_dir, skipped).
 
-    Used for parallel batch runs. Caller must write comparison.txt and aggregate results.
+    Used for parallel batch runs. Writes comparison output under case_dir; caller
+    aggregates results and may write comparison.txt.
+
+    Parameters:
+        idx: Run index (int).
+        url: Query URL string to compare (str).
+        repo_root: Repository root path (Path).
+        out_dir: Output directory for case subdirs (Path).
+        fortran_cmd_str: Optional FORTRAN command string (str or None).
+        float_tol: Optional float tolerance for table comparison (int or None).
+        lsd_tol: Optional LSD tolerance for table comparison (float or None).
+        viewer_min_similarity_pct: Optional viewer image similarity threshold (float or None).
+
+    Returns:
+        tuple[int, str, bool, list[str], float | None, Path, bool]: (idx, url, passed,
+        details list, max_table_abs_diff or None, case_dir path, skipped flag).
+
+    Raises:
+        May propagate ValueError or other exceptions from spec_from_query_input or run.
     """
     spec = spec_from_query_input(url)
     planet = int(spec.params.get('planet', 6))
@@ -974,13 +1011,11 @@ def main() -> int:
             exit_code = 1
 
         if py_table_use and fort_table_use:
-            # Ignore *_orbit and *_open columns: known FORTRAN bug in RSPK_OrbitOpen.
             res = compare_tables(
                 py_table_use,
                 fort_table_use,
                 float_tolerance=(args.float_tol if args.float_tol > 0 else None),
                 lsd_tolerance=(args.lsd_tol if args.lsd_tol > 0 else None),
-                ignore_column_suffixes=('_orbit', '_open'),
             )
             print('Table:', res.message)
             for d in res.details:

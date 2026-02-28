@@ -137,6 +137,19 @@ def test_compare_tables_lsd_tolerance_scales_with_printed_precision() -> None:
     try:
         strict = compare_tables(path_a, path_b)
         assert strict.same is False
+        # diff=0.002, LSD=0.001: lsd_tolerance=1 rejects (0.002 > 1*0.001)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as fc:
+            fc.write('a 12.270 -6.432\n')
+            path_c = Path(fc.name)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as fd:
+            fd.write('a 12.268 -6.431\n')
+            path_d = Path(fd.name)
+        try:
+            strict_lsd1 = compare_tables(path_c, path_d, lsd_tolerance=1.0)
+            assert strict_lsd1.same is False
+        finally:
+            path_c.unlink()
+            path_d.unlink()
         tolerant = compare_tables(path_a, path_b, lsd_tolerance=1.0)
         assert tolerant.same is True
     finally:

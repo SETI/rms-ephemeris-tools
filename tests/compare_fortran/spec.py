@@ -485,9 +485,9 @@ class RunSpec:
             if self.tool == 'tracker':
                 parsed = parse_qs(qs, keep_blank_values=True)
                 if not parsed.get('xrange') or not (parsed['xrange'][0] or '').strip():
-                    parsed.setdefault('xrange', ['180'])
+                    parsed['xrange'] = ['180']
                 if not parsed.get('xunit') or not (parsed['xunit'][0] or '').strip():
-                    parsed.setdefault('xunit', ['arcsec'])
+                    parsed['xunit'] = ['arcsec']
                 qs = urlencode(parsed, doseq=True)
             env['QUERY_STRING'] = qs
         else:

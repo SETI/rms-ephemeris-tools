@@ -1,5 +1,5 @@
 <!--#set var="PLANET"   value="Pluto"           -->
-<!--#set var="VERSION"  value="3.1"             -->
+<!--#set var="VERSION"  value="3.2"             -->
 <!--#set var="YMD"      value="2022-08-03"      -->
 <!--#set var="UPDATED"  value="August 20, 2023"  -->
 <!--#set var="TOOL"     value="viewer3"         -->

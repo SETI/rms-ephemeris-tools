@@ -145,7 +145,30 @@ def _label_xaxis(
     planetstr: str,
     use_degrees: bool = False,
 ) -> None:
-    """Draw x-axis labels and tick marks (port of RSPK_LabelXAxis / RSPK_LabelXAxisC)."""
+    """Draw x-axis labels and tick marks (port of RSPK_LabelXAxis / RSPK_LabelXAxisC).
+
+    Emits PostScript/EScher commands to the output stream for axis ticks and
+    the axis label. Tick spacing is derived from xrange; the label is either
+    "(Arcsec)", "(Degree)", or "({planetstr} radii)" depending on xscaled and
+    use_degrees.
+
+    Parameters:
+        out: Text stream to write PostScript/EScher commands to.
+        xrange: Half-width of the x-axis (symmetric about zero); used for tick step.
+        xscaled: If True, label uses planet radii (planetstr) instead of arcsec/deg.
+        planetstr: Planet name string for the label when xscaled is True.
+        use_degrees: If True (and not xscaled), label is "(Degree)"; else "(Arcsec)".
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+
+    Side effects:
+        Writes to out (drawing commands). Coordinate/tick conventions match FORTRAN
+        RSPK_LabelXAxis (arcsec) and RSPK_LabelXAxisC (degrees/radii).
+    """
     max_xstep = 2.0 * xrange / 3.0
     i = len(STEP1) - 1
     while i >= 1 and STEP1[i] > max_xstep:
