@@ -16,6 +16,8 @@ _TEST_FILES_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'test_files'
 )
 
+_STAGING_URL_PREFIX = 'https://staging.pds.seti.org/'
+
 
 def compare_tests_against_golden(
     ephem, test_files, subtests, store_failures, known_failures, golden_location, server
@@ -47,7 +49,7 @@ def compare_tests_against_golden(
 
         if 'viewer3' in test_urls[0]:
             viewer_urls = [url.strip() for url in test_urls]
-            viewer_urls = [url.strip('https://staging.pds.seti.org/') for url in viewer_urls]
+            viewer_urls = [url.removeprefix(_STAGING_URL_PREFIX) for url in viewer_urls]
 
             for url in viewer_urls:
                 if not url.endswith('&output=HTML'):
@@ -72,7 +74,7 @@ def compare_tests_against_golden(
 
         if 'tracker3' in test_urls[0]:
             tracker_urls = [url.strip() for url in test_urls]
-            tracker_urls = [url.strip('https://staging.pds.seti.org/') for url in tracker_urls]
+            tracker_urls = [url.removeprefix(_STAGING_URL_PREFIX) for url in tracker_urls]
 
             for url in tracker_urls:
                 if not url.endswith('&output=HTML'):
@@ -103,7 +105,7 @@ def compare_tests_against_golden(
 
         if 'ephem3' in test_urls[0]:
             ephemeris_urls = [url.strip() for url in test_urls]
-            ephemeris_urls = [url.strip('https://staging.pds.seti.org/') for url in ephemeris_urls]
+            ephemeris_urls = [url.removeprefix(_STAGING_URL_PREFIX) for url in ephemeris_urls]
 
             for url in ephemeris_urls:
                 if not url.endswith('&output=HTML'):
@@ -417,7 +419,7 @@ def replace_golden_copies(ephem, test_files, subtests, golden_copies_path):
         with open(test_file) as test_urls:
             test_urls = test_urls.readlines()
             test_urls = [url.strip() for url in test_urls]
-            test_urls = [url.strip('https://staging.pds.seti.org/') for url in test_urls]
+            test_urls = [url.removeprefix(_STAGING_URL_PREFIX) for url in test_urls]
 
         for url in test_urls:
             if not url.endswith('&output=HTML'):

@@ -311,7 +311,7 @@ def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[flo
         eq_pole = (rotmat[2][0], rotmat[2][1], rotmat[2][2])
         # Match FORTRAN viewer3_mar.f: use Mars relative to Sun with 'NONE' (no aberration)
         # so ring antisun direction matches SPKEZ(PLANET_ID, planet_time, 'J2000', 'NONE', SUN_ID).
-        mars_from_sun, _ = cspyce.spkpos(
+        mars_from_sun, _ = cspyce.spkpos(  # type: ignore[attr-defined]
             str(state.planet_id),
             planet_time,
             'J2000',

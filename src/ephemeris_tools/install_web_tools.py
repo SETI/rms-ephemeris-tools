@@ -20,7 +20,8 @@ def _source_root() -> Path:
     """Return the path to the bundled web/tools directory (ephemeris_tools._web_tools)."""
     from importlib import resources
 
-    return Path(resources.files('ephemeris_tools._web_tools'))
+    files = resources.files('ephemeris_tools._web_tools')
+    return Path(str(files))
 
 
 def install_web_tools(dest_dir: Path) -> int:

@@ -447,7 +447,7 @@ def _execute_spec(
                 else max(max_table_abs_diff, res.max_abs_diff)
             )
     if py_txt_use and fort_txt_use and py_txt_use.exists() and fort_txt_use.exists():
-        # Tracker text table: allow small spacecraft ephemeris differences (up to TRACKER_EPHEMERIS_ABS_TOL).
+        # Tracker text: allow small spacecraft ephemeris diff (TRACKER_EPHEMERIS_ABS_TOL).
         txt_abs_tol = TRACKER_EPHEMERIS_ABS_TOL if spec.tool == 'tracker' else None
         res = compare_tables(
             py_txt_use,
