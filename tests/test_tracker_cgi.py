@@ -15,7 +15,7 @@ def test_tracker_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('interval', '1')
     monkeypatch.setenv('time_unit', 'hours')
     monkeypatch.setenv('viewpoint', 'observatory')
-    monkeypatch.setenv('observatory', "Earth's Center")
+    monkeypatch.setenv('observatory', "Earth's center")
     monkeypatch.setenv('moons', '001 Mimas (S1)')
     monkeypatch.setenv('rings', '061 Main Rings')
     monkeypatch.setenv('xrange', '180')
@@ -24,6 +24,7 @@ def test_tracker_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     assert params is not None
     assert params.planet_num == 6
     assert params.start_time == '2025-01-01 00:00'
+    assert params.observer.name == "Earth's center"
     assert params.stop_time == '2025-01-02 00:00'
     assert params.moon_ids == [601]
     assert params.ring_names == ['061 Main Rings']

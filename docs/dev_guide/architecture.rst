@@ -48,11 +48,16 @@ High-level flow
 Package layout
 --------------
 
-- **ephemeris_tools** (root): Core entry points and shared utilities.
+- **ephemeris_tools** (root): Core entry points and shared utilities, including
+  :py:mod:`~ephemeris_tools.viewer_helpers` (FOV table, labels),
+  :py:mod:`~ephemeris_tools.params_env` (CGI env→dataclass), and
+  :py:mod:`~ephemeris_tools.install_web_tools` (``install_ephemeris_tools_files``
+  console script for deploying web forms).
 - **ephemeris_tools.cli**: Argument parsing, CGI env reading, and command
   dispatch (ephemeris, tracker, viewer).
-- **ephemeris_tools.params**: Dataclasses and env-based parameter parsing for
-  ephemeris/tracker/viewer.
+- **ephemeris_tools.params**: Dataclasses and CLI-based parameter parsing for
+  ephemeris/tracker/viewer. ``params_env`` builds the same dataclasses from
+  CGI-style environment variables and is re-exported through ``params``.
 - **ephemeris_tools.spice**: SPICE loading, observer state, body matrices,
   geometry (lat/lon, rings, orbits), and time-shift support for moons.
 - **ephemeris_tools.planets**: Planet-specific config (moons, rings, arcs) for
@@ -88,6 +93,10 @@ Testing and quality
 -------------------
 
 - **pytest**: Unit and integration tests under ``tests/``.
+- **FORTRAN comparison**: Run Python vs FORTRAN with identical inputs.  Use
+  ``scripts/run-fortran-comparison-test-files.sh`` for the predefined URL lists
+  in ``test_files/``, or ``scripts/run-random-fortran-comparisons.sh`` for
+  random URLs.  See :ref:`comparison_workflows`.
 - **ruff**: Linting and formatting (line length 100).
 - **mypy**: Static type checking; all public APIs annotated.
 - **Sphinx**: Documentation under ``docs/``; build with ``cd docs && make html``.

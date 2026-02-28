@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any, cast
 
+import cspyce
 import julian
 
 from ephemeris_tools.config import get_leapsecs_path
@@ -104,13 +106,24 @@ def tai_from_day_sec(day: int, sec: float) -> float:
 def tdb_from_tai(tai: float) -> float:
     """Convert TAI to TDB seconds (replaces FJUL_ETofTAI). Used as ET for SPICE.
 
+    Uses cspyce.unitim when SPICE kernels are loaded so ET matches FORTRAN
+    (which uses the same CSPICE library). Falls back to rms-julian otherwise.
+
     Parameters:
         tai: TAI in seconds.
 
     Returns:
         TDB (ephemeris time) in seconds.
     """
-    return float(julian.tdb_from_tai(tai))
+    try:
+        return float(cast(Any, cspyce).unitim(tai, 'TAI', 'TDB'))
+    except (KeyError, OSError, RuntimeError, TypeError, ValueError) as e:
+        logger.debug(
+            'cspyce.unitim(tai, TAI, TDB) failed (%s), using rms-julian fallback: %s',
+            type(e).__name__,
+            e,
+        )
+        return float(julian.tdb_from_tai(tai))
 
 
 def tai_from_tdb(tdb: float) -> float:

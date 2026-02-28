@@ -5,7 +5,7 @@ Run the same ephemeris/tracker/viewer scenario under both the **FORTRAN** tools 
 ## Prerequisites
 
 - **Python**: Install the project (`pip install -e .` or use the repo venv). SPICE kernels must be configured (see main README).
-- **FORTRAN** (optional): To compare against FORTRAN, build the FORTRAN tools from `fortran/Tools/` (see Makefiles there). The framework **auto-detects** the executable from `repo_root/fortran/Tools/` (e.g. `ephem3_xxx.bin`, `tracker3_xxx.bin`, `viewer3_sat.bin` by tool and `--planet`). Use `--fortran-cmd` to override. FORTRAN binaries read parameters from **environment variables**; this framework sets those and the output paths (`EPHEM_FILE`, `TRACKER_POSTFILE`, etc.).
+- **FORTRAN**: To compare against FORTRAN, build the FORTRAN tools from `fortran/Tools/` (see Makefiles there). The framework **auto-detects** the executable from `repo_root/fortran/Tools/` (e.g. `ephem3_xxx.bin`, `tracker3_xxx.bin`, `viewer3_sat.bin` by tool and `--planet`). Use `--fortran-cmd` to override. FORTRAN binaries read parameters from **environment variables**; this framework sets those and the output paths (`EPHEM_FILE`, `TRACKER_POSTFILE`, etc.).
 
 ## Usage
 
@@ -22,6 +22,16 @@ python -m tests.compare_fortran viewer --planet 6 --time "2022-01-01 12:00" --fo
 
 # Override FORTRAN binary path
 python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.bin -o /tmp/compare
+
+# Run multiple URLs from a file in parallel (e.g. 4 jobs)
+python -m tests.compare_fortran viewer --test-file urls.txt -o /tmp/compare -j 4
+
+# Run all three tools using the predefined URL lists in test_files/
+./scripts/run-fortran-comparison-test-files.sh --jobs 8
+
+# Run random URLs for all three tools (output under /tmp by default; use --dir to override)
+./scripts/run-random-fortran-comparisons.sh 100 --jobs 8
+./scripts/run-random-fortran-comparisons.sh 50 --dir /path/to/my/dir --jobs 4
 ```
 
 ## Complete command-line options
@@ -39,13 +49,19 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
 
 - `--url`, `--query-string`: single CGI URL or raw query string
 - `--test-file`: file containing one CGI URL/query string per line
+- `-j`, `--jobs`: number of parallel jobs when comparing multiple URLs
+  (default `1`). Only used with `--test-file` or multiple `--url`; ignored for
+  single-URL or direct CLI runs.
+
+In batch/query mode the runner prints a progress bar with completed/total,
+percent, pass/fail/skip counts, elapsed time, and ETA.
 
 ### Common options
 
 - `--planet`: planet number or name (`4..9`, `mars..pluto`), default `6`
 - `--ephem`: ephemeris version integer, default `0`
 - `--viewpoint`: observer mode/name, default `observatory`
-- `--observatory`: observatory label, default `"Earth's Center"`
+- `--observatory`: observatory label, default `"Earth's center"`
 - `--latitude`: observer latitude (float), default `None`
 - `--longitude`: observer longitude (float), default `None`
 - `--lon-dir`: `east | west`, default `east`
@@ -90,24 +106,36 @@ python -m tests.compare_fortran ephemeris ... --fortran-cmd /path/to/ephem3_xxx.
 - `--float-tol`: significant-digit tolerance for numeric comparisons.
   - Default: `6`
   - `0` means exact (disables significant-digit tolerance)
-- `--numeric-tol`: absolute numeric tolerance for table/text comparisons.
-  - Default: `0.0015`
+- `--lsd-tol`: tolerance in least-significant-digit units. Values match when
+  `|a-b| <= lsd_tol * lsd`, where `lsd` is inferred from the printed form.
+  - Default: `1.0`
+  - E.g. 1.001 with lsd_tol=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1
   - Set `0` for exact numeric comparison
-
-How the two options interact: `--float-tol` (significant-digit relative tolerance) is applied to
-comparisons that use significant-digit semantics (e.g., formatted floating-point fields and
-relative comparisons). `--numeric-tol` (absolute tolerance) is applied to plain numeric/text/table
-cell comparisons as an absolute difference. When both are relevant to a value, the comparison
-must pass both checks (it must satisfy the significant-digit criterion and have absolute
-difference ≤ `--numeric-tol`). Recommended workflow: use `--float-tol` for relative/scale-invariant
-checks (scientific notation, percentages) and `--numeric-tol` for fixed-scale absolute checks
-(counts, thresholds); keep defaults unless you need stricter absolute or relative behavior.
+- `--viewer-image-min-similarity`: minimum image similarity percent for
+  `viewer` and `tracker` pass/fail when comparing rendered images.
+  - Default: `99.97`
+  - PostScript/stdout differences do not fail viewer/tracker when this image
+    threshold passes.
+- `--collect-failed-to DIR`: after batch/query runs, copy all files from each
+  failed case into `DIR` with case-prefixed filenames (e.g. `ephemeris_001_python_table.txt`).
+  Collected artifacts by tool:
+  - **Ephemeris**: `comparison.txt`, `python_stdout.txt`, `fortran_stdout.txt`,
+    `python_table.txt`, `fortran_table.txt`. The runner explicitly ensures
+    table and stdout files are copied for ephemeris failures even when only
+    summary artifacts might otherwise be present.
+  - **Tracker**: `comparison.txt`, `python_stdout.txt`, `fortran_stdout.txt`,
+    `python.ps`, `fortran.ps`, `python_tracker.txt`, `fortran_tracker.txt`,
+    and any generated PNGs.
+  - **Viewer**: `comparison.txt`, `python_stdout.txt`, `fortran_stdout.txt`,
+    `python.ps`, `fortran.ps`, `python_viewer.txt`, `fortran_viewer.txt`,
+    and any generated PNGs.
 
 ### Arguments and environment
 
-- **Arguments** to `python -m tests.compare_fortran` are the same logical parameters as the Python CLI (`ephemeris-tools ephemeris ...`) and the FORTRAN CGI (e.g. `start`, `stop`, `NPLANET`). The framework converts them into:
+- **With `--url` or `--test-file`**: both Python and FORTRAN use the **same parameters** from the query string. Python is run with `--cgi` and env vars derived from that query (so it reads `viewer_params_from_env()` etc.); FORTRAN gets `QUERY_STRING` and parses it. No CLI args are used for the URL case.
+- **With direct args** (e.g. `ephemeris --planet 6 --start ... --stop ...`): the framework converts them into:
   - **Python**: CLI args for `ephemeris-tools`
-  - **FORTRAN**: environment variables (e.g. `NPLANET`, `start`, `stop`, `EPHEM_FILE`, `TRACKER_POSTFILE`, etc.)
+  - **FORTRAN**: environment variables (e.g. `NPLANET`, `QUERY_STRING` built from the same params, `EPHEM_FILE`, `TRACKER_POSTFILE`, etc.)
 - You can also **set environment variables** before running; the Python run uses the current process env, and the FORTRAN run gets the same vars (plus the output paths we add). So you can do:
   ```bash
   export NPLANET=6
@@ -121,26 +149,34 @@ checks (scientific notation, percentages) and `--numeric-tol` for fixed-scale ab
 
 With `-o /tmp/compare`:
 
-| Tool      | Python outputs           | FORTRAN outputs (when binary used)         |
-|-----------|--------------------------|--------------------------------------------|
-| ephemeris | `python_table.txt`       | `fortran_table.txt`                        |
-| tracker   | `python.ps`, `python_tracker.txt` | `fortran.ps`, `fortran_tracker.txt` |
-| viewer    | `python.ps`, `python_tracker.txt` (FOV table) | `fortran.ps`, `fortran_tracker.txt` |
+| Tool      | Python outputs                                | FORTRAN outputs (when binary used)                 |
+|-----------|-----------------------------------------------|----------------------------------------------------|
+| ephemeris | `python_stdout.txt`, `python_table.txt`       | `fortran_stdout.txt`, `fortran_table.txt`          |
+| tracker   | `python_stdout.txt`, `python.ps`, `python_tracker.txt` | `fortran_stdout.txt`, `fortran.ps`, `fortran_tracker.txt` |
+| viewer    | `python_stdout.txt`, `python.ps`, `python_viewer.txt` | `fortran_stdout.txt`, `fortran.ps`, `fortran_viewer.txt` |
 
 Comparison runs when a FORTRAN binary is available (auto-detected from `fortran/Tools/` or set via `--fortran-cmd`). Exit code 0 if all outputs match; 1 if any differ or a run failed.
 
 ## Comparison rules
 
+- **Printed output (stdout)**: The "Input Parameters" section printed to stdout by both
+  Python and FORTRAN is captured to `python_stdout.txt` and `fortran_stdout.txt` and
+  compared (same normalization and tolerance as tables).
 - **Tables**:
   - lines are normalized (strip, collapse whitespace);
   - FORTRAN overflow markers (`*****`) are ignored at the individual field/cell level
     (only that field is excluded from numeric comparison; the row remains in the output
-    and counts as a skipped-field for `--float-tol`/`--numeric-tol`; the row is not
-    dropped entirely). Skipped overflow fields are reflected in the diff summary and
-    exit code where applicable;
+    and counts as a skipped-field for `--float-tol`/`--lsd-tol`; the row is not dropped
+    entirely). Skipped overflow fields are reflected in the diff summary and exit code
+    where applicable;
   - numeric fields can be compared with `--float-tol` (significant digits) and/or
-    `--numeric-tol` (absolute tolerance).
+    `--lsd-tol` (least-significant-digit tolerance).
 - **PostScript**: Variable headers such as `%%Creator` and `%%CreationDate` are ignored so only structural and drawing differences are reported.
+- **Viewer/tracker image anti-mask**: image similarity is measured on content
+  pixels after masking:
+  - axis/tick neighborhoods detected from shared dark line features;
+  - the generated-footer text band near the bottom (detected in the lower page
+    region; bottom-row fallback if detection fails).
 
 In `--test-file` batch mode, `summary.txt` includes `largest_table_abs_diff=<value>`
 for the largest numeric table difference seen across the run.
@@ -164,6 +200,6 @@ spec = RunSpec("ephemeris", {"planet": 6, "start": "2022-01-01", "stop": "2022-0
 out = Path("/tmp/compare")
 run_python(spec, out_table=out / "py.txt")
 run_fortran(spec, ["/path/to/fortran/Tools/ephem3_xxx.bin"], out_table=out / "fort.txt")
-result = compare_tables(out / "py.txt", out / "fort.txt", float_tolerance=6)
+result = compare_tables(out / "py.txt", out / "fort.txt", lsd_tolerance=1)
 print(result.same, result.message)
 ```

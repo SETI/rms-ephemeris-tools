@@ -188,6 +188,11 @@ def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
             continue
         try:
             num = int(s)
+            # FORTRAN viewer reads first 3 chars as group/max-ID; resolve group codes.
+            if num in cgi_group_map.get(planet_num, {}):
+                for moon_id in cgi_group_map[planet_num][num]:
+                    _append_unique(moon_id)
+                continue
             if num >= 100:
                 if num in moon_ids:
                     _append_unique(num)
@@ -204,8 +209,9 @@ def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
             pref = _int_prefix(s)
             if pref is not None:
                 num = pref
-                trailing_text = s[len(str(pref)) :].strip() != ''
-                if trailing_text and num in cgi_group_map.get(planet_num, {}):
+                # FORTRAN viewer reads string(1:3) and uses it as max moon ID or group
+                # code; match that by resolving known group codes with or without text.
+                if num in cgi_group_map.get(planet_num, {}):
                     for moon_id in cgi_group_map[planet_num][num]:
                         _append_unique(moon_id)
                     continue
@@ -228,6 +234,43 @@ def parse_moon_spec(planet_num: int, tokens: list[str]) -> list[int]:
     return out
 
 
+_PLANET_LETTER: dict[int, str] = {
+    4: 'M',
+    5: 'J',
+    6: 'S',
+    7: 'U',
+    8: 'N',
+    9: 'P',
+}
+
+
+def get_moon_display_name(planet_num: int, moon_id: int) -> str | None:
+    """Return display name for moon (e.g. 'Ganymede (J3)').
+
+    Parameters:
+        planet_num: Planet number (4-9).
+        moon_id: NAIF moon body ID (e.g. 503 for Ganymede).
+
+    Returns:
+        Display string (name + letter index) or None if unknown.
+
+    Raises:
+        None. Invalid planet_num or moon_id yields None; no exceptions are raised.
+    """
+    cfg = _PLANET_CONFIGS.get(planet_num)
+    if cfg is None:
+        return None
+    moon = cfg.moon_by_id(moon_id)
+    if moon is None:
+        return None
+    idx = moon_id % 100
+    if planet_num not in _PLANET_LETTER:
+        logger.warning('Missing _PLANET_LETTER for planet_num=%s; moon=%s', planet_num, moon.name)
+        return None
+    letter = _PLANET_LETTER[planet_num]
+    return f'{moon.name} ({letter}{idx})'
+
+
 __all__ = [
     'JUPITER_CONFIG',
     'MARS_CONFIG',
@@ -239,6 +282,7 @@ __all__ = [
     'MoonSpec',
     'PlanetConfig',
     'RingSpec',
+    'get_moon_display_name',
     'get_moon_name_to_index',
     'parse_moon_spec',
 ]

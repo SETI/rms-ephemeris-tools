@@ -9,7 +9,8 @@ Root package (ephemeris_tools)
 - :py:mod:`ephemeris_tools.angle_utils`: Parsing of angle strings (hours, deg, d m s, etc.) for RA/Dec and viewer.
 - :py:mod:`ephemeris_tools.config`: Path resolution for SPICE_PATH, TEMP_PATH, STARLIST_PATH.
 - :py:mod:`ephemeris_tools.constants`: NAIF body IDs (planets, sun, moon), spacecraft codes, column IDs.
-- :py:mod:`ephemeris_tools.params`: Dataclasses (:py:class:`~ephemeris_tools.params.EphemerisParams`, etc.) and env-based parsing for ephemeris/tracker/viewer.
+- :py:mod:`ephemeris_tools.params`: Dataclasses (:py:class:`~ephemeris_tools.params.EphemerisParams`, etc.) and CLI-based parameter parsing for ephemeris/tracker/viewer.
+- :py:mod:`ephemeris_tools.params_env`: Builds ``EphemerisParams``, ``TrackerParams``, ``ViewerParams`` from CGI-style environment variables. Re-exported through ``params`` for convenience.
 - :py:mod:`ephemeris_tools.record`: Formatting of ephemeris table rows (fixed-width columns).
 - :py:mod:`ephemeris_tools.input_params`: Writing of input parameter blocks to a stream (ephemeris/tracker/viewer).
 - :py:mod:`ephemeris_tools.ephemeris`: Ephemeris table generation loop; SPICE calls and column output.
@@ -17,6 +18,8 @@ Root package (ephemeris_tools)
 - :py:mod:`ephemeris_tools.stars`: Star catalog reader (name, RA, Dec from file).
 - :py:mod:`ephemeris_tools.tracker`: Moon tracker orchestration; time loop and call into rendering.
 - :py:mod:`ephemeris_tools.viewer`: Planet viewer orchestration; config, geometry, and call into draw_view.
+- :py:mod:`ephemeris_tools.viewer_helpers`: Helper functions for viewer: FOV table writing, label formatting, coordinate projection.
+- :py:mod:`ephemeris_tools.install_web_tools`: ``install_ephemeris_tools_files`` console script; copies bundled web/tools files (HTML forms, samples) to a target directory.
 
 CLI (ephemeris_tools.cli)
 -------------------------

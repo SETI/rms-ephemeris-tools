@@ -1,5 +1,5 @@
 <!--#set var="PLANET"   value="Saturn"          -->
-<!--#set var="VERSION"  value="3.1"             -->
+<!--#set var="VERSION"  value="3.2"             -->
 <!--#set var="YMD"      value="2022-08-03"      -->
 <!--#set var="UPDATED"  value="August 20, 2023"  -->
 <!--#set var="TOOL"     value="viewer3"         -->
@@ -42,21 +42,21 @@
             <div class="indent">
                 <input type="text" name="fov" size="12" maxlength="50"  autocomplete="on"  aria-label="field of view"/>
                 <select name="fov_unit" autocomplete="on"  aria-label="field of view unit">
-                    <option> seconds of arc
-                    <option> degrees
-                    <option> milliradians
-                    <option> microradians
+                    <option value="seconds of arc"> seconds of arc
+                    <option value="degrees"> degrees
+                    <option value="milliradians"> milliradians
+                    <option value="microradians"> microradians
                     <option selected> <!--#echo var="PLANET"--> radii
-                    <option> kilometers
+                    <option value="kilometers"> kilometers
                     <!--#if expr="v('PREFIX') == ''"-->
-                    <option> Voyager ISS wide angle FOVs
-                    <option> Voyager ISS narrow angle FOVs
+                    <option value="Voyager ISS wide angle FOVs"> Voyager ISS wide angle FOVs
+                    <option value="Voyager ISS narrow angle FOVs"> Voyager ISS narrow angle FOVs
                     <!--#endif-->
                     <!--#if expr="v('PREFIX') == '' or v('PREFIX') == 'Cassini/'"-->
-                    <option> Cassini ISS wide angle FOVs
-                    <option> Cassini ISS narrow angle FOVs
-                    <option> Cassini VIMS 64x64 FOVs
-                    <option> Cassini UVIS slit widths
+                    <option value="Cassini ISS wide angle FOVs"> Cassini ISS wide angle FOVs
+                    <option value="Cassini ISS narrow angle FOVs"> Cassini ISS narrow angle FOVs
+                    <option value="Cassini VIMS 64x64 FOVs"> Cassini VIMS 64x64 FOVs
+                    <option value="Cassini UVIS slit widths"> Cassini UVIS slit widths
                     <!--#endif-->
                 </select>
                 <strong>(Required)</strong>
@@ -67,54 +67,54 @@
                 <li>
                     <label><input type="radio" name="center" value="body" checked  autocomplete="on"/> Body:</label>
                     <select name="center_body" autocomplete="on"  aria-label="select body">
-                      <option selected> Saturn
-                      <option> Mimas (S1)
-                      <option> Enceladus (S2)
-                      <option> Tethys (S3)
-                      <option> Dione (S4)
-                      <option> Rhea (S5)
-                      <option> Titan (S6)
-                      <option> Hyperion (S7)
-                      <option> Iapetus (S8)
-                      <option> Phoebe (S9)
-                      <option> Janus (S10)
-                      <option> Epimetheus (S11)
-                      <option> Helene (S12)
-                      <option> Telesto (S13)
-                      <option> Calypso (S14)
-                      <option> Atlas (S15)
-                      <option> Prometheus (S16)
-                      <option> Pandora (S17)
-                      <option> Pan (S18)
-                      <option> Methone (S32)
-                      <option> Pallene (S33)
-                      <option> Polydeuces (S34)
-                      <option> Daphnis (S35)
-                      <option> Anthe (S49)
-                      <option> Aegaeon (S53)
+                      <option value="Saturn" selected> Saturn
+                      <option value="Mimas (S1)"> Mimas (S1)
+                      <option value="Enceladus (S2)"> Enceladus (S2)
+                      <option value="Tethys (S3)"> Tethys (S3)
+                      <option value="Dione (S4)"> Dione (S4)
+                      <option value="Rhea (S5)"> Rhea (S5)
+                      <option value="Titan (S6)"> Titan (S6)
+                      <option value="Hyperion (S7)"> Hyperion (S7)
+                      <option value="Iapetus (S8)"> Iapetus (S8)
+                      <option value="Phoebe (S9)"> Phoebe (S9)
+                      <option value="Janus (S10)"> Janus (S10)
+                      <option value="Epimetheus (S11)"> Epimetheus (S11)
+                      <option value="Helene (S12)"> Helene (S12)
+                      <option value="Telesto (S13)"> Telesto (S13)
+                      <option value="Calypso (S14)"> Calypso (S14)
+                      <option value="Atlas (S15)"> Atlas (S15)
+                      <option value="Prometheus (S16)"> Prometheus (S16)
+                      <option value="Pandora (S17)"> Pandora (S17)
+                      <option value="Pan (S18)"> Pan (S18)
+                      <option value="Methone (S32)"> Methone (S32)
+                      <option value="Pallene (S33)"> Pallene (S33)
+                      <option value="Polydeuces (S34)"> Polydeuces (S34)
+                      <option value="Daphnis (S35)"> Daphnis (S35)
+                      <option value="Anthe (S49)"> Anthe (S49)
+                      <option value="Aegaeon (S53)"> Aegaeon (S53)
                     </select>
                 </li>
                 <li>
                     <label><input type="radio" name="center" value="ansa"  autocomplete="on"/> Ring ansa:</label>
                     <select name="center_ansa" autocomplete="on" aria-label="select ring ansa">
-                      <option>          C Ring
-                      <option>          B Ring
-                      <option selected> A Ring
-                      <option>          F Ring
-                      <option>          G Ring
-                      <option>          E Ring core
+                      <option value="C Ring"> C Ring
+                      <option value="B Ring"> B Ring
+                      <option value="A Ring" selected> A Ring
+                      <option value="F Ring"> F Ring
+                      <option value="G Ring"> G Ring
+                      <option value="E Ring core"> E Ring core
                     </select>
                     <select name="center_ew" autocomplete="on" aria-label="select ring ansa direction">
-                      <option selected> east
-                      <option>          west
+                      <option value="east" selected> east
+                      <option value="west"> west
                     </select>
                 </li>
                 <li>
                     <label><input type="radio" name="center" value="J2000"  autocomplete="on"/>J2000 RA and Dec:</label>
                     <input type="text" name="center_ra" size="12" maxlength="50"  autocomplete="on" aria-label="J2000 RA and Dec"/>
                     <select name="center_ra_type" autocomplete="on" aria-label="select diagram center RA type">
-                      <option selected> hours
-                      <option>          degrees
+                      <option value="hours" selected> hours
+                      <option value="degrees"> degrees
                     </select>
                     <input type="text" name="center_dec" size="12" maxlength="50"  autocomplete="on" aria-label="degrees"/> degrees
                 </li>
@@ -175,8 +175,8 @@
                     <label><input type="checkbox" name="additional" value="Yes"  autocomplete="on"/> Additional star:</label>
                     RA = <input type="text" name="extra_ra" size="12" maxlength="50"  autocomplete="on" aria-label="RA ="/>
                     <select name="extra_ra_type" autocomplete="on" aria-label="select additional star RA type">
-                        <option selected> hours
-                        <option> degrees
+                        <option value="hours" selected> hours
+                        <option value="degrees"> degrees
                     </select>
                     Dec = <input type="text" name="extra_dec"  size="12" maxlength="50"  autocomplete="on" aria-label="Dec ="/>
                     Label = <input type="text" name="extra_name" size="12" maxlength="50"  autocomplete="on" aria-label="Label ="/>
@@ -203,10 +203,10 @@
                 <li>
                     <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#LABELS" target="_blank">Moon & Star Labels:</a>
                     <select name="labels" autocomplete="on" aria-label="moon and star labels"/>
-                        <option>          None
-                        <option selected> Small (6 points)
-                        <option>          Medium (9 points)
-                        <option>          Large (12 points)
+                        <option value="None"> None
+                        <option value="Small (6 points)" selected> Small (6 points)
+                        <option value="Medium (9 points)"> Medium (9 points)
+                        <option value="Large (12 points)"> Large (12 points)
                     </select>
                 </li>
                 <li class="pb-1">
@@ -223,16 +223,16 @@
                 <li class="pb-1">
                     <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#OPACITY" target="_blank">Ring Plot Type:</a>
                     <select name="opacity" autocomplete="on"  aria-label="ring plot type opacity">
-                      <option selected> Transparent
-                      <option>          Semi-transparent (2x file size)
-                      <option>          Opaque
+                      <option value="Transparent" selected> Transparent
+                      <option value="Semi-transparent (2x file size)"> Semi-transparent (2x file size)
+                      <option value="Opaque"> Opaque
                     </select>
                 </li>
                 <li class="pb-1">
                     <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#PERIS" target="_blank">Pericenter Markers:</a>
                     <select name="peris" autocomplete="on"  aria-label="pericenter markers">
-                      <option selected> None
-                      <option>          F Ring
+                      <option value="None" selected> None
+                      <option value="F Ring"> F Ring
                     </select>
                     <input type="text" name="peripts" size="5" maxlength="50" value="4"  autocomplete="on"  aria-label="pericenter marker points"/> (points)
                 </li>

@@ -10,7 +10,7 @@ from ephemeris_tools.params import parse_observer
 def test_parse_observer_earth_keyword() -> None:
     """Earth keyword normalizes to canonical Earth observer."""
     observer = parse_observer(['earth'])
-    assert observer.name == "Earth's Center"
+    assert observer.name == "Earth's center"
     assert observer.latitude_deg is None
     assert observer.longitude_deg is None
     assert observer.altitude_m is None
@@ -40,7 +40,11 @@ def test_parse_observer_named_observatory_phrase() -> None:
 def test_parse_observer_defaults_to_earth() -> None:
     """Empty observer token list defaults to Earth center."""
     observer = parse_observer([])
-    assert observer.name == "Earth's Center"
+    expected = parse_observer(['earth'])
+    assert observer.name == "Earth's center"
+    assert observer.latitude_deg == expected.latitude_deg
+    assert observer.longitude_deg == expected.longitude_deg
+    assert observer.altitude_m == expected.altitude_m
 
 
 def test_parse_observer_invalid_numeric_arity() -> None:

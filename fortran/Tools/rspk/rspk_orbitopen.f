@@ -83,8 +83,8 @@ c***********************************************************************
 c Calculate the observer opening angle
 c***********************************************************************
 
-c Calculate vector from planet to observer
-        call VMINUS(planet_pv(1), obs_dp)
+c Vector from planet to observer (match RSPK_RingOpen; was wrongly -planet_pv)
+        call VLCOM(1.d0, obs_pv(1), -1.d0, planet_pv(1), obs_dp)
 
 c Correct for aberration in planet frame
         call VHAT(obs_dp, norm_dp)

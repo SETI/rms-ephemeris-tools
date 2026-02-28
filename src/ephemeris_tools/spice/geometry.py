@@ -74,7 +74,9 @@ def body_ranges(et: float, body_id: int) -> tuple[float, float]:
     body_time = et - dt
     body_pv = cspyce.spkssb(body_id, body_time, 'J2000')
     sun_dpv, _ = cspyce.spkapp(SUN_ID, body_time, 'J2000', body_pv[:6], 'LT+S')
-    return (cspyce.vnorm(sun_dpv[:3]), cspyce.vnorm(body_dpv[:3]))
+    sun_dist = cspyce.vnorm(sun_dpv[:3])
+    obs_dist = cspyce.vnorm(body_dpv[:3])
+    return (sun_dist, obs_dist)
 
 
 def planet_phase(et: float) -> float:
@@ -98,22 +100,25 @@ def planet_phase(et: float) -> float:
     return cspyce.vsep(sun_dpv[:3], obs_dp)
 
 
-def planet_ranges(et: float) -> tuple[float, float]:
+def planet_ranges(et: float, *, planet_id: int | None = None) -> tuple[float, float]:
     """Return Sun-planet and observer-planet distances (km).
 
     Port of RSPK_Ranges.
 
     Parameters:
         et: Ephemeris time of the observation (e.g. from cspyce.utc2et).
+        planet_id: Optional SPICE body ID for the planet. When omitted, uses
+            get_state().planet_id so existing callers are unchanged.
 
     Returns:
         Tuple of (sundist, observer_dist) in km.
     """
     state = get_state()
+    body_id = state.planet_id if planet_id is None else planet_id
     obs_pv = observer_state(et)
-    planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
+    planet_dpv, dt = cspyce.spkapp(body_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
     planet_time = et - dt
-    planet_pv = cspyce.spkssb(state.planet_id, planet_time, 'J2000')
+    planet_pv = cspyce.spkssb(body_id, planet_time, 'J2000')
     sun_dpv, _ = cspyce.spkapp(SUN_ID, planet_time, 'J2000', planet_pv[:6], 'LT+S')
     return (cspyce.vnorm(sun_dpv[:3]), cspyce.vnorm(planet_dpv[:3]))
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from ephemeris_tools.constants import DEFAULT_INTERVAL
 from ephemeris_tools.params import (
@@ -15,6 +16,7 @@ from ephemeris_tools.params import (
     ViewerParams,
     _get_env,
     _get_keys_env,
+    _is_ra_hours_from_raw,
     _normalize_time_unit,
     _parse_observatory_coords,
     _parse_sexagesimal_to_degrees,
@@ -67,9 +69,9 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
         ephem_version = 0
 
     viewpoint = _get_env('viewpoint', 'observatory')
-    observatory = _get_env('observatory', "Earth's Center")
+    observatory = _get_env('observatory', "Earth's center")
     if observatory.strip().lower() == "earth's center":
-        observatory = "Earth's Center"
+        observatory = "Earth's center"
     lat_s = _get_env('latitude')
     lon_s = _get_env('longitude')
     alt_s = _get_env('altitude')
@@ -89,7 +91,7 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
     except ValueError:
         logger.error('Invalid altitude %r: must be numeric', alt_s)
         alt = None
-    if lon is not None and lon_dir.lower() == 'west':
+    if lon is not None and lon_dir.strip().lower() == 'west':
         lon = -lon
 
     sc_traj_s = _get_env('sc_trajectory', '0')
@@ -130,6 +132,10 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
         columns=columns,
         mooncols=mooncols,
         moon_ids=moon_ids,
+        ephem_display=_get_env('ephem') or None,
+        columns_display=_get_keys_env('columns') or None,
+        mooncols_display=_get_keys_env('mooncols') or None,
+        moons_display=_get_keys_env('moons') or None,
     )
 
 
@@ -163,8 +169,8 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     center_mode = _get_env('center', 'body')
     if center_mode == 'J2000':
-        ra_type = _get_env('center_ra_type', 'hours').strip().lower()
-        is_ra_hours = not ra_type.startswith('d')
+        ra_type_raw = os.environ.get('center_ra_type', 'hours') or 'hours'  # noqa: SIM112
+        is_ra_hours = _is_ra_hours_from_raw(ra_type_raw)
         try:
             ra_deg = _parse_sexagesimal_to_degrees(
                 _get_env('center_ra', '0'),
@@ -192,7 +198,7 @@ def viewer_params_from_env() -> ViewerParams | None:
         center = ViewerCenter(mode='body', body_name=_get_env('center_body') or None)
 
     viewpoint = _get_env('viewpoint', 'observatory')
-    observer = Observer(name="Earth's Center")
+    observer = Observer(name="Earth's center")
     viewpoint_display: str | None = None
     if viewpoint == 'latlon':
         lat_s = _get_env('latitude')
@@ -207,7 +213,7 @@ def viewer_params_from_env() -> ViewerParams | None:
             lon = float(lon_s) if lon_s else None
         except ValueError:
             lon = None
-        if lon is not None and lon_dir.lower() == 'west':
+        if lon is not None and lon_dir.strip().lower() == 'west':
             lon = -lon
         try:
             alt = float(alt_s) if alt_s else None
@@ -218,9 +224,9 @@ def viewer_params_from_env() -> ViewerParams | None:
             # FORTRAN captions preserve original CGI precision for lat/lon/alt text.
             viewpoint_display = f'({lat_s}, {lon_s} {lon_dir}, {alt_s})'
     elif viewpoint == 'observatory':
-        obs_name = _get_env('observatory', "Earth's Center")
+        obs_name = _get_env('observatory', "Earth's center")
         if obs_name.strip().lower() == "earth's center":
-            obs_name = "Earth's Center"
+            obs_name = "Earth's center"
         coords = _parse_observatory_coords(obs_name)
         if coords is None:
             observer = Observer(name=obs_name)
@@ -266,7 +272,9 @@ def viewer_params_from_env() -> ViewerParams | None:
     except ValueError:
         arcpts = 4.0
     other_bodies = _get_keys_env('other')
-    labels = _get_env('labels', 'Small (6 points)')
+    labels = (
+        _get_env('labels') or _get_env('Labels') or 'Small (6 points)'
+    ).strip() or 'Small (6 points)'
     moonpts_s = _get_env('moonpts', '0')
     try:
         moonpts = float(moonpts_s)
@@ -280,8 +288,8 @@ def viewer_params_from_env() -> ViewerParams | None:
     if additional_flag in {'yes', 'y', 'true', '1'}:
         extra_ra_s = _get_env('extra_ra', '')
         extra_dec_s = _get_env('extra_dec', '')
-        extra_ra_type = _get_env('extra_ra_type', 'hours').strip().lower()
-        is_extra_ra_hours = not extra_ra_type.startswith('d')
+        extra_ra_type_raw = os.environ.get('extra_ra_type', 'hours') or 'hours'  # noqa: SIM112
+        is_extra_ra_hours = _is_ra_hours_from_raw(extra_ra_type_raw)
         if extra_ra_s.strip() and extra_dec_s.strip():
             try:
                 extra_star = ExtraStar(
@@ -310,6 +318,17 @@ def viewer_params_from_env() -> ViewerParams | None:
         moons_display=_get_env('moons') or None,
         rings_display=_get_env('rings') or None,
         viewpoint_display=viewpoint_display,
+        center_ra_display=_get_env('center_ra'),
+        center_ra_type_display=_get_env('center_ra_type'),
+        center_dec_display=_get_env('center_dec'),
+        moonpts_display=_get_env('moonpts'),
+        blank_display=_get_env('blank'),
+        meridians_display=_get_env('meridians'),
+        additional_display=_get_env('additional'),
+        extra_name_display=_get_env('extra_name'),
+        extra_ra_display=_get_env('extra_ra'),
+        extra_ra_type_display=_get_env('extra_ra_type'),
+        extra_dec_display=_get_env('extra_dec'),
     )
     return ViewerParams(
         planet_num=planet_num,
@@ -364,11 +383,11 @@ def tracker_params_from_env() -> TrackerParams | None:
         interval = DEFAULT_INTERVAL
     time_unit = _normalize_time_unit(_get_env('time_unit', 'hour'))
     viewpoint = _get_env('viewpoint', 'observatory')
-    observer = Observer(name="Earth's Center")
+    observer = Observer(name="Earth's center")
     if viewpoint == 'observatory':
-        obs_name = _get_env('observatory', "Earth's Center")
+        obs_name = _get_env('observatory', "Earth's center")
         if obs_name.strip().lower() == "earth's center":
-            obs_name = "Earth's Center"
+            obs_name = "Earth's center"
         coords = _parse_observatory_coords(obs_name)
         if coords is None:
             observer = Observer(name=obs_name)
@@ -400,7 +419,7 @@ def tracker_params_from_env() -> TrackerParams | None:
         except ValueError:
             alt_m = None
         lon_dir = _get_env('lon_dir', 'east')
-        if lon_deg is not None and lon_dir.lower() == 'west':
+        if lon_deg is not None and lon_dir.strip().lower() == 'west':
             lon_deg = -lon_deg
         observer = Observer(
             latitude_deg=lat_deg,
@@ -422,7 +441,8 @@ def tracker_params_from_env() -> TrackerParams | None:
     except ValueError:
         xrange = None
     xunit_raw = _get_env('xunit', 'arcsec')
-    xunit = 'radii' if 'radii' in xunit_raw.lower() else 'arcsec'
+    # Preserve raw value to match FORTRAN display (e.g. "degrees", "Uranus radii")
+    xunit = (xunit_raw or 'arcsec').strip() or 'arcsec'
     title = _get_env('title')
     ephem_s = _get_env('ephem', '0')
     parts = (ephem_s or '').strip().split()
@@ -439,6 +459,15 @@ def tracker_params_from_env() -> TrackerParams | None:
     ephem_display = _get_env('ephem') or None
     moons_display = _get_keys_env('moons') or None
     rings_display = _get_keys_env('rings') or None
+    viewpoint_display: str | None = None
+    if viewpoint == 'latlon':
+        lat_s = _get_env('latitude')
+        lon_s = _get_env('longitude')
+        lon_dir = _get_env('lon_dir', 'east')
+        alt_s = _get_env('altitude')
+        if lat_s and lon_s and alt_s:
+            # Match FORTRAN: '(' // lat // ',' // ' ' // lon // ' ' // lon_dir // ',' // alt // ')'
+            viewpoint_display = f'({lat_s}, {lon_s} {lon_dir}, {alt_s})'
     return TrackerParams(
         planet_num=planet_num,
         start_time=start_time,
@@ -456,4 +485,5 @@ def tracker_params_from_env() -> TrackerParams | None:
         ephem_display=ephem_display,
         moons_display=moons_display,
         rings_display=rings_display,
+        viewpoint_display=viewpoint_display,
     )

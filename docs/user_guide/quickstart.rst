@@ -9,6 +9,12 @@ After installation and setting ``SPICE_PATH``, use the CLI entry point:
 
    ephemeris-tools <command> [options]
 
+To install the bundled web forms and sample files (for CGI deployment), run:
+
+.. code-block:: bash
+
+   install_ephemeris_tools_files /path/to/your/tools/dir
+
 Commands
 --------
 
@@ -31,10 +37,10 @@ Key options (see :ref:`cli-ephemeris` for the full list):
 - ``--start``, ``--stop``: Start/stop time strings (required).
 - ``--interval``: Time step size. Default: ``1.0``.
 - ``--time-unit``: Unit for interval (``sec``/``min``/``hour``/``day``). Default: ``hour``.
+- ``--ephem``: Ephemeris version index; available versions are listed in ``SPICE_planets.txt``. Default: ``0``.
 - ``--columns``: Column IDs or names (e.g. ``ymdhms radec phase``). Default: ``1 2 3 15 8``.
 - ``--moons``: Moon indices or names (e.g. ``mimas titan``). Default: none.
 - ``-o``: Output file (default: stdout).
-- ``--cgi``: Read parameters from environment (for CGI/web use).
 - ``-v`` / ``--verbose``: Set log level to INFO.
 
 Moon tracker
@@ -51,7 +57,7 @@ Key options (see :ref:`cli-tracker` for the full list):
 - ``--planet``, ``--start``, ``--stop``, ``--interval``, ``--time-unit``: same as ephemeris.
 - ``--moons``: Moons to plot. Default: standard set for the planet.
 - ``--rings``: Ring option codes or names (e.g. ``main ge`` or ``61 62``). Default: none.
-- ``--xrange``: X-axis half-range. Default: ``180.0``.
+- ``--xrange``: X-axis half-range. Default: auto-calculated.
 - ``--title``: Plot title. Default: none.
 - ``-o``: PostScript output file.
 
@@ -68,11 +74,31 @@ Key options (see :ref:`cli-viewer` for the full list):
 - ``--planet``: same as ephemeris. Default: ``6`` (saturn).
 - ``--time``: Observation time (required).
 - ``--fov``: Field of view size. Default: ``1.0``.
-- ``--fov-unit``: FOV unit (``deg``/``arcmin``/``arcsec``). Default: ``deg``.
+- ``--fov-unit``: FOV unit (``deg``/``arcmin``/``arcsec``/``mrad``/``urad``/``km``, planet radii, or instrument name). Default: ``deg``.
 - ``--center``: Diagram center (``body``/``ansa``/``J2000``/``star``). Default: ``body``.
 - ``--moons``: Moon indices or names. Default: planet default.
 - ``-o``: PostScript output file.
 - ``--output-txt``: Field-of-view text table file.
+
+Converting PostScript to PNG (Ghostscript):
+
+.. code-block:: bash
+
+   gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=view.png view.ps
+
+**Expected output:** The command exits silently on success (no errors). It
+produces a file named ``view.png`` at 150 DPI. File size is typically a few
+hundred KB to a few MB depending on content. Non-fatal warnings (e.g. font
+substitution) can be ignored.
+
+For tracker output, use the same pattern:
+
+.. code-block:: bash
+
+   gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=tracker.png tracker.ps
+
+**Expected output:** Exits silently on success, produces ``tracker.png`` at 150 DPI,
+with typical file size in the same range; non-fatal warnings can be ignored.
 
 For detailed per-argument documentation, see :ref:`cli`.
 For column IDs, moon names, and observatory names, see :ref:`reference`.

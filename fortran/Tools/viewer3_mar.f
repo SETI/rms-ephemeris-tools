@@ -159,7 +159,6 @@ c Observation time
 c Ephemeris selection
         status = WWW_GetKey('ephem', string)
         write(*,10) '         Ephemeris: ' // string(5:LASTNB(string))
-        write(*,10) '         Ephemeris: ' // string
 
 c Field of view
         status = WWW_GetKey('fov', string)
@@ -374,7 +373,6 @@ c Load SPICE files
         keyword = 'EPHEMERIS'
         status = WWW_GetKey('ephem', string)
         read(string(1:4), *, err=9999) ivalue
-        write(*,*) 'ephem', string, ivalue
 
         status = RSPK_LoadFiles(1, NPLANET, ivalue)
         if (.not. status) goto 9999

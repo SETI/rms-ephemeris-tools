@@ -47,5 +47,5 @@ def test_cli_tracker_simplified_args(monkeypatch) -> None:  # type: ignore[no-un
     assert rc == 0
     params = captured['value']
     assert params.planet_num == 6
-    assert params.observer.name == "Earth's Center"
+    assert params.observer.name == "Earth's center"
     assert 601 in params.moon_ids

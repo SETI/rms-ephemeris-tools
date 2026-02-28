@@ -3,90 +3,95 @@
 Installation
 ============
 
-Requirements
-------------
+Install
+-------
 
-- **Python**: 3.10 or newer
-- **SPICE kernels**: Required for ephemeris, tracker, and viewer. The package uses
-  `cspyce` to load NAIF SPICE kernels; you must provide a kernel directory
-  (see :ref:`spice_setup`).
+Requires **Python 3.10 or higher**.
 
-Create a virtual environment (recommended); do not install into system Python.
+Create a virtual environment and install the package into it (do not install
+into system Python):
 
 .. code-block:: bash
 
    python3 -m venv .venv
-   source .venv/bin/activate   # Linux/macOS
-   # or:  .venv\Scripts\activate   # Windows
-
-Install from source
--------------------
-
-1. Clone the repository:
-
-   .. code-block:: bash
-
-      git clone https://github.com/SETI/rms-ephemeris-tools.git
-      cd rms-ephemeris-tools
-
-2. Install the package in editable mode:
-
-   .. code-block:: bash
-
-      pip install -e .
-
-   For development (tests, linting, type-checking, docs):
-
-   .. code-block:: bash
-
-      pip install -e ".[dev]"
-
-   Optional rendering support (e.g. matplotlib):
-
-   .. code-block:: bash
-
-      pip install -e ".[render]"
-
-Install from PyPI
------------------
-
-.. code-block:: bash
-
+   source .venv/bin/activate
    pip install rms-ephemeris-tools
 
-.. _spice_setup:
+This provides the ``ephemeris-tools`` command.
 
-SPICE kernel setup
--------------------
+Optional dependencies
+~~~~~~~~~~~~~~~~~~~~~
 
-Set the **SPICE_PATH** environment variable to the root directory containing
-your SPICE config and kernel files.
-
-Required under ``SPICE_PATH``:
-
-- **SPICE_planets.txt** — Planet/ephemeris version and kernel filenames
-- **SPICE_spacecraft.txt** — Spacecraft IDs and kernel filenames (for observer)
-- **leapseconds.ker** (or equivalent) — Leap-second kernel
-- Kernel files referenced in the config (e.g. planetary SPKs, LSK)
-
-Example:
+Install extras for development or documentation:
 
 .. code-block:: bash
 
-   export SPICE_PATH=/path/to/your/SPICE
+   pip install rms-ephemeris-tools[dev]
+   pip install rms-ephemeris-tools[docs]
 
-Without a valid ``SPICE_PATH`` and the expected config/kernels, ephemeris,
-tracker, and viewer runs will fail when loading kernels.
+Use ``[dev]`` for testing, linting, type-checking, and coverage; use ``[docs]``
+for building Sphinx documentation.
+
+Web tools (CGI forms and samples)
+---------------------------------
+
+To deploy the bundled web forms and sample files (e.g. for a CGI-capable server),
+run the ``install_ephemeris_tools_files`` command with a target directory:
+
+.. code-block:: bash
+
+   install_ephemeris_tools_files /path/to/htdocs/tools
+
+All files from the package's ``web/tools`` tree are copied into the given
+directory (subdirectories such as ``samples/`` are preserved). This works when
+the package is installed from PyPI or from source. Use ``-v`` for verbose
+(log) output.
+
+.. _install_env:
 
 Environment variables
 ---------------------
 
-- **SPICE_PATH** — Root directory for SPICE kernels and config (required for
-  ephemeris/tracker/viewer).
-- **TEMP_PATH** — Directory for temporary or output files (default:
-  ``/var/www/work/``).
-- **STARLIST_PATH** — Directory for star catalog files (e.g. ``starlist_sat.txt``).
-- **JULIAN_LEAPSECS** — Path to a NAIF LSK leap-second file; if unset, the code
-  searches under SPICE_PATH and rms-julian.
-- **EPHEMERIS_TOOLS_LOG** — Logging level: ``DEBUG``, ``INFO``, ``WARNING``,
-  ``ERROR``, or ``CRITICAL`` (default: WARNING).
+.. list-table:: Environment variables
+   :header-rows: 1
+   :widths: 25 40 20
+
+   * - Variable
+     - Purpose
+     - Default
+   * - **SPICE_PATH**
+     - Root directory for SPICE kernels. Must contain ``SPICE_planets.txt``,
+       ``SPICE_spacecraft.txt``, and kernel files (e.g. ``leapseconds.ker``,
+       planet/moon SPKs).
+     - ``/var/www/SPICE/``
+   * - TEMP_PATH
+     - Directory for temporary or output files.
+     - ``/var/www/work/``
+   * - STARLIST_PATH
+     - Directory for star catalog files (e.g. ``starlist_sat.txt``).
+     - ``/var/www/documents/tools/``
+   * - JULIAN_LEAPSECS
+     - Path to a NAIF LSK leap-second file. If unset, the code looks under
+       ``SPICE_PATH``, then ``leapsecs.txt``; if missing or not LSK format,
+       rms-julian's bundled LSK is used.
+     - (see above)
+   * - EPHEMERIS_TOOLS_LOG_LEVEL
+     - Logging level: ``DEBUG``, ``INFO``, ``WARNING``, ``ERROR``, or
+       ``CRITICAL``.
+     - ``WARNING``
+
+Ensure ``SPICE_PATH`` contains (or points to) the expected config and kernel
+files. Without these, ephemeris/tracker/viewer runs will fail when loading
+kernels.
+
+Running the tools
+-----------------
+
+Use the ``ephemeris-tools`` command:
+
+.. code-block:: bash
+
+   ephemeris-tools <command> [options]
+
+See :ref:`cli` and :ref:`examples` for command examples (ephemeris, tracker,
+viewer).

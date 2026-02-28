@@ -44,5 +44,5 @@ def test_cli_ephemeris_observer_and_moons(monkeypatch) -> None:  # type: ignore[
     assert rc == 0
     params = captured['value']
     assert params.planet_num == 8
-    assert params.observer.name == "Earth's Center"
+    assert params.observer.name == "Earth's center"
     assert params.moon_ids == [801, 802]

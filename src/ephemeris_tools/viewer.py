@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import math
 import sys
+from pathlib import Path
 from typing import TextIO
 
 import cspyce
 
+from ephemeris_tools.config import get_starlist_path
 from ephemeris_tools.constants import (
     DEFAULT_ALIGN_LOC_POINTS,
     EARTH_ID,
@@ -39,6 +42,7 @@ from ephemeris_tools.spice.observer import (
     set_observer_location,
 )
 from ephemeris_tools.spice.rings import ansa_radec
+from ephemeris_tools.stars import read_stars
 from ephemeris_tools.time_utils import parse_datetime, tai_from_day_sec, tdb_from_tai
 from ephemeris_tools.viewer_helpers import (
     _DEG2RAD,
@@ -62,6 +66,8 @@ from ephemeris_tools.viewer_helpers import (
     _write_fov_table,
     get_planet_config,
 )
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     '_fov_deg_from_unit',
@@ -104,8 +110,10 @@ def _run_viewer_impl(
     center_body_name: str | None = None,
     center_ansa_name: str | None = None,
     center_ansa_ew: str = 'east',
+    center_star_name: str | None = None,
     viewpoint: str = 'Earth',
     ephem_version: int = 0,
+    ephem_display: str | None = None,
     moon_ids: list[int] | None = None,
     moon_selection_display: str | None = None,
     blank_disks: bool = False,
@@ -130,6 +138,7 @@ def _run_viewer_impl(
     torus: bool = False,
     torus_inc: float = 6.8,
     torus_rad: float = 422000.0,
+    show_standard_stars: bool = False,
     extra_star_name: str | None = None,
     extra_star_ra_deg: float | None = None,
     extra_star_dec_deg: float | None = None,
@@ -154,6 +163,27 @@ def _run_viewer_impl(
                         spacecraft_observer_id = viewpoint_code
                 except Exception:
                     spacecraft_observer_id = None
+
+    # Match FORTRAN viewer: load "other" spacecraft kernels before planet kernels
+    # so the user-selected planet ephemeris still takes precedence.
+    for other_name in other_bodies or []:
+        token = other_name.strip()
+        if token == '':
+            continue
+        low = token.lower()
+        if low in {'sun', 'anti-sun', 'antisun', 'earth', 'barycenter'}:
+            continue
+        sc_code = spacecraft_name_to_code(token)
+        if sc_code is None:
+            continue
+        sc_abbrev = spacecraft_code_to_id(sc_code)
+        if not sc_abbrev:
+            continue
+        try:
+            load_spacecraft(sc_abbrev, planet_num, ephem_version, set_obs=False)
+        except Exception:
+            # Keep viewer behavior tolerant of unavailable spacecraft kernels.
+            pass
 
     ok, reason = load_spice_files(planet_num, ephem_version)
     if not ok:
@@ -210,7 +240,10 @@ def _run_viewer_impl(
         center_body_id = _resolve_center_body_id(cfg, center_body_name)
         center_ra_rad, center_dec_rad = body_radec(et, center_body_id)
         caption_center_body_id = center_body_id
-        if center_body_id != cfg.planet_id:
+        if center_body_id == cfg.barycenter_id and cfg.barycenter_id is not None:
+            caption_center_body_id = cfg.planet_id
+            caption_center_body_name = cfg.planet_name
+        elif center_body_id != cfg.planet_id:
             for moon in cfg.moons:
                 if moon.id == center_body_id:
                     caption_center_body_name = moon.name
@@ -225,6 +258,35 @@ def _run_viewer_impl(
             # center_ew='west' -> right ansa, 'east' -> left ansa.
             is_right_ansa = center_ansa_ew.strip().lower() == 'west'
             center_ra_rad, center_dec_rad = ansa_radec(et, ring_radius_km, is_right_ansa)
+    elif center_mode == 'star':
+        target_star = (center_star_name or '').strip()
+        if len(target_star) == 0:
+            center_ra_rad = planet_ra
+            center_dec_rad = planet_dec
+        else:
+            starlist_candidates = [
+                Path(get_starlist_path()) / cfg.starlist_file,
+                Path(__file__).resolve().parents[2] / 'web' / 'tools' / cfg.starlist_file,
+            ]
+            center_ra_rad = planet_ra
+            center_dec_rad = planet_dec
+            found_center_star = False
+            for starlist_path in starlist_candidates:
+                if not starlist_path.exists():
+                    continue
+                try:
+                    for star in read_stars(starlist_path, max_stars=1000):
+                        if star.name == target_star:
+                            center_ra_rad = star.ra
+                            center_dec_rad = star.dec
+                            found_center_star = True
+                            break
+                except OSError:
+                    continue
+                if found_center_star:
+                    break
+            if not found_center_star:
+                raise ValueError(f'Invalid value found for variable CENTER_STAR: {target_star}')
     elif center_ra == 0.0 and center_dec == 0.0:
         center_ra_rad = planet_ra
         center_dec_rad = planet_dec
@@ -310,9 +372,12 @@ def _run_viewer_impl(
         lc.append('Time (UTC):')
         rc.append(time_str)
 
-        # Caption 2: Ephemeris — show kernel description (FORTRAN uses ephem string(5:))
+        # Caption 2: Ephemeris — prefer raw CGI/legacy display string when present.
         lc.append('Ephemeris:')
-        ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, 'DE440')
+        if ephem_display is not None and ephem_display.strip():
+            ephem_caption = _strip_leading_option_code(ephem_display.strip())
+        else:
+            ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, 'DE440')
         rc.append(ephem_caption)
 
         # Caption 3: Viewpoint
@@ -395,6 +460,17 @@ def _run_viewer_impl(
             for i in range(1, len(f_moon_ids)):
                 if f_moon_ids[i] not in moon_ids:
                     f_moon_flags[i] = False
+            # Fallback: if selection filtered out every moon (e.g. wrong planet or
+            # parse mismatch), show all moons so we do not emit a diagram with no
+            # moons when the user requested a valid group (e.g. 609 = S1-S9).
+            if not any(f_moon_flags[1:]):
+                logger.warning(
+                    'Moon selection %r matched no moons for planet %s; showing all moons.',
+                    moon_ids,
+                    planet_num,
+                )
+                for i in range(1, len(f_moon_flags)):
+                    f_moon_flags[i] = True
 
         # Build ring arrays
         f_nrings = len(cfg.rings) if hasattr(cfg, 'rings') and cfg.rings else 0
@@ -533,6 +609,22 @@ def _run_viewer_impl(
         star_ras: list[float] = []
         star_decs: list[float] = []
         star_names: list[str] = []
+        if show_standard_stars:
+            starlist_candidates = [
+                Path(get_starlist_path()) / cfg.starlist_file,
+                Path(__file__).resolve().parents[2] / 'web' / 'tools' / cfg.starlist_file,
+            ]
+            for starlist_path in starlist_candidates:
+                if not starlist_path.exists():
+                    continue
+                try:
+                    for star in read_stars(starlist_path, max_stars=200):
+                        star_ras.append(star.ra)
+                        star_decs.append(star.dec)
+                        star_names.append(star.name)
+                except OSError:
+                    continue
+                break
         if extra_star_ra_deg is not None and extra_star_dec_deg is not None:
             star_ras.append(extra_star_ra_deg * _DEG2RAD)
             star_decs.append(extra_star_dec_deg * _DEG2RAD)
@@ -557,13 +649,6 @@ def _run_viewer_impl(
                         body_id = known_spacecraft_id
                     else:
                         body_id = cspyce.bodn2c(token)
-                    if body_id < 0:
-                        try:
-                            sc_abbrev = spacecraft_code_to_id(body_id)
-                            if sc_abbrev:
-                                load_spacecraft(sc_abbrev, planet_num, ephem_version, set_obs=False)
-                        except Exception:
-                            pass
                     ra, dec = body_radec(et, body_id)
             except Exception:
                 continue

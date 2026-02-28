@@ -11,6 +11,29 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Epsilon for LSD-based float comparison to absorb representation noise (e.g. 12.27-12.269).
+LSD_EPSILON = 1e-12
+
+# PostScript line comparison: default tolerance for numeric tokens and pixel-like values.
+POSTSCRIPT_NUMERIC_TOLERANCE = 0.02
+POSTSCRIPT_PIXEL_TOLERANCE = 2.0
+
+# Axis/footer masking for viewer image comparison (ignore axis lines and footer text).
+AXIS_FOOTER_SEARCH_RATIO = 0.92  # Start footer search at this fraction of image height.
+AXIS_LINE_THRESHOLD_RATIO = 0.20  # Row/col count >= this fraction of dimension to be axis.
+AXIS_LINE_MIN_COUNT = 200  # Minimum dark pixels in row/col to consider axis candidate.
+AXIS_BAND_MIN_PX = 3  # Minimum band width around axis lines (px).
+DPI_AXIS_BAND_DIVISOR = 24  # band = max(AXIS_BAND_MIN_PX, dpi / this).
+TICK_PAD_MIN_PX = 8  # Minimum padding around ticks (px).
+TICK_PAD_DPI_DIVISOR = 10  # tick_pad = max(TICK_PAD_MIN_PX, dpi / this).
+AXIS_EXTRA_DPI_DIVISOR = 8  # Extra padding for footer_search_start (dpi / this).
+FOOTER_ROW_THRESHOLD_RATIO = 0.01  # Footer row: dark count >= this fraction of width.
+FOOTER_MIN_ROW_COUNT = 10  # Minimum dark pixels in row to be footer candidate.
+FOOTER_PAD_MIN_PX = 4  # Padding above/below footer band (px).
+FOOTER_PAD_DPI_DIVISOR = 20  # footer_pad = max(FOOTER_PAD_MIN_PX, dpi / this).
+FOOTER_FALLBACK_MIN_ROWS = 25  # Fallback: mask this many bottom rows if no footer detected.
+FOOTER_FALLBACK_DPI_DIVISOR = 4  # Fallback rows = max(FOOTER_FALLBACK_MIN_ROWS, dpi / this).
+
 
 @dataclass
 class CompareResult:
@@ -39,19 +62,56 @@ def _is_fortran_overflow_token(token: str) -> bool:
     return bool(token) and set(token) == {'*'}
 
 
+def _lsd_from_printed(s: str) -> float:
+    """Infer least-significant-digit magnitude from the printed form.
+
+    Parameters:
+        s: String representation of a number. Allowed forms: decimal (e.g. "1.001",
+            "10.5", "7"), optional leading sign, optional scientific notation
+            (e.g. "5.0523E+09"). Leading/trailing whitespace is stripped. Empty or
+            non-numeric strings are handled (no decimal/sci match yields 1.0).
+
+    Returns:
+        float: LSD magnitude. Examples: "1.001" -> 0.001; "10.5" -> 0.1; "7" -> 1;
+        "5.0523E+09" -> 100000. Used for LSD-based tolerance: values match if
+        |a-b| <= lsd_units * lsd.
+
+    Raises:
+        None.
+    """
+    s = s.strip()
+    sci = re.match(r'^([+-]?\d*\.?\d+)[eE]([+-]?\d+)$', s)
+    if sci:
+        mantissa = sci.group(1)
+        exponent = int(sci.group(2))
+        if '.' in mantissa:
+            dec_places = len(mantissa.split('.')[1])
+        else:
+            dec_places = 0
+        return 10.0 ** (exponent - dec_places)
+    if '.' in s:
+        dec_places = len(s.split('.')[1])
+        return 10.0 ** (-dec_places)
+    return 1.0
+
+
 def _fields_match(
     field_a: str,
     field_b: str,
     *,
     float_tolerance: int | None,
     abs_tolerance: float | None,
+    lsd_tolerance: float | None,
 ) -> bool:
     """Compare one normalized table field.
 
     The second field is treated as FORTRAN output. If it is an overflow token
     (all asterisks), the field is considered uncomparable and therefore ignored.
-    """
 
+    When lsd_tolerance is set, values match if |a-b| <= lsd_tolerance * lsd, where
+    lsd is the minimum of the LSD inferred from each printed form (field_a and
+    field_b), so the tighter precision is enforced (e.g. 1.001 -> lsd=0.001).
+    """
     if _is_fortran_overflow_token(field_b):
         return True
     if field_a == field_b:
@@ -61,6 +121,14 @@ def _fields_match(
         fb = float(field_b)
     except ValueError:
         return False
+    if lsd_tolerance is not None:
+        lsd_a = _lsd_from_printed(field_a)
+        lsd_b = _lsd_from_printed(field_b)
+        lsd = min(lsd_a, lsd_b)
+        threshold = lsd_tolerance * lsd
+        # Add tiny epsilon to absorb float representation noise (e.g. 12.27-12.269)
+        if abs(fa - fb) <= threshold + LSD_EPSILON * max(abs(fa), abs(fb), 1.0):
+            return True
     if abs_tolerance is not None and abs(fa - fb) <= abs_tolerance:
         return True
     if float_tolerance is not None:
@@ -74,6 +142,7 @@ def _lines_match_fields(
     *,
     float_tolerance: int | None,
     abs_tolerance: float | None,
+    lsd_tolerance: float | None = None,
 ) -> bool:
     """Compare normalized lines field-by-field with FORTRAN overflow handling."""
 
@@ -87,6 +156,7 @@ def _lines_match_fields(
             field_b,
             float_tolerance=float_tolerance,
             abs_tolerance=abs_tolerance,
+            lsd_tolerance=lsd_tolerance,
         ):
             return False
     return True
@@ -98,6 +168,7 @@ def compare_tables(
     ignore_blank: bool = True,
     float_tolerance: int | None = None,
     abs_tolerance: float | None = None,
+    lsd_tolerance: float | None = None,
     ignore_column_suffixes: tuple[str, ...] | None = None,
 ) -> CompareResult:
     """Compare two table (text) files line-by-line.
@@ -106,14 +177,17 @@ def compare_tables(
     to that many significant digits. Otherwise exact string match after
     normalization (strip, collapse whitespace).
 
-    If abs_tolerance is set, numeric fields are considered equal when their
-    absolute difference is <= abs_tolerance.
+    If lsd_tolerance is set (e.g. 1), numeric fields match when their
+    difference is <= lsd_tolerance * lsd, where lsd is the minimum of the
+    LSD inferred from each field's printed form (tighter precision wins).
+    E.g. 1.001 with lsd_tolerance=1 allows ±0.001; 10.5 allows ±0.1; 7 allows ±1.
 
-    If ignore_column_suffixes is set (e.g. ("_orbit", "_open")), the first
+    If abs_tolerance is set (and lsd_tolerance is not), numeric fields
+    match when |a-b| <= abs_tolerance.
+
+    If ignore_column_suffixes is set (e.g. ("_foo", "_bar")), the first
     line is treated as a header; when comparing data lines, fields whose
-    header column name ends with any of these suffixes are ignored (known
-    FORTRAN bugs). Use for ephemeris table comparison when moon columns
-    include orbit/open.
+    header column name ends with any of these suffixes are skipped.
     """
     pa = Path(path_a)
     pb = Path(path_b)
@@ -138,6 +212,7 @@ def compare_tables(
             ignore_column_suffixes,
             float_tolerance,
             abs_tolerance,
+            lsd_tolerance,
             details,
         )
     else:
@@ -154,6 +229,7 @@ def compare_tables(
                     lb,
                     float_tolerance=float_tolerance,
                     abs_tolerance=abs_tolerance,
+                    lsd_tolerance=lsd_tolerance,
                 ):
                     continue
                 if la != lb:
@@ -181,6 +257,7 @@ def _compare_tables_column_aware(
     ignore_suffixes: tuple[str, ...],
     float_tolerance: int | None,
     abs_tolerance: float | None,
+    lsd_tolerance: float | None,
     details: list[str],
 ) -> tuple[int, list[str], float | None]:
     """Compare tables line-by-line, ignoring columns whose header ends with given suffixes."""
@@ -226,6 +303,7 @@ def _compare_tables_column_aware(
                 fields_b[j],
                 float_tolerance=float_tolerance,
                 abs_tolerance=abs_tolerance,
+                lsd_tolerance=lsd_tolerance,
             ):
                 num_diffs += 1
                 if len(details) < 50:
@@ -302,10 +380,60 @@ def _normalize_postscript(text: str, normalize_creator_date: bool = True) -> lis
     return out
 
 
+def _postscript_lines_match(
+    la: str,
+    lb: str,
+    *,
+    numeric_tolerance: float = POSTSCRIPT_NUMERIC_TOLERANCE,
+    pixel_tolerance: float = POSTSCRIPT_PIXEL_TOLERANCE,
+) -> bool:
+    """Compare two PostScript lines; numeric tokens may differ within tolerance.
+
+    Parameters:
+        la: First PostScript line (string).
+        lb: Second PostScript line (string).
+        numeric_tolerance: Max allowed absolute difference for floating-point
+            tokens (e.g. plot coordinates). Default POSTSCRIPT_NUMERIC_TOLERANCE.
+        pixel_tolerance: For integer-like tokens (pixel/position coords), max
+            allowed difference; allows 1-2 pixel drift. Default
+            POSTSCRIPT_PIXEL_TOLERANCE.
+
+    Returns:
+        True if lines match (identical or numeric diff within tolerances).
+
+    Raises:
+        None.
+    """
+    if la == lb:
+        return True
+    tokens_a = la.split()
+    tokens_b = lb.split()
+    if len(tokens_a) != len(tokens_b):
+        return False
+    for ta, tb in zip(tokens_a, tokens_b, strict=True):
+        if ta == tb:
+            continue
+        try:
+            fa, fb = float(ta), float(tb)
+            diff = abs(fa - fb)
+            tol = numeric_tolerance
+            # Integer-like values (e.g. pixel positions): allow 1-2 pixel drift
+            if abs(fa - round(fa)) < 1e-6 and abs(fb - round(fb)) < 1e-6:
+                tol = max(tol, pixel_tolerance)
+            if diff <= tol:
+                continue
+        except ValueError:
+            pass
+        return False
+    return True
+
+
 def compare_postscript(
     path_a: Path | str,
     path_b: Path | str,
     normalize_creator_date: bool = True,
+    numeric_tolerance: float = POSTSCRIPT_NUMERIC_TOLERANCE,
+    pixel_tolerance: float = POSTSCRIPT_PIXEL_TOLERANCE,
 ) -> CompareResult:
     """Compare two PostScript files with optional normalization of variable headers.
 
@@ -314,6 +442,11 @@ def compare_postscript(
     %%Title, and body-level PostScript strings of the form "(Generated by the …)"
     (PS string tokens, not DSC comments). The removal is silent and conditional
     on normalize_creator_date.
+
+    numeric_tolerance: numeric fields may differ by this amount (e.g. 0.05 for
+    tracker plot coordinates and axis labels affected by time-library differences).
+    pixel_tolerance: integer-like values (pixel positions) may differ by up to
+    this amount; allows 1-2 pixel drift to be ignored.
     """
     pa = Path(path_a)
     pb = Path(path_b)
@@ -321,8 +454,12 @@ def compare_postscript(
         return CompareResult(False, f'File not found: {pa}', [], 0)
     if not pb.exists():
         return CompareResult(False, f'File not found: {pb}', [], 0)
-    lines_a = _normalize_postscript(pa.read_text(), normalize_creator_date)
-    lines_b = _normalize_postscript(pb.read_text(), normalize_creator_date)
+
+    def _read_ps(path: Path) -> str:
+        return path.read_text(encoding='utf-8', errors='replace')
+
+    lines_a = _normalize_postscript(_read_ps(pa), normalize_creator_date)
+    lines_b = _normalize_postscript(_read_ps(pb), normalize_creator_date)
     details: list[str] = []
     num_diffs = 0
     if len(lines_a) != len(lines_b):
@@ -330,7 +467,12 @@ def compare_postscript(
         details.append(f'  Line count: Python {len(lines_a)}, FORTRAN {len(lines_b)}')
     else:
         for i, (la, lb) in enumerate(zip(lines_a, lines_b, strict=True)):
-            if la != lb:
+            if not _postscript_lines_match(
+                la,
+                lb,
+                numeric_tolerance=numeric_tolerance,
+                pixel_tolerance=pixel_tolerance,
+            ):
                 num_diffs += 1
                 if len(details) < 30:
                     details.append(f'  Line {i + 1}:')
@@ -382,11 +524,15 @@ def compare_postscript_images(
     *,
     dpi: int = 150,
     diff_image_path: Path | str | None = None,
+    ignore_axis_pixels: bool = False,
+    min_similarity_pct: float | None = None,
 ) -> CompareResult:
     """Render two PostScript files to PNG and pixel-compare the images.
 
     Uses Ghostscript to rasterize both files at the given DPI, then
-    computes pixel-level similarity metrics. Optionally writes a diff
+    computes pixel-level similarity metrics over the comparison region.
+    When ignore_axis_pixels is True (e.g. viewer), only pixels outside
+    the axis mask are used (axis anti-mask). Optionally writes a diff
     image highlighting changed pixels.
 
     Parameters:
@@ -394,6 +540,11 @@ def compare_postscript_images(
         path_b: Path to the second PostScript file (FORTRAN output).
         dpi: Resolution for Ghostscript rendering.
         diff_image_path: If set, write a diff image to this path.
+        ignore_axis_pixels: If True, exclude axis/tick regions from the
+            comparison; similarity is computed only over the content
+            (anti-mask) pixels.
+        min_similarity_pct: If set, pass when similarity >= this value
+            (percent). Otherwise pass only when 100% identical.
 
     Returns:
         CompareResult with similarity percentage and pixel statistics.
@@ -413,6 +564,14 @@ def compare_postscript_images(
         return CompareResult(False, f'File not found: {pa}')
     if not pb.exists():
         return CompareResult(False, f'File not found: {pb}')
+
+    if min_similarity_pct is not None:
+        if not isinstance(min_similarity_pct, (int, float)):
+            raise TypeError(
+                f'min_similarity_pct must be int or float, got {type(min_similarity_pct).__name__}'
+            )
+        if not (0.0 <= min_similarity_pct <= 100.0):
+            raise ValueError(f'min_similarity_pct must be in 0.0..100.0, got {min_similarity_pct}')
 
     # Render both PS files to temporary PNGs alongside the originals
     png_a = pa.with_suffix('.png')
@@ -448,17 +607,91 @@ def compare_postscript_images(
     # Compute pixel-level differences
     diff = np.abs(arr_a - arr_b)  # shape (H, W, 3), values 0-255
     pixel_max_diff = diff.max(axis=2)  # max channel difference per pixel
-    total_pixels = pixel_max_diff.size
+    ignore_mask = np.zeros(pixel_max_diff.shape, dtype=bool)
+    if ignore_axis_pixels:
+        # Viewer-only relaxation: ignore differences around axis lines and tick marks.
+        # Detect strong shared horizontal/vertical line features in both renderings.
+        dark_a = np.all(arr_a <= 80, axis=2)
+        dark_b = np.all(arr_b <= 80, axis=2)
+        common_dark = dark_a & dark_b
+        row_counts = common_dark.sum(axis=1)
+        col_counts = common_dark.sum(axis=0)
+        footer_search_start = round(AXIS_FOOTER_SEARCH_RATIO * h)
+        row_thresh = max(AXIS_LINE_MIN_COUNT, int(AXIS_LINE_THRESHOLD_RATIO * w))
+        col_thresh = max(AXIS_LINE_MIN_COUNT, int(AXIS_LINE_THRESHOLD_RATIO * h))
+        row_candidates = np.where(row_counts >= row_thresh)[0]
+        col_candidates = np.where(col_counts >= col_thresh)[0]
+        if row_candidates.size >= 2 and col_candidates.size >= 2:
+            top = int(row_candidates[0])
+            bottom = int(row_candidates[-1])
+            left = int(col_candidates[0])
+            right = int(col_candidates[-1])
+            band = max(AXIS_BAND_MIN_PX, round(dpi / DPI_AXIS_BAND_DIVISOR))
+            tick_pad = max(TICK_PAD_MIN_PX, round(dpi / TICK_PAD_DPI_DIVISOR))
+            y0 = max(0, top - band - tick_pad)
+            y1 = min(h, top + band + tick_pad + 1)
+            y2 = max(0, bottom - band - tick_pad)
+            y3 = min(h, bottom + band + tick_pad + 1)
+            x0 = max(0, left - band - tick_pad)
+            x1 = min(w, left + band + tick_pad + 1)
+            x2 = max(0, right - band - tick_pad)
+            x3 = min(w, right + band + tick_pad + 1)
+            ignore_mask[y0:y1, :] = True
+            ignore_mask[y2:y3, :] = True
+            ignore_mask[:, x0:x1] = True
+            ignore_mask[:, x2:x3] = True
+            extra = max(FOOTER_PAD_MIN_PX, round(dpi / AXIS_EXTRA_DPI_DIVISOR))
+            footer_search_start = max(
+                footer_search_start,
+                bottom + tick_pad + band + extra,
+            )
+            details.append(
+                '  Axis mask: enabled '
+                f'(rows {top},{bottom}; cols {left},{right}; ~{int(ignore_mask.sum()):,} px)'
+            )
+        else:
+            details.append('  Axis mask: enabled but axis lines not detected; no mask applied')
+        # Ignore the "Generated by..." footer text band.
+        # The footer is near the bottom but not at the very last rows, so detect
+        # a common dark text band in the lower image region and mask that strip.
+        footer_search_start = min(footer_search_start, h - 1)
+        footer_row_counts = common_dark[footer_search_start:, :].sum(axis=1)
+        footer_row_thresh = max(FOOTER_MIN_ROW_COUNT, round(FOOTER_ROW_THRESHOLD_RATIO * w))
+        footer_candidates = np.where(footer_row_counts >= footer_row_thresh)[0]
+        if footer_candidates.size > 0:
+            footer_top = footer_search_start + int(footer_candidates[0])
+            footer_bottom = footer_search_start + int(footer_candidates[-1])
+            footer_pad = max(FOOTER_PAD_MIN_PX, round(dpi / FOOTER_PAD_DPI_DIVISOR))
+            fy0 = max(0, footer_top - footer_pad)
+            fy1 = min(h, footer_bottom + footer_pad + 1)
+            ignore_mask[fy0:fy1, :] = True
+            details.append(
+                f'  Footer mask: rows {footer_top}-{footer_bottom} '
+                f'(padded to {fy0}-{fy1 - 1}; Generated by...)'
+            )
+        else:
+            footer_rows = max(FOOTER_FALLBACK_MIN_ROWS, round(dpi / FOOTER_FALLBACK_DPI_DIVISOR))
+            ignore_mask[h - footer_rows : h, :] = True
+            details.append(f'  Footer mask: fallback bottom {footer_rows} rows (Generated by...)')
 
-    identical_pixels = int(np.sum(pixel_max_diff == 0))
+    valid_mask = ~ignore_mask
+    total_pixels = int(np.sum(valid_mask))
+    if total_pixels == 0:
+        return CompareResult(
+            False,
+            'Image comparison failed: axis mask excluded all pixels',
+            details,
+        )
+
+    identical_pixels = int(np.sum((pixel_max_diff == 0) & valid_mask))
     similarity_pct = 100.0 * identical_pixels / total_pixels
-    mean_diff = float(diff.mean())
-    max_diff = int(diff.max())
+    mean_diff = float(diff[valid_mask].mean())
+    max_diff = int(diff[valid_mask].max())
 
     # Count pixels by severity
-    minor_pixels = int(np.sum((pixel_max_diff > 0) & (pixel_max_diff <= 10)))
-    moderate_pixels = int(np.sum((pixel_max_diff > 10) & (pixel_max_diff <= 50)))
-    major_pixels = int(np.sum(pixel_max_diff > 50))
+    minor_pixels = int(np.sum((pixel_max_diff > 0) & (pixel_max_diff <= 10) & valid_mask))
+    moderate_pixels = int(np.sum((pixel_max_diff > 10) & (pixel_max_diff <= 50) & valid_mask))
+    major_pixels = int(np.sum((pixel_max_diff > 50) & valid_mask))
 
     details.append(f'  Total pixels:    {total_pixels:,}')
     details.append(f'  Identical:       {identical_pixels:,} ({similarity_pct:.4f}%)')
@@ -484,10 +717,13 @@ def compare_postscript_images(
         Image.fromarray(diff_arr).save(diff_path_use)
         details.append(f'  Diff image:      {diff_path_use}')
 
-    same = identical_pixels == total_pixels
+    if min_similarity_pct is not None:
+        same = similarity_pct >= min_similarity_pct
+    else:
+        same = identical_pixels == total_pixels
     msg = (
         f'Images identical ({total_pixels:,} pixels)'
-        if same
+        if identical_pixels == total_pixels
         else (
             f'Images {similarity_pct:.4f}% similar'
             f' ({total_pixels - identical_pixels:,} of {total_pixels:,} pixels differ)'

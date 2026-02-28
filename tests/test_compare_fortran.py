@@ -10,11 +10,34 @@ import pytest
 
 from ephemeris_tools.params import RING_NAME_TO_CODE
 from tests.compare_fortran import RunSpec, compare_postscript, compare_tables, run_python
+from tests.compare_fortran.runner import _env_from_query_string
 from tests.compare_fortran.spec import (
     VIEWER_DEFAULT_RINGS,
     VIEWER_RING_CODE_TO_FORM,
     VIEWER_VALID_RING_FORMS,
 )
+
+
+def test_env_from_query_string_multi_value_joined() -> None:
+    """Env from query string uses #-joined multi-values to match parse_cgi.sh."""
+    env = _env_from_query_string('columns=1&columns=2&columns=3')
+    assert env['columns'] == '1#2#3'
+
+
+def test_env_from_query_string_empty_value_exported() -> None:
+    """Env from query string exports keys with empty values (match real CGI)."""
+    env = _env_from_query_string('title=&start=2022-01-01 00:00')
+    assert 'title' in env
+    assert env['title'] == ''
+    assert env['start'] == '2022-01-01 00:00'
+
+
+def test_env_from_query_string_abbrev_in_query() -> None:
+    """Query params including abbrev are in env so runner can set NPLANET from abbrev."""
+    env = _env_from_query_string('abbrev=sat&start=2022-01-01&stop=2022-01-02')
+    assert env['abbrev'] == 'sat'
+    assert env['start'] == '2022-01-01'
+    assert env['stop'] == '2022-01-02'
 
 
 def test_run_spec_env_and_cli() -> None:
@@ -101,9 +124,10 @@ def test_compare_tables_different() -> None:
         path_b.unlink()
 
 
-def test_compare_tables_abs_tolerance_allows_small_numeric_deltas() -> None:
-    """compare_tables can treat tiny numeric roundoff as equal."""
+def test_compare_tables_lsd_tolerance_scales_with_printed_precision() -> None:
+    """compare_tables LSD tolerance: |a-b| <= lsd_tol * lsd, where lsd from printed form."""
 
+    # 12.270 vs 12.269: diff=0.001, LSD from "12.270"=0.001, so lsd_tol=1 allows ±0.001
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         f.write('a 12.270 -6.432\n')
         path_a = Path(f.name)
@@ -113,7 +137,51 @@ def test_compare_tables_abs_tolerance_allows_small_numeric_deltas() -> None:
     try:
         strict = compare_tables(path_a, path_b)
         assert strict.same is False
-        tolerant = compare_tables(path_a, path_b, abs_tolerance=0.0015)
+        # diff=0.002, LSD=0.001: lsd_tolerance=1 rejects (0.002 > 1*0.001)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as fc:
+            fc.write('a 12.270 -6.432\n')
+            path_c = Path(fc.name)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as fd:
+            fd.write('a 12.268 -6.431\n')
+            path_d = Path(fd.name)
+        try:
+            strict_lsd1 = compare_tables(path_c, path_d, lsd_tolerance=1.0)
+            assert strict_lsd1.same is False
+        finally:
+            path_c.unlink()
+            path_d.unlink()
+        tolerant = compare_tables(path_a, path_b, lsd_tolerance=1.0)
+        assert tolerant.same is True
+    finally:
+        path_a.unlink()
+        path_b.unlink()
+
+
+def test_compare_tables_lsd_tolerance_integer_column() -> None:
+    """LSD from integer (e.g. 7) is 1; 7 vs 9 has diff=2, fails lsd_tol=1, passes lsd_tol=2."""
+    header = 'hr mi\n'
+    table_a = header + '7 30\n'
+    table_b = header + '9 30\n'
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write(table_a)
+        path_a = Path(f.name)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write(table_b)
+        path_b = Path(f.name)
+    try:
+        strict = compare_tables(
+            path_a,
+            path_b,
+            ignore_column_suffixes=('_nonexistent',),
+        )
+        assert strict.same is False
+        # diff=2, LSD from "7"=1, lsd_tol=2 allows ±2
+        tolerant = compare_tables(
+            path_a,
+            path_b,
+            lsd_tolerance=2.0,
+            ignore_column_suffixes=('_nonexistent',),
+        )
         assert tolerant.same is True
     finally:
         path_a.unlink()

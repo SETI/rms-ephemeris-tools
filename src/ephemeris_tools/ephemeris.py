@@ -80,10 +80,28 @@ SPR = DPR * 3600.0
 MAXSECS = 360.0 * 60.0 * 60.0
 
 
-def _set_observer_from_params(params: EphemerisParams) -> None:
+def _set_observer_from_params(params: EphemerisParams, *, sc_loaded_early: bool = False) -> None:
     """Set SPICE observer from params (ephem3_xxx.f observer setup).
 
-    Uses latlon if viewpoint is latlon; else observatory name or Earth.
+    Selection order: if viewpoint is latlon and latitude_deg/longitude_deg are
+    set, use set_observer_location; else if observatory is set and maps to a
+    spacecraft code, use that (with load_spacecraft unless sc_loaded_early);
+    otherwise observer remains Earth.
+
+    Parameters:
+        params: EphemerisParams with viewpoint, latitude_deg, longitude_deg,
+            altitude_m, observatory, planet_num, sc_trajectory. Expected types
+            match the EphemerisParams dataclass.
+        sc_loaded_early: If True, spacecraft kernels were already loaded in
+            generate_ephemeris; only set_observer_id is called (no kernel reload).
+
+    Returns:
+        None.
+
+    Raises:
+        May propagate ValueError or SPICE errors from observer lookup or
+        spacecraft/body ID resolution when observer name is invalid or
+        kernels are missing.
     """
     if (
         params.viewpoint == 'latlon'
@@ -93,9 +111,12 @@ def _set_observer_from_params(params: EphemerisParams) -> None:
         alt = params.altitude_m if params.altitude_m is not None else 0.0
         set_observer_location(params.latitude_deg, params.longitude_deg, alt)
         return
-    if params.observatory and params.observatory != "Earth's Center":
+    if params.observatory and params.observatory != "Earth's center":
         code = spacecraft_name_to_code(params.observatory)
         if code is not None:
+            if sc_loaded_early:
+                set_observer_id(code)
+                return
             sc_id = spacecraft_code_to_id(code)
             if sc_id:
                 load_spacecraft(
@@ -193,10 +214,27 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     if ntimes > 100000:
         raise ValueError('Number of time steps exceeds limit of 100000')
 
+    # Match FORTRAN ephem3 load order: spacecraft first (RSPK_LoadSC), then planet
+    # (RSPK_LoadFiles). Kernel load order affects which segments are used when
+    # multiple kernels cover the same body; matching FORTRAN avoids observer-state
+    # discrepancies. Must not call load_spacecraft again in _set_observer_from_params,
+    # or the pool order changes and observer positions differ.
+    sc_loaded_early = False
+    if params.observatory and params.observatory != "Earth's center":
+        code = spacecraft_name_to_code(params.observatory)
+        if code is not None:
+            sc_id = spacecraft_code_to_id(code)
+            if sc_id and load_spacecraft(
+                sc_id,
+                params.planet_num,
+                params.sc_trajectory,
+                set_obs=True,
+            ):
+                sc_loaded_early = True
     ok, reason = load_spice_files(params.planet_num, params.ephem_version)
     if not ok:
         raise RuntimeError(f'Failed to load SPICE kernels: {reason}')
-    _set_observer_from_params(params)
+    _set_observer_from_params(params, sc_loaded_early=sc_loaded_early)
 
     rec = Record()
     columns = list(params.columns)
@@ -208,11 +246,10 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     moon_ids = list(params.moon_ids)
     planet_id = PLANET_NUM_TO_ID.get(params.planet_num, 100 * params.planet_num + 99)
 
+    # Match FORTRAN's time = time1 - 2*dsec; do irec=0,ntimes; time = time + dsec
+    tai = tai1 - 2.0 * dsec
     for irec in range(ntimes + 1):
-        if irec == 0:
-            tai = tai1 - dsec
-        else:
-            tai = tai1 + (irec - 1) * dsec
+        tai = tai + dsec
         et = tdb_from_tai(tai) if irec > 0 else 0.0
 
         if irec > 0:
@@ -429,7 +466,7 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                         rec.append(f'{ra * HPR:9.6f}{dec * DPR:10.5f}')
                 elif mcol == MCOL_OFFSET:
                     if irec == 0:
-                        rec.append(' ' + prefix + 'dra ' + prefix + 'ddec')
+                        rec.append('  ' + prefix + 'dra  ' + prefix + 'ddec')
                     else:
                         ra, dec = body_radec(et, mid)
                         ddec = SPR * (dec - planet_dec)
@@ -439,20 +476,21 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
                         if dra > 0.5 * MAXSECS:
                             dra -= MAXSECS
                         dra *= cosdec
-                        rec.append(f'{dra:9.3f}{ddec:10.3f}')
+                        rec.append(f'{dra:10.3f}{ddec:11.3f}')
                 elif mcol == MCOL_OFFDEG:
                     if irec == 0:
-                        rec.append(' ' + prefix + 'dra ' + prefix + 'ddec')
+                        rec.append('  ' + prefix + 'dra  ' + prefix + 'ddec')
                     else:
                         ra, dec = body_radec(et, mid)
                         ddec = DPR * (dec - planet_dec)
                         dra = DPR * (ra - planet_ra)
+                        # Match FORTRAN ephem3_xxx.f: wrap by 180, not 360
                         if dra < -180.0:
-                            dra += 360.0
+                            dra += 180.0
                         if dra > 180.0:
-                            dra -= 360.0
+                            dra -= 180.0
                         dra *= cosdec
-                        rec.append(f'{dra:9.5f}{ddec:10.5f}')
+                        rec.append(f'{dra:10.5f}{ddec:11.5f}')
                 elif mcol == MCOL_ORBLON:
                     if irec == 0:
                         rec.append(prefix + 'orbit')

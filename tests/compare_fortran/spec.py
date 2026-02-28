@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlencode
 
 from ephemeris_tools.planets import (
     JUPITER_CONFIG,
@@ -16,22 +16,26 @@ from ephemeris_tools.planets import (
 )
 from ephemeris_tools.planets.base import PlanetConfig
 
-# Maps Python CLI values → FORTRAN CGI form values.
-# The FORTRAN parses these with string comparisons like
-#   string .eq. 'degrees'   or   string(1:3) .eq. 'sec'
-# so the values must match what the HTML <option> sends.
+# Maps Python CLI / CGI values → FORTRAN CGI form values.
+# FORTRAN uses string .eq. 'degrees' (exact match, no leading space) or
+# index(string, 'radi') for planet radii.
 _FOV_UNIT_TO_FORTRAN: dict[str, str] = {
     'deg': 'degrees',
+    'degrees': 'degrees',
     'arcsec': 'seconds of arc',
-    'arcmin': 'degrees',  # no arcmin in FORTRAN; handled via value conversion
+    'arcmin': 'degrees',
     'millirad': 'milliradians',
+    'milliradians': 'milliradians',
     'microrad': 'microradians',
+    'microradians': 'microradians',
     'radii': 'radii',
     'km': 'kilometers',
+    'kilometers': 'kilometers',
+    'seconds of arc': 'seconds of arc',
 }
 
 _OBSERVATORY_TO_FORTRAN: dict[str, str] = {
-    "Earth's Center": "Earth's center",  # FORTRAN checks first 5 chars only
+    "Earth's center": "Earth's center",  # FORTRAN checks first 5 chars only
 }
 
 # Planet number → PlanetConfig for building moon CGI maps.
@@ -52,6 +56,18 @@ _PLANET_LETTER: dict[int, str] = {
     7: 'U',
     8: 'N',
     9: 'P',
+}
+
+# Three-letter abbreviation → planet number (matches web/cgi-bin/tools/parse_cgi.sh
+# abbrev_to_planet). Used when building CGI-style env from a query string so NPLANET
+# is set the same way the shell scripts do (form sends abbrev=, shell exports NPLANET).
+ABBREV_TO_PLANET: dict[str, int] = {
+    'mar': 4,
+    'jup': 5,
+    'sat': 6,
+    'ura': 7,
+    'nep': 8,
+    'plu': 9,
 }
 
 # Valid FORTRAN viewer RING_SELECTION form values per planet (from VIEWER3_FORM_*.shtml).
@@ -147,8 +163,8 @@ _COLUMN_CGI_TEMPLATES: dict[int, str] = {
     15: '015 {planet} RA & Dec',
     16: '016 Earth RA & Dec',
     17: '017 Sun RA & Dec',
-    18: '018 {planet} projected equatorial radius',
-    19: '019 {planet} projected equatorial radius',
+    18: '018 {planet} projected equatorial radius (arcsec)',
+    19: '019 {planet} projected equatorial radius (deg)',
     20: '020 Lunar phase angle',
     21: '021 Sun-{planet} sky separation angle',
     22: '022 Lunar-{planet} sky separation angle',
@@ -217,10 +233,30 @@ def _fortran_fov(fov: float, fov_unit: str) -> tuple[str, str]:
     """Return (fov_value, fov_unit) translated for FORTRAN QUERY_STRING.
 
     For arcmin we convert to degrees since FORTRAN has no arcmin option.
+    FORTRAN uses string .eq. 'degrees' (exact match); strip leading space.
     """
-    if fov_unit == 'arcmin':
+    unit = str(fov_unit).strip()
+    if unit == 'arcmin':
         return (str(fov / 60.0), 'degrees')
-    return (str(fov), _FOV_UNIT_TO_FORTRAN.get(fov_unit, fov_unit))
+    # Map Python CLI / normalized values; fallback strips to handle " degrees" etc.
+    mapped = _FOV_UNIT_TO_FORTRAN.get(unit, unit).strip() or 'degrees'
+    return (str(fov), mapped)
+
+
+def _normalize_query_string(qs: str) -> str:
+    """Strip leading/trailing whitespace from each parameter value.
+
+    FORTRAN can crash or misbehave when values have leading space (e.g. from
+    URL-encoded +). Rebuild QUERY_STRING with stripped values so both sides
+    see the same logical params.
+    """
+    parsed = parse_qs(qs, keep_blank_values=True)
+    stripped: dict[str, list[str]] = {}
+    for key, values in parsed.items():
+        if not key:
+            continue
+        stripped[key] = [(v or '').strip() for v in values]
+    return urlencode(stripped, doseq=True)
 
 
 def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
@@ -326,15 +362,16 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         center = str(p.get('center', 'body'))
         pairs.append(('center', center))
         if center == 'body':
-            cb = str(p.get('center_body', ''))
+            cb = str(p.get('center_body', '')).strip()
             if not cb:
                 planet_num = int(p.get('planet', 6))
                 cb = PLANET_NAMES.get(planet_num, 'Saturn')
             pairs.append(('center_body', cb))
         if p.get('center_ansa'):
-            pairs.append(('center_ansa', str(p['center_ansa'])))
+            # FORTRAN checks string(1:1) for ring letter; strip leading space.
+            pairs.append(('center_ansa', str(p['center_ansa']).strip()))
         if p.get('center_ew'):
-            pairs.append(('center_ew', str(p['center_ew'])))
+            pairs.append(('center_ew', str(p['center_ew']).strip()))
         if 'center_ra' in p and p['center_ra'] not in (None, ''):
             pairs.append(('center_ra', str(p['center_ra'])))
         if p.get('center_ra_type'):
@@ -369,14 +406,22 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
         if 'torus_rad' in p and p['torus_rad'] is not None:
             pairs.append(('torus_rad', str(p['torus_rad'])))
 
-        # Required params that crash FORTRAN if missing (sent by CGI form)
-        pairs.append(('labels', str(p.get('labels', 'Small (6 points)'))))
-        pairs.append(('moonpts', str(p.get('moonpts', '3'))))
-        pairs.append(('blank', str(p.get('blank', 'No'))))
-        pairs.append(('opacity', str(p.get('opacity', 'Transparent'))))
-        pairs.append(('peris', str(p.get('peris', 'None'))))
-        pairs.append(('peripts', str(p.get('peripts', '4'))))
-        pairs.append(('meridians', str(p.get('meridians', 'No'))))
+        # Preserve CGI semantics: if a parameter was absent in the original query,
+        # omit it so FORTRAN prints the same blank/implicit defaults.
+        if 'labels' in p and p['labels'] is not None:
+            pairs.append(('labels', str(p['labels'])))
+        if 'moonpts' in p and p['moonpts'] is not None:
+            pairs.append(('moonpts', str(p['moonpts'])))
+        if 'blank' in p and p['blank'] is not None:
+            pairs.append(('blank', str(p['blank'])))
+        if 'opacity' in p and p['opacity'] is not None:
+            pairs.append(('opacity', str(p['opacity'])))
+        if 'peris' in p and p['peris'] is not None:
+            pairs.append(('peris', str(p['peris'])))
+        if 'peripts' in p and p['peripts'] is not None:
+            pairs.append(('peripts', str(p['peripts'])))
+        if 'meridians' in p and p['meridians'] is not None:
+            pairs.append(('meridians', str(p['meridians'])))
         if 'arcmodel' in p and p['arcmodel'] is not None and str(p['arcmodel']).strip() != '':
             pairs.append(('arcmodel', str(p['arcmodel'])))
         if 'arcpts' in p and p['arcpts'] is not None:
@@ -391,8 +436,12 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
             pairs.append(('extra_dec', str(p['extra_dec'])))
         if 'extra_name' in p and p['extra_name'] is not None:
             pairs.append(('extra_name', str(p['extra_name'])))
+        # FORTRAN expects each body as separate other= param; split "#"-joined values.
         for other in p.get('other') or []:
-            pairs.append(('other', str(other)))
+            for body in str(other).split('#'):
+                body = body.strip()
+                if body:
+                    pairs.append(('other', body))
 
         if 'title' in p:
             pairs.append(('title', str(p['title'])))
@@ -430,7 +479,17 @@ class RunSpec:
         # Required by getcgivars(): REQUEST_METHOD=GET and QUERY_STRING.
         env['REQUEST_METHOD'] = 'GET'
         if p.get('query_string'):
-            env['QUERY_STRING'] = str(p['query_string'])
+            qs = str(p['query_string'])
+            qs = _normalize_query_string(qs)
+            # FORTRAN tracker requires xrange and xunit (PLOT_SCALE); inject defaults if missing.
+            if self.tool == 'tracker':
+                parsed = parse_qs(qs, keep_blank_values=True)
+                if not parsed.get('xrange') or not (parsed['xrange'][0] or '').strip():
+                    parsed['xrange'] = ['180']
+                if not parsed.get('xunit') or not (parsed['xunit'][0] or '').strip():
+                    parsed['xunit'] = ['arcsec']
+                qs = urlencode(parsed, doseq=True)
+            env['QUERY_STRING'] = qs
         else:
             pairs = _query_pairs(p, self.tool)
             env['QUERY_STRING'] = '&'.join(
@@ -438,6 +497,9 @@ class RunSpec:
             )
 
         # Variables read via WWW_GetEnv (real env vars, not QUERY_STRING).
+        from ephemeris_tools.config import get_spice_path
+
+        env['SPICE_PATH'] = get_spice_path()
         if 'planet' in p:
             env['NPLANET'] = str(int(p['planet']))
         if self.tool == 'ephemeris' and table_path:
