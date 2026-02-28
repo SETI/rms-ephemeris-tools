@@ -83,7 +83,7 @@ ephemeris-tools <command> [options]
 ephemeris-tools ephemeris --planet saturn --start "2025-01-01 00:00" --stop "2025-01-01 02:00" --interval 1 --time-unit hour -o ephem.txt
 ```
 
-`--planet` accepts a name (`mars`, `jupiter`, `saturn`, `uranus`, `neptune`, `pluto`) or number 4–9. Use `-v` / `--verbose` for INFO-level logging.
+`--planet` accepts a name (`mars`, `jupiter`, `saturn`, `uranus`, `neptune`, `pluto`) or number 4–9. Use `--observer` as a shortcut to set the observer in one argument (e.g. `--observer Cassini` or `--observer 19.82 -155.47 4205`). Use `-v` / `--verbose` for INFO-level logging. All three subcommands accept `--cgi` to read parameters from environment variables instead of the command line (for CGI server integration). See the [CLI reference](https://rms-ephemeris-tools.readthedocs.io/en/latest/user_guide/cli.html) for the full argument list.
 
 ### Moon tracker
 
@@ -163,7 +163,40 @@ ruff format src tests
 mypy src
 ```
 
-## Comparison scripts
+## Quality checks
+
+Run linting, type checking, tests, Sphinx docs build, and Markdown lint in one command:
+
+```bash
+./scripts/run-all-checks.sh           # all checks, parallel (default)
+./scripts/run-all-checks.sh -c        # code checks only (ruff, mypy, pytest)
+./scripts/run-all-checks.sh -d        # docs checks only (sphinx, pymarkdown)
+```
+
+## Parameter sweep scripts
+
+Exercise `ephemeris-tools` across many parameter combinations:
+
+```bash
+./scripts/test_ephemeris_param_sweep.sh [OUTDIR]
+./scripts/test_viewer_param_sweep.sh [OUTDIR]
+./scripts/test_tracker_param_sweep.sh [OUTDIR]
+```
+
+Set `EPHEMERIS_TOOLS_CMD` to override the command. Viewer and tracker sweeps require [Ghostscript](https://www.ghostscript.com/) for PS to PNG conversion. See `scripts/README_param_sweep.md` for details.
+
+## Server comparison
+
+Compare live server output against stored golden copies:
+
+```bash
+python -m tests.compare_servers
+python -m tests.compare_servers --replace --server staging
+```
+
+See `tests/compare_servers/README.md` for full options.
+
+## FORTRAN comparison scripts
 
 The repository includes scripts for generating random query URLs and running FORTRAN-vs-Python comparisons.
 

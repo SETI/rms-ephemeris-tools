@@ -711,8 +711,8 @@ def main() -> int:
                         _idx, url, ok, details, case_max_diff, case_dir, skipped = fut.result()
                         result_by_idx[idx] = (url, ok, details, case_dir, case_max_diff, skipped)
                     except Exception:
-                        url = urls[idx - 1] if idx <= len(urls) else ""
-                        details = [f"exception in worker: {traceback.format_exc()}"]
+                        url = urls[idx - 1] if idx <= len(urls) else ''
+                        details = [f'exception in worker: {traceback.format_exc()}']
                         result_by_idx[idx] = (
                             url,
                             False,

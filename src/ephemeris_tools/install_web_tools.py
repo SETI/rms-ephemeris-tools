@@ -20,7 +20,7 @@ def _source_root() -> Path:
     """Return the path to the bundled web/tools directory (ephemeris_tools._web_tools)."""
     from importlib import resources
 
-    return Path(resources.files("ephemeris_tools._web_tools"))
+    return Path(resources.files('ephemeris_tools._web_tools'))
 
 
 def install_web_tools(dest_dir: Path) -> int:
@@ -37,51 +37,51 @@ def install_web_tools(dest_dir: Path) -> int:
     """
     src = _source_root()
     if not src.is_dir():
-        logger.error("Bundled web/tools source not found at %s", src)
+        logger.error('Bundled web/tools source not found at %s', src)
         return 1
 
     dest_dir = dest_dir.resolve()
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     copied = 0
-    for path in src.rglob("*"):
+    for path in src.rglob('*'):
         if path.is_dir():
             continue
-        if path.name == "__init__.py":
+        if path.name == '__init__.py':
             continue
         rel = path.relative_to(src)
         target = dest_dir / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
         copied += 1
-        logger.debug("Copied %s -> %s", rel, target)
+        logger.debug('Copied %s -> %s', rel, target)
 
-    logger.info("Copied %d files to %s", copied, dest_dir)
+    logger.info('Copied %d files to %s', copied, dest_dir)
     return 0
 
 
 def main() -> int:
     """Entry point for the install_ephemeris_tools_files console script."""
     parser = argparse.ArgumentParser(
-        description="Copy bundled web/tools files (HTML forms, samples) into a directory.",
-        prog="install_ephemeris_tools_files",
+        description='Copy bundled web/tools files (HTML forms, samples) into a directory.',
+        prog='install_ephemeris_tools_files',
     )
     parser.add_argument(
-        "dir",
+        'dir',
         type=Path,
-        help="Target directory to copy web/tools files into (created if missing).",
+        help='Target directory to copy web/tools files into (created if missing).',
     )
     parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Log each file copied.",
+        '-v',
+        '--verbose',
+        action='store_true',
+        help='Log each file copied.',
     )
     args = parser.parse_args()
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(levelname)s: %(message)s",
+        format='%(levelname)s: %(message)s',
         stream=sys.stderr,
     )
 

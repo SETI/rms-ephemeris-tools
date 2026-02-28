@@ -101,6 +101,21 @@ Example:
 
 **Observer position**
 
+``--observer``
+   Convenience shortcut that sets the observer in one argument.  Accepts a
+   single name (e.g. ``earth``, ``Cassini``), the keyword ``latlon`` followed
+   by latitude, longitude, and optional altitude (e.g. ``19.82 -155.47 4205``),
+   or a numeric latitude/longitude/altitude triple.  When given, ``--observer``
+   takes precedence over ``--viewpoint``, ``--observatory``, ``--latitude``,
+   ``--longitude``, and ``--altitude``.
+   Default: not set.
+
+   .. code-block:: bash
+
+      --observer earth
+      --observer Cassini
+      --observer 19.82 -155.47 4205
+
 ``--viewpoint``
    Observer type.  Use ``observatory`` to observe from a named
    observatory or spacecraft (specified by ``--observatory``), or ``latlon``
@@ -120,6 +135,7 @@ Example:
    ``Voyager 2`` (``VG2``), ``Galileo`` (``GLL``), ``Cassini`` (``CAS``),
    ``New Horizons`` (``NH``), ``Juno`` (``JNO``), ``Europa Clipper`` (``EC``),
    ``JUICE`` (``JCE``), ``JWST``, ``HST``.
+   See :ref:`reference` for the full table.
 
    .. code-block:: bash
 
@@ -265,9 +281,10 @@ Example:
 
 **Observer position**
 
-The observer arguments ``--viewpoint``, ``--observatory``, ``--latitude``,
-``--longitude``, ``--lon-dir``, ``--altitude``, and ``--sc-trajectory`` are
-the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
+The observer arguments ``--observer``, ``--viewpoint``, ``--observatory``,
+``--latitude``, ``--longitude``, ``--lon-dir``, ``--altitude``, and
+``--sc-trajectory`` are the same as :ref:`ephemeris <cli-ephemeris>` with
+identical defaults.
 
 **Moons and rings**
 
@@ -295,7 +312,7 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 
 ``--xrange``
    Half-range of the x-axis in units given by ``--xunit``.
-   Default: ``180.0`` (auto-set for tracker).
+   Default: auto-calculated from the outermost moon's orbit.
 
    .. code-block:: bash
 
@@ -335,6 +352,11 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
    .. code-block:: bash
 
       --output-txt tracker.txt
+
+``--cgi``
+   Read all parameters from environment variables (CGI mode) instead of the
+   command line.  Same as :ref:`ephemeris <cli-ephemeris>`.
+   Default: off.
 
 .. _cli-viewer:
 
@@ -383,8 +405,10 @@ Example:
       --fov 0.05
 
 ``--fov-unit``
-   Unit for ``--fov``.
-   Values: ``deg``, ``arcmin``, ``arcsec``.
+   Unit for ``--fov``.  Accepts angle units (``deg``, ``arcmin``, ``arcsec``,
+   ``mrad``, ``urad``), ``km``, ``<planet> radii`` (e.g. ``Saturn radii``),
+   or an instrument FOV name (e.g. ``Cassini ISS narrow``).
+   See :ref:`reference` for the full list.
    Default: ``deg``.
 
    .. code-block:: bash
@@ -458,9 +482,10 @@ Example:
 
 **Observer position**
 
-The observer arguments ``--viewpoint``, ``--observatory``, ``--latitude``,
-``--longitude``, ``--lon-dir``, ``--altitude``, and ``--sc-trajectory`` are
-the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
+The observer arguments ``--observer``, ``--viewpoint``, ``--observatory``,
+``--latitude``, ``--longitude``, ``--lon-dir``, ``--altitude``, and
+``--sc-trajectory`` are the same as :ref:`ephemeris <cli-ephemeris>` with
+identical defaults.
 
 **Moons, rings, and stars**
 
@@ -583,6 +608,43 @@ the same as :ref:`ephemeris <cli-ephemeris>` with identical defaults.
 
       --output-txt fov_table.txt
 
+**Io torus (Jupiter only)**
+
+``--torus``
+   Show the Io plasma torus.
+   Values: ``yes``, ``no`` (or ``y``/``n``/``true``/``false``/``1``/``0``).
+   Default: ``no``.
+
+``--torus-inc``
+   Io torus inclination in degrees.
+   Default: ``6.8``.
+
+``--torus-rad``
+   Io torus radius in km.
+   Default: ``422000.0``.
+
+**Display-string overrides (CGI passthrough)**
+
+``--ephem-display``
+   Override the ephemeris description shown in the Input Parameters section
+   (e.g. ``NEP095 + DE440``).
+   Default: auto-generated.
+
+``--moons-display``
+   Override the moon selection description shown in the Input Parameters
+   section (e.g. ``802 Triton & Nereid``).
+   Default: auto-generated.
+
+``--rings-display``
+   Override the ring selection description shown in the Input Parameters
+   section (e.g. ``LeVerrier, Arago``).
+   Default: auto-generated.
+
+``--cgi``
+   Read all parameters from environment variables (CGI mode) instead of the
+   command line.  Same as :ref:`ephemeris <cli-ephemeris>`.
+   Default: off.
+
 .. _cli-cgi:
 
 Environment / CGI mode
@@ -590,7 +652,7 @@ Environment / CGI mode
 
 When running behind a CGI web server, set ``REQUEST_METHOD=GET`` and pass
 parameters via ``QUERY_STRING`` (or as individual environment variables).
-Use ``--cgi`` on the ephemeris command so parameters are read from the
+Use ``--cgi`` on any subcommand so parameters are read from the
 environment instead of the command line.
 
 All CGI environment variables read by each tool:

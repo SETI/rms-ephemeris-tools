@@ -531,9 +531,7 @@ def compare_postscript_images(
                 f'min_similarity_pct must be int or float, got {type(min_similarity_pct).__name__}'
             )
         if not (0.0 <= min_similarity_pct <= 100.0):
-            raise ValueError(
-                f'min_similarity_pct must be in 0.0..100.0, got {min_similarity_pct}'
-            )
+            raise ValueError(f'min_similarity_pct must be in 0.0..100.0, got {min_similarity_pct}')
 
     # Render both PS files to temporary PNGs alongside the originals
     png_a = pa.with_suffix('.png')

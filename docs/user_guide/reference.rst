@@ -144,11 +144,12 @@ can be mixed (e.g. ``--rings main 62`` for Saturn).
    :widths: 10 20 40
 
    * - Code
-     - Name
+     - Name(s)
      - Description
    * - 71
-     - epsilon
-     - Epsilon ring
+     - alpha, beta, eta, gamma, delta, epsilon
+     - All Uranus rings (Six, Five, Four, Alpha, Beta, Eta, Gamma, Delta,
+       Lambda, Epsilon, Nu, Mu). Any ring name maps to the same code.
 
 **Neptune** (``--planet neptune``)
 
@@ -164,6 +165,45 @@ can be mixed (e.g. ``--rings main 62`` for Saturn).
      - Neptune rings (Galle, Le Verrier, Adams)
 
 Mars and Pluto have no ring options.
+
+FOV unit (``--fov-unit``)
+--------------------------
+
+The ``--fov-unit`` argument accepts angle units, distance units, planet-relative
+units, and instrument FOV names:
+
+.. list-table:: FOV unit values
+   :header-rows: 1
+   :widths: 25 50
+
+   * - Value
+     - Meaning
+   * - ``deg``
+     - Degrees (default)
+   * - ``arcmin``
+     - Arc minutes
+   * - ``arcsec``
+     - Arc seconds
+   * - ``mrad``
+     - Milliradians
+   * - ``urad``
+     - Microradians
+   * - ``km``
+     - Kilometres (converted using observer range)
+   * - ``<Planet> radii``
+     - Planet equatorial radii (e.g. ``Saturn radii``, ``Neptune radii``)
+   * - ``Cassini ISS narrow``
+     - Cassini ISS Narrow Angle Camera FOV
+   * - ``Cassini ISS wide``
+     - Cassini ISS Wide Angle Camera FOV
+   * - ``Voyager ISS narrow``
+     - Voyager ISS Narrow Angle Camera FOV
+   * - ``Voyager ISS wide``
+     - Voyager ISS Wide Angle Camera FOV
+   * - ``Galileo SSI``
+     - Galileo SSI FOV
+   * - ``LORRI``
+     - New Horizons LORRI FOV
 
 Ephemeris column index (``--columns``)
 ----------------------------------------

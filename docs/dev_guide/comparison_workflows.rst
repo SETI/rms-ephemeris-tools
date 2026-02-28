@@ -1,3 +1,5 @@
+.. _comparison_workflows:
+
 Comparison Workflows
 ====================
 
@@ -95,3 +97,98 @@ artifacts by tool:
 - **Viewer**: ``comparison.txt``, ``python_stdout.txt``, ``fortran_stdout.txt``,
   ``python.ps``, ``fortran.ps``, ``python_viewer.txt``, ``fortran_viewer.txt``,
   and any generated PNGs.
+
+Server comparison
+-----------------
+
+Use ``python -m tests.compare_servers`` to compare live Ephemeris Tools
+server output against stored golden copies:
+
+.. code-block:: bash
+
+   python -m tests.compare_servers
+   python -m tests.compare_servers --replace --server staging
+   python -m tests.compare_servers --test-file-paths test_files/viewer-test-urls.txt --limit-tests 0:10
+
+Options:
+
+- ``--run-ephemeris-type``: ``test`` or ``current`` (default: ``current``).
+  Selects which SPICE kernels match the server.
+- ``--replace``: Re-generate golden copies from the staging server instead of
+  comparing.
+- ``--test-file-paths``: One or more URL list files (default: all three in
+  ``test_files/``).
+- ``--golden-directory``: Path to golden copy storage (default:
+  ``golden_copies``).
+- ``--limit-tests``: Subset of tests as ``start:end`` (only with a single
+  test file).
+- ``--server``: Server to compare against (default: ``production``; or
+  ``other`` for a custom URL prefix).
+- ``--logfile-filename``: Custom log file name.
+- ``--save-failing-tests``: Save failed outputs next to their golden copies.
+- ``--hide-known-failures``: Index ranges of known failures to suppress in
+  the log.
+
+See ``tests/compare_servers/README.md`` for full details.
+
+Parameter sweep scripts
+-----------------------
+
+The ``scripts/`` directory includes parameter sweep scripts that exercise
+``ephemeris-tools`` across many input combinations and write outputs with
+descriptive filenames.
+
+.. list-table:: Parameter sweep scripts
+   :header-rows: 1
+   :widths: 35 15 20 15
+
+   * - Script
+     - Tool
+     - Output
+     - PS to PNG
+   * - ``test_ephemeris_param_sweep.sh``
+     - ephemeris
+     - ``.txt`` tables
+     - N/A
+   * - ``test_viewer_param_sweep.sh``
+     - viewer
+     - ``.ps`` then ``.png``
+     - Yes (PS removed)
+   * - ``test_tracker_param_sweep.sh``
+     - tracker
+     - ``.ps`` + ``.txt`` then ``.png``
+     - Yes (PS removed)
+
+Usage:
+
+.. code-block:: bash
+
+   ./scripts/test_ephemeris_param_sweep.sh [OUTDIR]
+   ./scripts/test_viewer_param_sweep.sh [OUTDIR]
+   ./scripts/test_tracker_param_sweep.sh [OUTDIR]
+
+Set ``EPHEMERIS_TOOLS_CMD`` to override the command (default:
+``ephemeris-tools``). Viewer and tracker sweeps require
+`Ghostscript <https://www.ghostscript.com/>`__ for PS to PNG conversion.
+
+Quality checks
+--------------
+
+Use ``scripts/run-all-checks.sh`` to run linting, type checking, tests,
+Sphinx build, and Markdown lint in one command:
+
+.. code-block:: bash
+
+   ./scripts/run-all-checks.sh           # all checks, parallel (default)
+   ./scripts/run-all-checks.sh -s        # sequential
+   ./scripts/run-all-checks.sh -c        # code checks only (ruff, mypy, pytest)
+   ./scripts/run-all-checks.sh -d        # docs checks only (sphinx, pymarkdown)
+   ./scripts/run-all-checks.sh -m        # markdown lint only
+
+Options:
+
+- ``-p`` / ``--parallel``: Run checks in parallel (default).
+- ``-s`` / ``--sequential``: Run checks sequentially.
+- ``-c`` / ``--code``: Code checks only (ruff, mypy, pytest).
+- ``-d`` / ``--docs``: Documentation checks only (Sphinx, PyMarkdown).
+- ``-m`` / ``--markdown``: Markdown lint only.

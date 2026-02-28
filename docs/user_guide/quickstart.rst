@@ -57,7 +57,7 @@ Key options (see :ref:`cli-tracker` for the full list):
 - ``--planet``, ``--start``, ``--stop``, ``--interval``, ``--time-unit``: same as ephemeris.
 - ``--moons``: Moons to plot. Default: standard set for the planet.
 - ``--rings``: Ring option codes or names (e.g. ``main ge`` or ``61 62``). Default: none.
-- ``--xrange``: X-axis half-range. Default: ``180.0``.
+- ``--xrange``: X-axis half-range. Default: auto-calculated.
 - ``--title``: Plot title. Default: none.
 - ``-o``: PostScript output file.
 
@@ -74,7 +74,7 @@ Key options (see :ref:`cli-viewer` for the full list):
 - ``--planet``: same as ephemeris. Default: ``6`` (saturn).
 - ``--time``: Observation time (required).
 - ``--fov``: Field of view size. Default: ``1.0``.
-- ``--fov-unit``: FOV unit (``deg``/``arcmin``/``arcsec``). Default: ``deg``.
+- ``--fov-unit``: FOV unit (``deg``/``arcmin``/``arcsec``/``mrad``/``urad``/``km``, planet radii, or instrument name). Default: ``deg``.
 - ``--center``: Diagram center (``body``/``ansa``/``J2000``/``star``). Default: ``body``.
 - ``--moons``: Moon indices or names. Default: planet default.
 - ``-o``: PostScript output file.
