@@ -104,6 +104,27 @@ rotate_if_exists() {
     fi
 }
 
+rotate_file_if_exists() {
+    local file_path="$1"
+    if [[ -e "$file_path" ]]; then
+        local base
+        base="$(basename "$file_path")"
+        local base_no_ext="$base"
+        local ext=""
+        if [[ "$base" == *.* ]]; then
+            ext=".${base##*.}"
+            base_no_ext="${base%.*}"
+        fi
+        local rotated="${BASE_DIR}/${base_no_ext}_${RUN_STAMP}${ext}"
+        if [[ -e "$rotated" ]]; then
+            rotated="${BASE_DIR}/${base_no_ext}_${RUN_STAMP}_$$${ext}"
+        fi
+        mv "$file_path" "$rotated"
+        echo "Rotated existing query file:"
+        echo "  $file_path -> $rotated"
+    fi
+}
+
 TOOLS=(ephemeris tracker viewer)
 EXIT_CODE=0
 declare -A TOOL_STATUS
@@ -114,11 +135,12 @@ for tool in "${TOOLS[@]}"; do
     failure_dir="${BASE_DIR}/${tool}_failed"
     query_file="${BASE_DIR}/random_queries_${tool}.txt"
 
+    echo
+    echo "=== ${tool}: rotating old directories and query file ==="
     rotate_if_exists "$out_dir"
     rotate_if_exists "$failure_dir"
-    rm -f "$query_file"
+    rotate_file_if_exists "$query_file"
 
-    echo
     echo "=== ${tool}: generating ${COUNT} random queries ==="
     if ! python "$PROJECT_ROOT/scripts/generate_random_query_urls.py" \
         -n "$COUNT" \
