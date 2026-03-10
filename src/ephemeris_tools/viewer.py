@@ -481,7 +481,7 @@ def _run_viewer_impl(
                     f_moon_flags[i] = True
         if moremoons:
             for i in range(1, len(f_moon_ids)):
-                if all_moons[i - 1].is_irregular:
+                if getattr(all_moons[i - 1], 'is_irregular', False):
                     f_moon_flags[i] = True
 
         # Build ring arrays

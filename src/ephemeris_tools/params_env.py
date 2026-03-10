@@ -245,7 +245,7 @@ def viewer_params_from_env() -> ViewerParams | None:
     from ephemeris_tools.planets import parse_moon_spec
 
     moon_ids = parse_moon_spec(planet_num, moon_tokens) if moon_tokens else None
-    moremoons = bool((_get_env('moremoons') or '').strip())
+    moremoons = (_get_env('moremoons') or '').strip().lower() in {'yes', 'y', 'true', '1'}
     rings_raw = _get_env('rings')
     ring_names = None
     if rings_raw:

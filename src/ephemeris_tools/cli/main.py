@@ -78,7 +78,16 @@ def _configure_logging(verbose: bool = False) -> None:
 
 
 def _default_center_ansa_for_planet(planet_num: int) -> str:
-    """Return default ring ansa name when --center ansa is used without --center-ansa."""
+    """Return default ring ansa name when --center ansa is used without --center-ansa.
+
+    Parameters:
+        planet_num: Planet number (4=Mars, 5=Jupiter, 6=Saturn, 7=Uranus, 8=Neptune,
+            9=Pluto). Used to look up a default ansa/ring name per planet.
+
+    Returns:
+        Default ansa name for the given planet. If planet_num is not in the mapping
+        (e.g. invalid or unsupported), returns 'A Ring' as the fallback.
+    """
     defaults: dict[int, str] = {
         4: 'Phobos Ring',
         5: 'Main Ring',
