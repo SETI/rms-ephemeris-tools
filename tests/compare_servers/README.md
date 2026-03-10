@@ -11,7 +11,7 @@ python -m tests.compare_servers [options]
 Or run the script directly:
 
 ```bash
-python tests/compare_servers/ephem_tools_unit_tests.py [options]
+python tests/compare_servers/compare_servers.py [options]
 ```
 
 By default (no special options), the program compares all three tools on the production server against the golden copies in the golden directory and writes results to a log file.

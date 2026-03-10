@@ -55,15 +55,11 @@ To deploy the bundled web forms and sample files (e.g. for a CGI server), use th
 install_ephemeris_tools_files /path/to/htdocs/tools
 ```
 
-Files from the package’s `web/tools` tree are copied into the given directory
-(subdirectories such as `samples/` are preserved). Works when the package is
-installed from PyPI or from source.
-
 ## Environment variables
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| **SPICE_PATH** | Root directory for SPICE kernels. Must contain `SPICE_planets.txt`, `SPICE_spacecraft.txt`, and kernel files (e.g. `leapseconds.ker`, planet/moon SPKs). | `/var/www/SPICE/` |
+| `SPICE_PATH` | Root directory for SPICE kernels. Must contain `SPICE_planets.txt`, `SPICE_spacecraft.txt`, and kernel files (e.g. `leapseconds.ker`, planet/moon SPKs). | `/var/www/SPICE/` |
 | `TEMP_PATH` | Directory for temporary or output files. | `/var/www/work/` |
 | `STARLIST_PATH` | Directory for star catalog files (e.g. `starlist_sat.txt`). | `/var/www/documents/tools/` |
 | `JULIAN_LEAPSECS` | Path to a NAIF LSK leap-second file. If unset, the code looks under `SPICE_PATH`, then `leapsecs.txt`; if missing or not LSK format, rms-julian’s bundled LSK is used. | (see above) |

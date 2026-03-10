@@ -290,8 +290,8 @@ identical defaults.
 
 ``--moons``
    Moons to plot.  Same format as :ref:`ephemeris <cli-ephemeris>`.
-   Default: none (for Saturn, defaults to the standard set of 18 moons when
-   not specified).
+   Default: when not specified, all moons in the planet configuration are
+   plotted (the set and count depend on the planet).
 
    .. code-block:: bash
 
@@ -398,7 +398,8 @@ Example:
 
 ``--fov``
    Field of view size (in units given by ``--fov-unit``).
-   Default: ``1.0``.
+   Default: when omitted, ``1.0`` degrees is used (``--fov-unit`` is then
+   ignored).
 
    .. code-block:: bash
 
@@ -409,7 +410,7 @@ Example:
    ``mrad``, ``urad``), ``km``, ``<planet> radii`` (e.g. ``Saturn radii``),
    or an instrument FOV name (e.g. ``Cassini ISS narrow``).
    See :ref:`reference` for the full list.
-   Default: ``deg``.
+   Default: ``deg`` (used only when ``--fov`` is given).
 
    .. code-block:: bash
 
@@ -420,7 +421,8 @@ Example:
 ``--center``
    What the diagram is centered on.
    Values: ``body``, ``ansa``, ``J2000``, ``star``.
-   Default: ``body``.
+   Default: when omitted, the diagram is centered on the planet (same as
+   ``body`` with no body name).
 
    .. code-block:: bash
 
@@ -430,7 +432,7 @@ Example:
 
 ``--center-body``
    Body name when ``--center`` is ``body``.
-   Default: ``""`` (the planet itself).
+   Default: when empty or omitted, the planet itself is used.
 
    .. code-block:: bash
 
@@ -438,7 +440,9 @@ Example:
 
 ``--center-ansa``
    Ring ansa name when ``--center`` is ``ansa``.
-   Default: ``""``.
+   Default: when empty or omitted, a planet-specific ring is used (e.g.
+   ``A Ring`` for Saturn, ``Main Ring`` for Jupiter, ``Epsilon Ring`` for
+   Uranus, ``Adams Ring`` for Neptune; see the code for the full mapping).
 
    .. code-block:: bash
 
@@ -474,11 +478,12 @@ Example:
 
 ``--center-star``
    Star name when ``--center`` is ``star``.
-   Default: ``""``.
+   Default: when empty or omitted with ``--center star``, the diagram is
+   centered on the planet (same as ``body``).
 
    .. code-block:: bash
 
-      --center star --center-star "Regulus"
+      --center star --center-star "delta Sco"
 
 **Observer position**
 
@@ -491,15 +496,17 @@ identical defaults.
 
 ``--moons``
    Moons to display.  Same format as :ref:`ephemeris <cli-ephemeris>`.
-   Default: none (planet configuration default).
+   Default: when not specified, all moons in the planet configuration are
+   shown.
 
    .. code-block:: bash
 
       --moons mimas enceladus titan
 
 ``--moremoons``
-   Additional moon selection string (planet-specific).
-   Default: none.
+   Flag: when present, also display all *irregular* moons for the
+   planet in addition to the moons selected by ``--moons``. Takes no
+   value. See :ref:`reference-moremoons` for details.
 
 ``--rings``
    Ring display option codes or case-insensitive names (planet-specific).
@@ -511,13 +518,14 @@ identical defaults.
       --rings main ge
       --rings 61 62
 
-``--standard``
-   Standard star catalog to overlay.
-   Default: none.
+``--standard-star-catalog``
+   Flag: overlay the standard star catalog for the planet (from the
+   planet’s starlist file). Omit for no overlay.
 
-``--additional``
-   Additional star catalog or identifier.
-   Default: none.
+``--additional-star``
+   Flag: overlay a user-specified star. When given, also provide
+   ``--extra-ra`` and ``--extra-dec`` (and optionally ``--extra-name``,
+   ``--extra-ra-type``). Omit for no additional star.
 
 ``--extra-name``
    Name for a user-specified extra star.
@@ -550,45 +558,44 @@ identical defaults.
       --title "Saturn Jan 2025"
 
 ``--labels``
-   Moon label style.
-   Default: none (planet default).
+   Moon (and star) label size. Only the size word is required: ``small``,
+   ``medium``, or ``large`` (case-insensitive). Full CGI strings like
+   ``Small (6 points)`` are also accepted. Default: ``Small (6 points)``
+   when not specified.
 
 ``--moonpts``
    Moon marker enlargement in points.
-   Default: none (planet default).
+   Default: ``0`` when not specified.
 
-``--blank``
-   Whether to blank (white-out) planet/moon disks.
-   Values: ``yes``, ``no`` (or ``y``/``n``/``true``/``false``/``1``/``0``).
-   Default: ``no``.
+``--blank-disks``
+   Flag: blank (white-out) planet and moon disks. Omit for normal
+   disks.
 
-   .. code-block:: bash
+``--ring-opacity``
+   Ring plot type (Saturn only). Controls how rings are rendered.
+   Values: ``Transparent``, ``Semi-transparent (2x file size)``,
+   ``Opaque``. Default: ``Transparent`` when not specified.
 
-      --blank yes
+``--ring-pericenter-markers``
+   Pericenter markers (Saturn and Uranus only). Saturn: ``None``,
+   ``F Ring``. Uranus: ``None``, ``Epsilon Ring only``, ``All rings``.
+   Default: ``None`` when not specified.
 
-``--opacity``
-   Ring plot type (controls ring opacity rendering).
-   Default: none (planet default).
-
-``--peris``
-   Pericenter markers.
-   Default: none.
-
-``--peripts``
-   Pericenter marker size in points.
-   Default: none.
+``--ring-pericenter-size``
+   Pericenter marker size in points (Saturn and Uranus).
+   Default: ``4`` when not specified.
 
 ``--meridians``
-   Show prime meridians.
-   Default: none.
+   Flag: show prime meridians. Omit to hide.
 
-``--arcmodel``
-   Arc model for Neptune ring arcs.
-   Default: none.
+``--neptune-arc-model``
+   Neptune ring arc motion model (Neptune only). Values: ``#1 (820.1194 deg/day)``,
+   ``#2 (820.1118 deg/day)``, ``#3 (820.1121 deg/day)``. Default: not set
+   when not specified.
 
-``--arcpts``
-   Arc weight in points for Neptune ring arcs.
-   Default: none.
+``--neptune-arc-thickness``
+   Neptune arc weight in points (line thickness).
+   Default: ``4`` when not specified.
 
 **Output**
 
@@ -610,16 +617,14 @@ identical defaults.
 
 **Io torus (Jupiter only)**
 
-``--torus``
-   Show the Io plasma torus.
-   Values: ``yes``, ``no`` (or ``y``/``n``/``true``/``false``/``1``/``0``).
-   Default: ``no``.
+``--io-torus``
+   Flag: show the Io plasma torus (Jupiter only). Omit to hide.
 
-``--torus-inc``
+``--io-torus-inc``
    Io torus inclination in degrees.
    Default: ``6.8``.
 
-``--torus-rad``
+``--io-torus-rad``
    Io torus radius in km.
    Default: ``422000.0``.
 
@@ -653,7 +658,9 @@ Environment / CGI mode
 When running behind a CGI web server, set ``REQUEST_METHOD=GET`` and pass
 parameters via ``QUERY_STRING`` (or as individual environment variables).
 Use ``--cgi`` on any subcommand so parameters are read from the
-environment instead of the command line.
+environment instead of the command line. When ``--cgi`` is *not* given,
+environment variables listed below are not used and do not override
+command-line arguments.
 
 All CGI environment variables read by each tool:
 
@@ -678,7 +685,7 @@ All CGI environment variables read by each tool:
 ``arcmodel``, ``arcpts``, ``other``, ``labels``, ``moonpts``, ``title``,
 ``standard``, ``additional``, ``extra_name``, ``extra_ra``,
 ``extra_ra_type``, ``extra_dec``, ``ephem``, ``torus``, ``torus_inc``,
-``torus_rad``, ``VIEWER_POSTFILE``.
+``torus_rad``, ``VIEWER_POSTFILE``, ``VIEWER_TEXTFILE``.
 
 See the Developer's Guide :ref:`cgi_parameter_reference` for possible
 values and per-tool details. See :ref:`reference` for column IDs, moon

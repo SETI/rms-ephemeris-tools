@@ -76,6 +76,7 @@ class _RunViewerKwargs(TypedDict, total=True):
     torus: bool
     torus_inc: float
     torus_rad: float
+    moremoons: bool
     show_standard_stars: bool
     extra_star_name: str | None
     extra_star_ra_deg: float | None
@@ -1080,6 +1081,7 @@ def _viewer_call_kwargs_from_params(params: ViewerParams) -> _RunViewerKwargs:
         'torus': params.torus,
         'torus_inc': params.torus_inc,
         'torus_rad': params.torus_rad,
+        'moremoons': params.moremoons,
         'show_standard_stars': params.show_standard_stars,
         'extra_star_name': params.extra_star.name if params.extra_star is not None else None,
         'extra_star_ra_deg': params.extra_star.ra_deg if params.extra_star is not None else None,
@@ -1157,6 +1159,7 @@ def viewer_params_from_legacy_kwargs(**kwargs: object) -> ViewerParams:
         torus=bool(_get('torus', False)),
         torus_inc=float(cast(Any, _get('torus_inc', 6.8))),
         torus_rad=float(cast(Any, _get('torus_rad', 422000.0))),
+        moremoons=bool(_get('moremoons', False)),
         show_standard_stars=bool(_get('show_standard_stars', False)),
         extra_star=extra_star,
         other_bodies=cast('list[str] | None', _get('other_bodies')),

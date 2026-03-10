@@ -399,6 +399,8 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
             pairs.append(('rings', rings_str))
         else:
             pairs.append(('rings', VIEWER_DEFAULT_RINGS.get(planet_num, 'None')))
+        if p.get('moremoons'):
+            pairs.append(('moremoons', 'Yes'))
         if 'torus' in p and p['torus'] is not None:
             pairs.append(('torus', str(p['torus'])))
         if 'torus_inc' in p and p['torus_inc'] is not None:
@@ -588,14 +590,18 @@ class RunSpec:
                 args.extend(
                     str(r) for r in (p['rings'] if isinstance(p['rings'], list) else [p['rings']])
                 )
+            if p.get('moremoons'):
+                args.append('--moremoons')
+            if p.get('standard'):
+                args.append('--standard-star-catalog')
+            if p.get('additional'):
+                args.append('--additional-star')
             if 'torus' in p and p['torus'] is not None:
-                args.extend(['--torus', str(p['torus'])])
+                args.append('--io-torus')
             if 'torus_inc' in p and p['torus_inc'] is not None:
-                args.extend(['--torus-inc', str(p['torus_inc'])])
+                args.extend(['--io-torus-inc', str(p['torus_inc'])])
             if 'torus_rad' in p and p['torus_rad'] is not None:
-                args.extend(['--torus-rad', str(p['torus_rad'])])
-            if 'additional' in p and p['additional'] is not None:
-                args.extend(['--additional', str(p['additional'])])
+                args.extend(['--io-torus-rad', str(p['torus_rad'])])
             if 'extra_name' in p and p['extra_name'] is not None:
                 args.extend(['--extra-name', str(p['extra_name'])])
             if 'extra_ra' in p and p['extra_ra'] is not None:
@@ -611,20 +617,20 @@ class RunSpec:
                 args.extend(['--labels', str(p['labels'])])
             if 'moonpts' in p and p['moonpts'] is not None:
                 args.extend(['--moonpts', str(p['moonpts'])])
-            if 'blank' in p and p['blank'] is not None:
-                args.extend(['--blank', str(p['blank'])])
+            if p.get('blank'):
+                args.append('--blank-disks')
             if 'opacity' in p and p['opacity'] is not None:
-                args.extend(['--opacity', str(p['opacity'])])
+                args.extend(['--ring-opacity', str(p['opacity'])])
             if 'peris' in p and p['peris'] is not None:
-                args.extend(['--peris', str(p['peris'])])
+                args.extend(['--ring-pericenter-markers', str(p['peris'])])
             if 'peripts' in p and p['peripts'] is not None:
-                args.extend(['--peripts', str(p['peripts'])])
-            if 'meridians' in p and p['meridians'] is not None:
-                args.extend(['--meridians', str(p['meridians'])])
+                args.extend(['--ring-pericenter-size', str(p['peripts'])])
+            if p.get('meridians'):
+                args.append('--meridians')
             if 'arcmodel' in p and p['arcmodel'] is not None and str(p['arcmodel']).strip() != '':
-                args.extend(['--arcmodel', str(p['arcmodel'])])
+                args.extend(['--neptune-arc-model', str(p['arcmodel'])])
             if 'arcpts' in p and p['arcpts'] is not None:
-                args.extend(['--arcpts', str(p['arcpts'])])
+                args.extend(['--neptune-arc-thickness', str(p['arcpts'])])
             if 'title' in p:
                 args.extend(['--title', str(p['title'])])
         if self.tool == 'tracker' and 'rings' in p and p['rings']:

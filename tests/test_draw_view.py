@@ -12,10 +12,17 @@ from ephemeris_tools.rendering.draw_view import (
     draw_planetary_view,
 )
 from ephemeris_tools.rendering.escher import EscherState
+from ephemeris_tools.spice.load import load_spice_files
+
+# Saturn planet number (4=Mars, 5=Jupiter, 6=Saturn, ...)
+_SATURN_PLANET_NUM = 6
 
 
 def test_draw_planetary_view_produces_diagram_not_stub() -> None:
     """draw_planetary_view emits real PostScript (Escher/Euclid preamble), not a stub."""
+    success, error = load_spice_files(_SATURN_PLANET_NUM, 0, force=True)
+    if not success:
+        pytest.skip(f'SPICE kernels not available: {error}')
     out = StringIO()
     try:
         options = DrawPlanetaryViewOptions(
@@ -43,6 +50,9 @@ def test_draw_planetary_view_produces_diagram_not_stub() -> None:
 
 def test_draw_planetary_view_with_grid_draws_limb_and_lineto() -> None:
     """draw_planetary_view emits PostScript with lineto/stroke (Escher/Euclid drawing)."""
+    success, error = load_spice_files(_SATURN_PLANET_NUM, 0, force=True)
+    if not success:
+        pytest.skip(f'SPICE kernels not available: {error}')
     out = StringIO()
     try:
         options = DrawPlanetaryViewOptions(

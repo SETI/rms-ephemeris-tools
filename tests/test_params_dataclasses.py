@@ -107,12 +107,12 @@ def test_tracker_params_defaults() -> None:
     assert params.output_txt is None
 
 
-def test_ephemeris_params_has_observer() -> None:
-    """EphemerisParams includes nested Observer for shared API consistency."""
+def test_ephemeris_params_default_viewpoint_observatory() -> None:
+    """EphemerisParams defaults viewpoint and observatory."""
     params = EphemerisParams(
         planet_num=6,
         start_time='2025-01-01 00:00',
         stop_time='2025-01-01 02:00',
     )
-    assert params.observer is not None
-    assert params.observer.name is None
+    assert params.viewpoint == 'Earth'
+    assert params.observatory == "Earth's center"

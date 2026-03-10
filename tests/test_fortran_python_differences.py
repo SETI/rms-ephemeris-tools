@@ -182,13 +182,16 @@ class TestHighPriorityDifferences:
     def test_radec_offset_units_spacecraft_observer(self) -> None:
         """Test DIFF-004: RA/Dec offset units for spacecraft observer (degrees).
 
-        Skipped when Cassini (or equivalent) spacecraft SPICE kernels are not
-        available; otherwise runs like other integration tests.
+        Uses Cassini at Saturn (CAS, planet 6) with kernels under /var/www/SPICE.
+        Skipped when those spacecraft kernels are not available.
         """
         from ephemeris_tools.spice.load import load_spacecraft
 
-        success = load_spacecraft(sc_id='CAS', planet=6, version=0, set_obs=True)
-        if not success:
+        # Hardcoded for /var/www/SPICE: Cassini at Saturn (version 0 = latest).
+        ok, error = load_spice_files(planet=6, version=0, force=True)
+        if not ok:
+            pytest.skip(f'Planet kernels not available: {error}')
+        if not load_spacecraft(sc_id='CAS', planet=6, version=0, set_obs=True):
             pytest.skip('Cassini spacecraft kernels not available')
 
         txt_out = StringIO()

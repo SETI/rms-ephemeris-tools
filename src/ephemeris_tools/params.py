@@ -378,12 +378,17 @@ def parse_center(planet_num: int, tokens: list[str]) -> ViewerCenter:
         except ValueError:
             pass
 
-    # Ring ansa name with optional east/west.
+    # Ring ansa name with optional east/west (full or single-letter).
     ew = 'east'
     ansa_tokens = normalized
-    if normalized[-1].lower() in ('east', 'west'):
-        ew = normalized[-1].lower()
-        ansa_tokens = normalized[:-1]
+    if len(normalized) >= 1:
+        last = normalized[-1].lower()
+        if last in ('east', 'west'):
+            ew = last
+            ansa_tokens = normalized[:-1]
+        elif last in ('e', 'w'):
+            ew = 'east' if last == 'e' else 'west'
+            ansa_tokens = normalized[:-1]
     ansa_candidate = ' '.join(ansa_tokens).lower()
     ring_name_map = {
         ring.name.lower(): ring.name
@@ -796,6 +801,7 @@ class ViewerParams:
     torus: bool = False
     torus_inc: float = 6.8
     torus_rad: float = 422000.0
+    moremoons: bool = False
     title: str = ''
     display: ViewerDisplayInfo | None = None
     output_ps: TextIO | None = None
@@ -838,7 +844,6 @@ class EphemerisParams:
     interval: float = DEFAULT_INTERVAL
     time_unit: str = 'hour'
     ephem_version: int = 0
-    observer: Observer = field(default_factory=Observer)
     viewpoint: str = 'Earth'
     observatory: str = "Earth's center"
     latitude_deg: float | None = None

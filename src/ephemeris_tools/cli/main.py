@@ -22,7 +22,6 @@ from ephemeris_tools.params import (
     Observer,
     TrackerParams,
     ViewerParams,
-    _get_env,
     _is_ra_hours_from_raw,
     _parse_sexagesimal_to_degrees,
     ephemeris_params_from_env,
@@ -43,7 +42,21 @@ logger = logging.getLogger(__name__)
 
 
 def _configure_logging(verbose: bool = False) -> None:
-    """Configure logging for CLI (stderr, level from --verbose or EPHEMERIS_TOOLS_LOG_LEVEL)."""
+    """Configure logging for the CLI.
+
+    Log output goes to stderr. Level is taken from --verbose or
+    EPHEMERIS_TOOLS_LOG_LEVEL.
+
+    Parameters:
+        verbose: If True, set level to DEBUG; otherwise WARNING (unless
+            overridden by environment).
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+    """
     level = logging.DEBUG if verbose else logging.WARNING
     env_level = os.environ.get('EPHEMERIS_TOOLS_LOG_LEVEL', '').upper()
     if env_level in ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'):
@@ -64,6 +77,19 @@ def _configure_logging(verbose: bool = False) -> None:
         logging.getLogger(name).setLevel(logging.WARNING)
 
 
+def _default_center_ansa_for_planet(planet_num: int) -> str:
+    """Return default ring ansa name when --center ansa is used without --center-ansa."""
+    defaults: dict[int, str] = {
+        4: 'Phobos Ring',
+        5: 'Main Ring',
+        6: 'A Ring',
+        7: 'Epsilon Ring',
+        8: 'Adams Ring',
+        9: 'Charon',
+    }
+    return defaults.get(planet_num, 'A Ring')
+
+
 def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     """Run ephemeris generator (ephemeris subcommand).
 
@@ -82,38 +108,54 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         if not args.output:
             args.output = os.environ.get('EPHEM_FILE', None)
     else:
-        start = (
-            (args.start or '').strip()
-            or (_get_env('start', '') or '').strip()
-            or (_get_env('START_TIME', '') or '').strip()
-        ).strip()
-        stop = (
-            (args.stop or '').strip()
-            or (_get_env('stop', '') or '').strip()
-            or (_get_env('STOP_TIME', '') or '').strip()
-        ).strip()
+        start = (args.start or '').strip()
+        stop = (args.stop or '').strip()
         if not start or not stop:
-            parser.error(
-                '--start and --stop are required when not using --cgi '
-                '(or set start/stop via env: start, START_TIME, stop, STOP_TIME).'
-            )
-        args.start = start.strip()
-        args.stop = stop.strip()
+            parser.error('--start and --stop are required when not using --cgi.')
+        args.start = start
+        args.stop = stop
         moons_raw = args.moons or []
         moon_ids = parse_moon_spec(args.planet, [str(x) for x in moons_raw])
         observer = Observer(name="Earth's center")
-        if args.observer is not None:
-            observer = parse_observer(args.observer)
         viewpoint = (args.viewpoint or 'observatory').strip() or 'observatory'
         observatory = (args.observatory or "Earth's center").strip() or "Earth's center"
-        if viewpoint == 'latlon' and (args.latitude is not None or args.longitude is not None):
-            lon = args.longitude
-            if lon is not None and args.lon_dir == 'west':
-                lon = -lon
+
+        if args.observer is not None:
+            observer = parse_observer(args.observer)
+            if observer.latitude_deg is not None and observer.longitude_deg is not None:
+                viewpoint = 'latlon'
+                observatory = "Earth's center"
+            else:
+                viewpoint = 'observatory'
+                observatory = (observer.name or "Earth's center").strip() or "Earth's center"
         else:
-            lon = None
-            if args.observer is None:
+            if viewpoint == 'latlon' and (args.latitude is not None or args.longitude is not None):
+                pass
+            else:
                 observer = parse_observer([observatory])
+
+        if viewpoint == 'latlon':
+            if args.observer is not None and observer.latitude_deg is not None:
+                lon_deg = observer.longitude_deg
+                if lon_deg is not None and (observer.lon_dir or 'east').strip().lower() == 'west':
+                    lon_deg = -lon_deg
+                lat_deg = observer.latitude_deg
+                lon_out = lon_deg
+                alt_out = observer.altitude_m
+                lon_dir_out = (observer.lon_dir or 'east').strip() or 'east'
+            else:
+                lat_deg = args.latitude
+                lon_out = args.longitude
+                if lon_out is not None and args.lon_dir == 'west':
+                    lon_out = -lon_out
+                alt_out = args.altitude
+                lon_dir_out = args.lon_dir
+        else:
+            lat_deg = None
+            lon_out = None
+            alt_out = None
+            lon_dir_out = args.lon_dir
+
         params = EphemerisParams(
             planet_num=args.planet,
             start_time=args.start,
@@ -121,20 +163,17 @@ def _ephemeris_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
             interval=args.interval,
             time_unit=args.time_unit,
             ephem_version=args.ephem,
-            observer=observer,
             viewpoint=viewpoint,
             observatory=observatory,
-            latitude_deg=args.latitude if viewpoint == 'latlon' else None,
-            longitude_deg=lon if viewpoint == 'latlon' else None,
-            lon_dir=args.lon_dir,
-            altitude_m=args.altitude if viewpoint == 'latlon' else None,
+            latitude_deg=lat_deg if viewpoint == 'latlon' else None,
+            longitude_deg=lon_out if viewpoint == 'latlon' else None,
+            lon_dir=lon_dir_out,
+            altitude_m=alt_out if viewpoint == 'latlon' else None,
             sc_trajectory=args.sc_trajectory,
             columns=parse_column_spec([str(x) for x in (args.columns or [])]) or [1, 2, 3, 15, 8],
             mooncols=parse_mooncol_spec([str(x) for x in (args.mooncols or [])]) or [5, 6, 8, 9],
             moon_ids=moon_ids,
         )
-        if viewpoint != 'latlon' and args.viewpoint and args.viewpoint != "Earth's center":
-            params.observatory = args.viewpoint or observatory
 
     write_input_parameters_ephemeris(sys.stdout, params)
 
@@ -453,17 +492,23 @@ def main() -> int:
         help='Moon indices or names (e.g. 1 2 io europa); env: moons',
     )
     view_parser.add_argument(
-        '--moremoons', type=str, default=None, help='Additional moon selection; env: moremoons'
+        '--moremoons',
+        action='store_true',
+        help='Also show irregular moons (in addition to --moons selection); env: moremoons',
     )
     view_parser.add_argument(
         '--rings', type=str, nargs='*', default=None, help='Ring option codes or names; env: rings'
     )
-    view_parser.add_argument('--torus', type=str, default=None, help='Show Io torus; env: torus')
     view_parser.add_argument(
-        '--torus-inc', type=float, default=6.8, help='Io torus inclination (deg); env: torus_inc'
+        '--io-torus',
+        action='store_true',
+        help='Show Io plasma torus (Jupiter only); env: torus',
     )
     view_parser.add_argument(
-        '--torus-rad', type=float, default=422000.0, help='Io torus radius (km); env: torus_rad'
+        '--io-torus-inc', type=float, default=6.8, help='Io torus inclination (deg); env: torus_inc'
+    )
+    view_parser.add_argument(
+        '--io-torus-rad', type=float, default=422000.0, help='Io torus radius (km); env: torus_rad'
     )
     view_parser.add_argument(
         '--ephem-display',
@@ -489,10 +534,14 @@ def main() -> int:
         ),
     )
     view_parser.add_argument(
-        '--standard', type=str, default=None, help='Standard stars; env: standard'
+        '--standard-star-catalog',
+        action='store_true',
+        help='Overlay standard star catalog (from planet starlist); env: standard',
     )
     view_parser.add_argument(
-        '--additional', type=str, default=None, help='Additional star; env: additional'
+        '--additional-star',
+        action='store_true',
+        help='Overlay user star (provide --extra-ra and --extra-dec); env: additional',
     )
     view_parser.add_argument(
         '--extra-name', type=str, default=None, help='Additional star name; env: extra_name'
@@ -513,28 +562,54 @@ def main() -> int:
         '--other', type=str, nargs='*', default=None, help='Other bodies; env: other'
     )
     view_parser.add_argument('--title', type=str, default='', help='Diagram title; env: title')
-    view_parser.add_argument('--labels', type=str, default=None, help='Moon labels; env: labels')
+    view_parser.add_argument(
+        '--labels',
+        type=str,
+        default=None,
+        help='Moon label size: small, medium, or large; env: labels',
+    )
     view_parser.add_argument(
         '--moonpts', type=str, default=None, help='Moon enlargement (points); env: moonpts'
     )
-    view_parser.add_argument('--blank', type=str, default=None, help='Blank disks; env: blank')
     view_parser.add_argument(
-        '--opacity', type=str, default=None, help='Ring plot type; env: opacity'
+        '--blank-disks',
+        action='store_true',
+        help='Blank (white-out) planet and moon disks; env: blank',
     )
     view_parser.add_argument(
-        '--peris', type=str, default=None, help='Pericenter markers; env: peris'
+        '--ring-opacity',
+        type=str,
+        default=None,
+        help='Ring plot type: Transparent, Semi-transparent, or Opaque; env: opacity',
     )
     view_parser.add_argument(
-        '--peripts', type=str, default=None, help='Pericenter marker size; env: peripts'
+        '--ring-pericenter-markers',
+        type=str,
+        default=None,
+        help='Pericenter markers (planet-specific); env: peris',
     )
     view_parser.add_argument(
-        '--meridians', type=str, default=None, help='Prime meridians; env: meridians'
+        '--ring-pericenter-size',
+        type=str,
+        default=None,
+        help='Pericenter marker size in points; env: peripts',
     )
     view_parser.add_argument(
-        '--arcmodel', type=str, default=None, help='Arc model (Neptune); env: arcmodel'
+        '--meridians',
+        action='store_true',
+        help='Show prime meridians; env: meridians',
     )
     view_parser.add_argument(
-        '--arcpts', type=str, default=None, help='Arc weight points (Neptune); env: arcpts'
+        '--neptune-arc-model',
+        type=str,
+        default=None,
+        help='Neptune arc motion model (#1, #2, or #3); env: arcmodel',
+    )
+    view_parser.add_argument(
+        '--neptune-arc-thickness',
+        type=str,
+        default=None,
+        help='Neptune arc weight in points; env: arcpts',
     )
     view_parser.add_argument(
         '-o', '--output', type=str, default=None, help='PostScript file; env: VIEWER_POSTFILE'
@@ -580,13 +655,10 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
                 print(f'Error: {e}', file=sys.stderr)
                 return 1
 
-    start = (args.start or '').strip() or _get_env('start', '') or _get_env('START_TIME', '')
-    stop = (args.stop or '').strip() or _get_env('stop', '') or _get_env('STOP_TIME', '')
+    start = (args.start or '').strip()
+    stop = (args.stop or '').strip()
     if not start or not stop:
-        parser.error(
-            '--start and --stop are required when not using --cgi '
-            '(or set start/stop via env: start, START_TIME, stop, STOP_TIME).'
-        )
+        parser.error('--start and --stop are required when not using --cgi.')
     args.start = start.strip()
     args.stop = stop.strip()
 
@@ -596,10 +668,10 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
         observer = parse_observer(args.observer)
     else:
         observer_name = (args.observatory or "Earth's center").strip() or "Earth's center"
-        lat = getattr(args, 'latitude', None)
-        lon = getattr(args, 'longitude', None)
-        lon_dir = (getattr(args, 'lon_dir', None) or 'east').strip().lower()
-        alt = getattr(args, 'altitude', None)
+        lat = args.latitude
+        lon = args.longitude
+        lon_dir = (args.lon_dir or 'east').strip().lower()
+        alt = args.altitude
         if lat is not None or lon is not None or lon_dir != 'east' or alt is not None:
             lon_deg = lon
             if lon_deg is not None and lon_dir == 'west':
@@ -613,6 +685,17 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
             )
         else:
             observer = parse_observer([observer_name])
+
+    viewpoint_display: str | None = None
+    if observer.latitude_deg is not None and observer.longitude_deg is not None:
+        lon_deg = observer.longitude_deg
+        lon_dir = 'west' if lon_deg < 0 else (observer.lon_dir or 'east').strip().lower()
+        lon_display = abs(lon_deg)
+        lat_s = str(observer.latitude_deg)
+        lon_s = str(lon_display)
+        alt_s = str(observer.altitude_m) if observer.altitude_m is not None else '0'
+        viewpoint_display = f'({lat_s}, {lon_s} {lon_dir}, {alt_s})'
+
     tracker_params = TrackerParams(
         planet_num=args.planet,
         start_time=args.start,
@@ -627,6 +710,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
         xrange=args.xrange,
         xunit=args.xunit,
         title=(args.title or '').strip(),
+        viewpoint_display=viewpoint_display,
     )
     write_input_parameters_tracker(sys.stdout, tracker_params)
     with contextlib.ExitStack() as stack:
@@ -721,12 +805,12 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
                     [str(ra_deg), str(args.center_dec)],
                 )
             elif first == 'ansa':
+                ansa_name = (args.center_ansa or '').strip()
+                if not ansa_name:
+                    ansa_name = _default_center_ansa_for_planet(args.planet)
                 center = parse_center(
                     args.planet,
-                    [
-                        str(args.center_ansa),
-                        str(args.center_ew),
-                    ],
+                    [ansa_name, str(args.center_ew)],
                 )
             elif first == 'star':
                 center = parse_center(args.planet, [str(args.center_star)])
@@ -747,35 +831,30 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
                         part = amp_part.strip()
                         if part:
                             ring_names.append(part)
-        blank = (args.blank or '').strip().lower()
-        opacity = (args.opacity or 'Transparent').strip() or 'Transparent'
-        peris = (args.peris or 'None').strip() or 'None'
-        peripts_raw = (args.peripts or '4').strip()
+        opacity = (args.ring_opacity or 'Transparent').strip() or 'Transparent'
+        peris = (args.ring_pericenter_markers or 'None').strip() or 'None'
+        peripts_raw = (args.ring_pericenter_size or '4').strip()
         try:
             peripts = float(peripts_raw)
         except ValueError:
             peripts = 4.0
-        meridians = (args.meridians or '').strip().lower()
-        arcmodel = (args.arcmodel or '').strip() or None
-        arcpts_raw = (args.arcpts or '4').strip()
+        arcmodel = (args.neptune_arc_model or '').strip() or None
+        arcpts_raw = (args.neptune_arc_thickness or '4').strip()
         try:
             arcpts = float(arcpts_raw)
         except ValueError:
             arcpts = 4.0
-        torus = (args.torus or '').strip().lower()
         labels = (args.labels or 'Small (6 points)').strip()
         moonpts_raw = (args.moonpts or '0').strip()
         try:
             moonpts = float(moonpts_raw)
         except ValueError:
             moonpts = 0.0
-        standard = (args.standard or '').strip().lower()
-        show_standard_stars = standard in {'yes', 'y', 'true', '1'}
-        additional = (args.additional or '').strip().lower()
+        show_standard_stars = args.standard_star_catalog
         extra_star: ExtraStar | None = None
         extra_ra = (args.extra_ra or '').strip()
         extra_dec = (args.extra_dec or '').strip()
-        if additional in {'yes', 'y', 'true', '1'} and extra_ra and extra_dec:
+        if args.additional_star and extra_ra and extra_dec:
             is_hours = _is_ra_hours_from_raw(args.extra_ra_type or 'hours')
             try:
                 extra_star = ExtraStar(
@@ -804,22 +883,23 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             ephem_version=args.ephem,
             moon_ids=moon_ids,
             ring_names=ring_names,
-            blank_disks=blank in ('yes', 'y', 'true', '1'),
+            blank_disks=args.blank_disks,
             opacity=opacity,
             labels=labels,
             moonpts=moonpts,
             peris=peris,
             peripts=peripts,
-            meridians=meridians in ('yes', 'y', 'true', '1'),
+            meridians=args.meridians,
             arcmodel=arcmodel,
             arcpts=arcpts,
-            torus=torus in ('yes', 'y', 'true', '1'),
-            torus_inc=float(args.torus_inc),
-            torus_rad=float(args.torus_rad),
+            torus=args.io_torus,
+            torus_inc=float(args.io_torus_inc),
+            torus_rad=float(args.io_torus_rad),
             show_standard_stars=show_standard_stars,
             extra_star=extra_star,
             other_bodies=[str(o) for o in (args.other or [])] or None,
             title=(args.title or '').strip(),
+            moremoons=args.moremoons,
             output_ps=out,
             output_txt=out_txt,
         )

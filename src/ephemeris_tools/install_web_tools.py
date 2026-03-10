@@ -42,7 +42,11 @@ def install_web_tools(dest_dir: Path) -> int:
         return 1
 
     dest_dir = dest_dir.resolve()
-    dest_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        logger.error('Failed to create destination directory %s: %s', dest_dir, e)
+        return 1
 
     copied = 0
     for path in src.rglob('*'):
@@ -52,8 +56,12 @@ def install_web_tools(dest_dir: Path) -> int:
             continue
         rel = path.relative_to(src)
         target = dest_dir / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, target)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+        except OSError as e:
+            logger.error('Failed to copy %s to %s: %s', path, target, e)
+            return 1
         copied += 1
         logger.debug('Copied %s -> %s', rel, target)
 

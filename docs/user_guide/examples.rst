@@ -94,7 +94,7 @@ page size/comments, and then drawing commands for the trajectories and labels.
    params = ViewerParams(
        planet_num=6,  # 6 = Saturn
        time_str="2025-01-01 12:00",
-       fov_value=1.0,
+       fov_value=0.1,
        output_ps=open("view.ps", "w"),
        output_txt=None,
    )
@@ -103,6 +103,6 @@ page size/comments, and then drawing commands for the trajectories and labels.
 **Expected output:** ``run_viewer(ViewerParams(...))`` creates a PostScript file
 named ``view.ps`` via the ``output_ps`` parameter. The file starts with a header
 such as ``%!PS-Adobe-3.0`` and bounding box comments; it contains a sky projection
-of Saturn at 2025-01-01 12:00 with the configured FOV (e.g. 1.0°). Readers can
+of Saturn at 2025-01-01 12:00 with the configured FOV (e.g. 0.1°). Readers can
 expect ``view.ps`` to be a valid PostScript document suitable for conversion to
 PDF or PNG.

@@ -61,6 +61,12 @@ Key options (see :ref:`cli-tracker` for the full list):
 - ``--title``: Plot title. Default: none.
 - ``-o``: PostScript output file.
 
+Converting PostScript to PNG (Ghostscript):
+
+.. code-block:: bash
+
+   gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=tracker.png tracker.ps
+
 Planet viewer
 -------------
 
@@ -85,20 +91,6 @@ Converting PostScript to PNG (Ghostscript):
 .. code-block:: bash
 
    gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=view.png view.ps
-
-**Expected output:** The command exits silently on success (no errors). It
-produces a file named ``view.png`` at 150 DPI. File size is typically a few
-hundred KB to a few MB depending on content. Non-fatal warnings (e.g. font
-substitution) can be ignored.
-
-For tracker output, use the same pattern:
-
-.. code-block:: bash
-
-   gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=tracker.png tracker.ps
-
-**Expected output:** Exits silently on success, produces ``tracker.png`` at 150 DPI,
-with typical file size in the same range; non-fatal warnings can be ignored.
 
 For detailed per-argument documentation, see :ref:`cli`.
 For column IDs, moon names, and observatory names, see :ref:`reference`.

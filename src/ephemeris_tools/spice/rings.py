@@ -148,10 +148,20 @@ def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, floa
         is_right: True for right ansa, False for left ansa.
 
     Returns:
-        Tuple of (ra, dec) in radians.
+        Tuple (ra_offset, dec_offset) in radians. When the computed ratio is
+        outside [-1.0, 1.0] (invalid ansa geometry), ansa_radec returns the
+        sentinel (0.0, 0.0); callers should check for this instead of
+        expecting an exception.
 
     Raises:
-        ValueError: If geometry is edge-on (denom ~ 0).
+        ValueError: If geometry is edge-on (denom ~ 0). No exception is raised
+        for the out-of-range ratio case; callers must detect the (0.0, 0.0)
+        sentinel.
+
+    Notes:
+        The (0.0, 0.0) sentinel for out-of-range geometry mirrors FORTRAN
+        behavior for observer-too-close or extreme opening geometries; tests
+        may assert ansa_radec returns (0.0, 0.0) for such cases.
     """
     from ephemeris_tools.spice.geometry import planet_ranges
 

@@ -205,6 +205,9 @@ units, and instrument FOV names:
    * - ``LORRI``
      - New Horizons LORRI FOV
 
+Use quotes for multi-word values so the shell does not split them (e.g.
+``--fov-unit "Saturn radii"`` or ``--fov-unit "Cassini ISS narrow"``).
+
 Ephemeris column index (``--columns``)
 ----------------------------------------
 
@@ -311,10 +314,10 @@ orblon, orbopen.
      - Phase angle (deg)
    * - 3
      - subobs
-     - Sub-observer lat (deg)
+     - Sub-observer lat and long (deg)
    * - 4
      - subsol
-     - Sub-solar lat (deg)
+     - Sub-solar lat and long (deg)
    * - 5
      - radec
      - RA and Dec (deg)
@@ -527,3 +530,61 @@ Moon order is fixed per planet. Below: index to moon name for each planet. Names
      - Kerberos
    * - 5
      - Styx
+
+.. _reference-moremoons:
+
+Additional moons (``--moremoons``)
+----------------------------------
+
+``--moremoons`` is used only by the **viewer** command. It is a flag:
+presence turns on the feature; it does not take a value.
+
+- **Omitted**: Only the moons selected by ``--moons`` are displayed.
+  Irregular moons are not added.
+- **Present** (e.g. ``--moremoons``): In addition to ``--moons``, the
+  viewer displays *all* irregular moons for that planet.
+
+Which moons count as "irregular" is planet-specific (e.g. Jupiter:
+Himalia, Elara; Saturn: Phoebe and many others).
+
+Viewer star catalogs and plot options
+-------------------------------------
+
+**Standard star catalog** (``--standard-star-catalog``)
+   Flag: when present, overlay the planet’s standard star list (e.g.
+   ``starlist_sat.txt`` for Saturn). Omit for no overlay.
+
+**Additional star** (``--additional-star``)
+   Flag: when present, overlay one user-defined star; provide
+   ``--extra-ra`` and ``--extra-dec`` (and optionally ``--extra-name``,
+   ``--extra-ra-type``). Omit for no additional star.
+
+**Moon labels** (``--labels``)
+   Label size for moons and stars. Only the size word is required:
+   ``small``, ``medium``, or ``large`` (case-insensitive). Full strings
+   like ``Small (6 points)`` are also accepted. The number of points
+   is implied by the size; you do not need to specify it.
+
+**Blank disks** (``--blank-disks``)
+   Flag: when present, white out planet and moon disks. Omit for normal
+   disks.
+
+**Ring opacity** (``--ring-opacity``, Saturn only)
+   Ring rendering style. Values: ``Transparent``, ``Semi-transparent (2x file size)``,
+   ``Opaque``.
+
+**Ring pericenter markers** (``--ring-pericenter-markers``)
+   Saturn: ``None``, ``F Ring``. Uranus: ``None``, ``Epsilon Ring only``,
+   ``All rings``. ``--ring-pericenter-size`` sets the marker size in points
+   (default ``4``).
+
+**Neptune arc model** (``--neptune-arc-model``, Neptune only)
+   Arc motion model. Values: ``#1 (820.1194 deg/day)``, ``#2 (820.1118 deg/day)``,
+   ``#3 (820.1121 deg/day)``. ``--neptune-arc-thickness`` sets the arc
+   line weight in points (default ``4``).
+
+**Io torus** (``--io-torus``, ``--io-torus-inc``, ``--io-torus-rad``; Jupiter only)
+   ``--io-torus``: flag; when present, show the Io plasma torus. Omit to
+   hide.
+   ``--io-torus-inc``: inclination in degrees (default ``6.8``).
+   ``--io-torus-rad``: radius in km (default ``422000.0``).

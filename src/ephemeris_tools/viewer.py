@@ -138,6 +138,7 @@ def _run_viewer_impl(
     torus: bool = False,
     torus_inc: float = 6.8,
     torus_rad: float = 422000.0,
+    moremoons: bool = False,
     show_standard_stars: bool = False,
     extra_star_name: str | None = None,
     extra_star_ra_deg: float | None = None,
@@ -276,7 +277,7 @@ def _run_viewer_impl(
                     continue
                 try:
                     for star in read_stars(starlist_path, max_stars=1000):
-                        if star.name == target_star:
+                        if star.name.casefold().strip() == target_star.casefold().strip():
                             center_ra_rad = star.ra
                             center_dec_rad = star.dec
                             found_center_star = True
@@ -297,6 +298,13 @@ def _run_viewer_impl(
     track_moon_ids = [m.id for m in cfg.moons if m.id != cfg.planet_id]
     if moon_ids:
         track_moon_ids = [tid for tid in track_moon_ids if tid in moon_ids]
+    if moremoons:
+        irregular_ids = {
+            m.id for m in cfg.moons if m.id != cfg.planet_id and getattr(m, 'is_irregular', False)
+        }
+        for mid in irregular_ids:
+            if mid not in track_moon_ids:
+                track_moon_ids.append(mid)
     id_to_name = {m.id: m.name for m in cfg.moons}
 
     # Table: planet first, then moons (same order as FORTRAN moon_flags).
@@ -470,6 +478,10 @@ def _run_viewer_impl(
                     planet_num,
                 )
                 for i in range(1, len(f_moon_flags)):
+                    f_moon_flags[i] = True
+        if moremoons:
+            for i in range(1, len(f_moon_ids)):
+                if all_moons[i - 1].is_irregular:
                     f_moon_flags[i] = True
 
         # Build ring arrays

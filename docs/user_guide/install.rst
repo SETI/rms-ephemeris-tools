@@ -26,8 +26,8 @@ Install extras for development or documentation:
 
 .. code-block:: bash
 
-   pip install rms-ephemeris-tools[dev]
-   pip install rms-ephemeris-tools[docs]
+   pip install "rms-ephemeris-tools[dev]"
+   pip install "rms-ephemeris-tools[docs]"
 
 Use ``[dev]`` for testing, linting, type-checking, and coverage; use ``[docs]``
 for building Sphinx documentation.
@@ -59,7 +59,7 @@ Environment variables
    * - Variable
      - Purpose
      - Default
-   * - **SPICE_PATH**
+   * - SPICE_PATH
      - Root directory for SPICE kernels. Must contain ``SPICE_planets.txt``,
        ``SPICE_spacecraft.txt``, and kernel files (e.g. ``leapseconds.ker``,
        planet/moon SPKs).

@@ -245,6 +245,7 @@ def viewer_params_from_env() -> ViewerParams | None:
     from ephemeris_tools.planets import parse_moon_spec
 
     moon_ids = parse_moon_spec(planet_num, moon_tokens) if moon_tokens else None
+    moremoons = bool((_get_env('moremoons') or '').strip())
     rings_raw = _get_env('rings')
     ring_names = None
     if rings_raw:
@@ -352,6 +353,7 @@ def viewer_params_from_env() -> ViewerParams | None:
         torus=_get_env('torus', '').strip().lower() in {'yes', 'y', 'true', '1'},
         torus_inc=_safe_float(_get_env('torus_inc', '6.8') or '6.8', 6.8),
         torus_rad=_safe_float(_get_env('torus_rad', '422000') or '422000', 422000),
+        moremoons=moremoons,
         other_bodies=other_bodies if other_bodies else None,
         show_standard_stars=show_standard_stars,
         extra_star=extra_star,
