@@ -483,7 +483,7 @@ class RunSpec:
 
         # Required by getcgivars(): REQUEST_METHOD=GET and QUERY_STRING.
         env['REQUEST_METHOD'] = 'GET'
-        if p.get('query_string'):
+        if 'query_string' in p:
             qs = str(p['query_string'])
             qs = _normalize_query_string(qs)
             parsed = parse_qs(qs, keep_blank_values=True)

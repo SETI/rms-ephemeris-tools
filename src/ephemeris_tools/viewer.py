@@ -5,12 +5,11 @@ from __future__ import annotations
 import logging
 import math
 import sys
-from pathlib import Path
 from typing import TextIO
 
 import cspyce
 
-from ephemeris_tools.config import get_starlist_path
+from ephemeris_tools.config import get_starlist_candidate_paths
 from ephemeris_tools.constants import (
     DEFAULT_ALIGN_LOC_POINTS,
     EARTH_ID,
@@ -265,13 +264,12 @@ def _run_viewer_impl(
     elif center_mode == 'star':
         target_star = (center_star_name or '').strip()
         if len(target_star) == 0:
-            center_ra_rad = planet_ra
-            center_dec_rad = planet_dec
+            raise ValueError(
+                'CENTER_STAR is required when center_mode is "star"; '
+                'provide a non-empty star name.'
+            )
         else:
-            starlist_candidates = [
-                Path(get_starlist_path()) / cfg.starlist_file,
-                Path(__file__).resolve().parents[2] / 'web' / 'tools' / cfg.starlist_file,
-            ]
+            starlist_candidates = get_starlist_candidate_paths(cfg.starlist_file)
             center_ra_rad = planet_ra
             center_dec_rad = planet_dec
             found_center_star = False
@@ -629,10 +627,7 @@ def _run_viewer_impl(
         star_decs: list[float] = []
         star_names: list[str] = []
         if show_standard_stars:
-            starlist_candidates = [
-                Path(get_starlist_path()) / cfg.starlist_file,
-                Path(__file__).resolve().parents[2] / 'web' / 'tools' / cfg.starlist_file,
-            ]
+            starlist_candidates = get_starlist_candidate_paths(cfg.starlist_file)
             for starlist_path in starlist_candidates:
                 if not starlist_path.exists():
                     continue
