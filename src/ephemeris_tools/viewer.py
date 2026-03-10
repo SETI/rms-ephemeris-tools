@@ -265,8 +265,7 @@ def _run_viewer_impl(
         target_star = (center_star_name or '').strip()
         if len(target_star) == 0:
             raise ValueError(
-                'CENTER_STAR is required when center_mode is "star"; '
-                'provide a non-empty star name.'
+                'CENTER_STAR is required when center_mode is "star"; provide a non-empty star name.'
             )
         else:
             starlist_candidates = get_starlist_candidate_paths(cfg.starlist_file)
