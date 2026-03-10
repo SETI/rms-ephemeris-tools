@@ -6,13 +6,19 @@ import logging
 import math
 from typing import TYPE_CHECKING, Any, TextIO, TypedDict, cast
 
+import cspyce
+import julian
+
+from ephemeris_tools.angle_utils import dms_string
 from ephemeris_tools.constants import (
     ARCMIN_PER_DEGREE,
     ARCSEC_PER_DEGREE,
     DEGREES_PER_CIRCLE,
+    EARTH_ID,
     HALF_CIRCLE_DEGREES,
     NOON_SECONDS_OFFSET,
     SECONDS_PER_DAY,
+    SUN_ID,
 )
 from ephemeris_tools.params import (
     ExtraStar,
@@ -29,6 +35,25 @@ from ephemeris_tools.planets import (
     SATURN_CONFIG,
     URANUS_CONFIG,
 )
+from ephemeris_tools.planets.saturn import FRING_DNODE_DT, FRING_DPERI_DT
+from ephemeris_tools.planets.uranus import (
+    B1950_TO_J2000_URANUS,
+    URANUS_REF_EPOCH_HOUR,
+    URANUS_REF_EPOCH_YMD,
+)
+from ephemeris_tools.spice.bodmat import bodmat
+from ephemeris_tools.spice.common import get_state
+from ephemeris_tools.spice.geometry import (
+    body_lonlat,
+    body_phase,
+    body_radec,
+    body_ranges,
+    planet_phase,
+    planet_ranges,
+)
+from ephemeris_tools.spice.observer import observer_state
+from ephemeris_tools.spice.rings import ring_opening
+from ephemeris_tools.time_utils import day_from_ymd, tai_from_day_sec, tdb_from_tai
 
 if TYPE_CHECKING:
     from ephemeris_tools.planets.base import PlanetConfig, RingSpec
@@ -172,17 +197,6 @@ def _propagated_uranus_rings(et: float, cfg: PlanetConfig) -> tuple[list[float],
     Returns:
         (peri_deg_list, node_deg_list) in degrees.
     """
-    import cspyce
-
-    from ephemeris_tools.planets.uranus import (
-        B1950_TO_J2000_URANUS,
-        URANUS_REF_EPOCH_HOUR,
-        URANUS_REF_EPOCH_YMD,
-    )
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.observer import observer_state
-    from ephemeris_tools.time_utils import day_from_ymd, tai_from_day_sec, tdb_from_tai
-
     y, m, d = URANUS_REF_EPOCH_YMD
     day0 = day_from_ymd(y, m, d)
     ref_tai = tai_from_day_sec(day0, float(URANUS_REF_EPOCH_HOUR * 3600))
@@ -222,12 +236,6 @@ def _propagated_neptune_arcs(
     Returns:
         List of (minlon_deg, maxlon_deg) per arc.
     """
-    import cspyce
-    import julian
-
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.observer import observer_state
-
     neptune_ref_jed = 2447757.0
     # FORTRAN uses FJUL_TAIofJD(...,2) for a JED reference epoch.
     # Use the non-deprecated rms-julian API for JED(TDB)->time(TDB).
@@ -262,12 +270,6 @@ def _propagated_saturn_f_ring(et: float, cfg: PlanetConfig) -> tuple[float, floa
     """
     if cfg.f_ring_index is None or cfg.planet_num != 6:
         return None
-    import cspyce
-
-    from ephemeris_tools.planets.saturn import FRING_DNODE_DT, FRING_DPERI_DT
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.observer import observer_state
-    from ephemeris_tools.time_utils import tai_from_day_sec, tdb_from_tai
 
     ref_tai = tai_from_day_sec(0, NOON_SECONDS_OFFSET)
     ref_et = tdb_from_tai(ref_tai)
@@ -292,20 +294,12 @@ def _compute_ring_center_offsets(et: float, cfg: PlanetConfig) -> list[tuple[flo
     Returns:
         List of (x, y, z) offset in km per ring.
     """
-    import cspyce
-
-    from ephemeris_tools.constants import SUN_ID
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.observer import observer_state
-
     nrings = len(cfg.rings)
     offsets = [(0.0, 0.0, 0.0)] * nrings
     state = get_state()
     obs_pv = observer_state(et)
 
     if cfg.planet_num == 4 and cfg.ring_offsets_km:
-        from ephemeris_tools.spice.bodmat import bodmat
-
         _planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
         planet_time = et - dt
         rotmat = bodmat(state.planet_id, planet_time)
@@ -355,12 +349,6 @@ def _compute_mars_deimos_ring_node(et: float) -> float | None:
     This mirrors the FORTRAN `viewer3_mar.f` logic used for `ring_nodes(3:4)`,
     where node longitude is measured relative to the equator ascending node.
     """
-    import cspyce
-
-    from ephemeris_tools.spice.bodmat import bodmat
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.observer import observer_state
-
     state = get_state()
     if state.planet_num != 4:
         return None
@@ -571,12 +559,6 @@ def _compute_jupiter_torus_node(et: float) -> float | None:
     Returns:
         Node longitude in radians, or None if not Jupiter.
     """
-    import cspyce
-
-    from ephemeris_tools.spice.bodmat import bodmat
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.observer import observer_state
-
     state = get_state()
     if state.planet_num != 5:
         return None
@@ -607,8 +589,6 @@ def get_planet_config(planet_num: int) -> PlanetConfig | None:
 
 def _ra_hms(ra_rad: float) -> str:
     """Format RA in radians as 'hh mm ss.ssss' (hours, 4 decimals in seconds)."""
-    from ephemeris_tools.angle_utils import dms_string
-
     ra_deg = ra_rad * _RAD2DEG
     ra_h = (ra_deg / 15.0) % 24.0
     return dms_string(ra_h, 'hms', ndecimal=4)
@@ -616,8 +596,6 @@ def _ra_hms(ra_rad: float) -> str:
 
 def _dec_dms(dec_rad: float) -> str:
     """Format Dec in radians as 'dd mm ss.sss' (degrees)."""
-    from ephemeris_tools.angle_utils import dms_string
-
     dec_deg = dec_rad * _RAD2DEG
     return dms_string(dec_deg, 'dms', ndecimal=3)
 
@@ -635,17 +613,6 @@ def _write_fov_table(
     ring_names: list[str] | None = None,
 ) -> None:
     """Write Field of View Description (J2000) and body/ring geometry tables."""
-    from ephemeris_tools.constants import EARTH_ID
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.geometry import (
-        body_lonlat,
-        body_phase,
-        body_radec,
-        body_ranges,
-        planet_phase,
-        planet_ranges,
-    )
-
     cosdec = math.cos(planet_dec)
 
     # FORTRAN uses arcsec for Earth observer, degrees for spacecraft
@@ -751,9 +718,6 @@ def _write_fov_table(
             and ring_flags[cfg.f_ring_index]
         )
 
-        # Ring geometry: sub-solar latitude, opening angle, phase, longitudes, distances.
-        from ephemeris_tools.spice.rings import ring_opening
-
         stream.write('\n')
         sun_dist, obs_dist = planet_ranges(et)
         phase_deg = planet_phase(et) * _RAD2DEG
@@ -849,8 +813,6 @@ def _fov_deg_from_unit(
         return fov
     s = fov_unit.strip().lower()
     if 'radii' in s and et is not None and cfg is not None:
-        from ephemeris_tools.spice.geometry import planet_ranges
-
         _sun_dist_km, obs_dist_km = planet_ranges(et, planet_id=cfg.planet_id)
         if obs_dist_km > 0:
             ratio = cfg.equatorial_radius_km / obs_dist_km
@@ -865,8 +827,6 @@ def _fov_deg_from_unit(
             return fov_deg
         return fov
     if ('pluto-charon separation' in s or 'pluto charon separation' in s) and et is not None:
-        from ephemeris_tools.spice.geometry import planet_ranges
-
         _sun_dist_km, obs_dist_km = planet_ranges(et)
         if obs_dist_km > 0:
             ratio = _PLUTO_CHARON_SEP_KM / obs_dist_km
@@ -874,8 +834,6 @@ def _fov_deg_from_unit(
             return fov * math.asin(clamped) * _RAD2DEG
         return fov
     if ('kilometer' in s or s.strip() == 'km') and et is not None:
-        from ephemeris_tools.spice.geometry import planet_ranges
-
         _sun_dist_km, obs_dist_km = planet_ranges(et)
         if obs_dist_km > 0:
             ratio = 1.0 / obs_dist_km

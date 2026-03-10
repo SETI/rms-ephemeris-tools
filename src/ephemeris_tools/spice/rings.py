@@ -13,6 +13,7 @@ import cspyce
 from ephemeris_tools.constants import SUN_ID
 from ephemeris_tools.spice.bodmat import bodmat as planet_bodmat
 from ephemeris_tools.spice.common import get_state
+from ephemeris_tools.spice.geometry import planet_ranges
 from ephemeris_tools.spice.observer import observer_state
 
 TWOPI = 2.0 * math.pi
@@ -163,8 +164,6 @@ def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, floa
         behavior for observer-too-close or extreme opening geometries; tests
         may assert ansa_radec returns (0.0, 0.0) for such cases.
     """
-    from ephemeris_tools.spice.geometry import planet_ranges
-
     _, obs_dist = planet_ranges(et)
     geom = ring_opening(et)
     denom = obs_dist * math.cos(geom.obs_b)

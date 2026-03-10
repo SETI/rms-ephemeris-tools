@@ -13,7 +13,7 @@ import pytest
 
 from ephemeris_tools.constants import EARTH_ID
 from ephemeris_tools.planets import SATURN_CONFIG
-from ephemeris_tools.spice.load import load_spice_files
+from ephemeris_tools.spice.load import load_spacecraft, load_spice_files
 from ephemeris_tools.spice.observer import set_observer_id
 from ephemeris_tools.time_utils import tai_from_day_sec, tdb_from_tai
 from ephemeris_tools.viewer import _propagated_saturn_f_ring, run_viewer
@@ -185,8 +185,6 @@ class TestHighPriorityDifferences:
         Uses Cassini at Saturn (CAS, planet 6) with kernels under /var/www/SPICE.
         Skipped when those spacecraft kernels are not available.
         """
-        from ephemeris_tools.spice.load import load_spacecraft
-
         # Hardcoded for /var/www/SPICE: Cassini at Saturn (version 0 = latest).
         ok, error = load_spice_files(planet=6, version=0, force=True)
         if not ok:

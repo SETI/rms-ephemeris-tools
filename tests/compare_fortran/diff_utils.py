@@ -9,6 +9,14 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+try:
+    import numpy as np
+    from PIL import Image
+
+    _HAS_IMAGE_DEPS = True
+except ImportError:
+    _HAS_IMAGE_DEPS = False
+
 logger = logging.getLogger(__name__)
 
 # Epsilon for LSD-based float comparison to absorb representation noise (e.g. 12.27-12.269).
@@ -549,13 +557,10 @@ def compare_postscript_images(
     Returns:
         CompareResult with similarity percentage and pixel statistics.
     """
-    try:
-        import numpy as np
-        from PIL import Image
-    except ImportError as exc:
+    if not _HAS_IMAGE_DEPS:
         return CompareResult(
             same=False,
-            message=f'Image comparison unavailable: {exc}',
+            message='Image comparison unavailable: numpy or PIL not installed',
         )
 
     pa = Path(path_a)

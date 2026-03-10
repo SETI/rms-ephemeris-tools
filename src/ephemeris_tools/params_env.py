@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from ephemeris_tools.constants import DEFAULT_INTERVAL
 from ephemeris_tools.params import (
@@ -24,6 +23,7 @@ from ephemeris_tools.params import (
     parse_column_spec,
     parse_mooncol_spec,
 )
+from ephemeris_tools.planets import parse_moon_spec
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +108,6 @@ def ephemeris_params_from_env() -> EphemerisParams | None:
     mooncols = parse_mooncol_spec(mooncol_strs) if mooncol_strs else []
 
     moon_strs = _get_keys_env('moons')
-    from ephemeris_tools.planets import parse_moon_spec
-
     moon_parsed = parse_moon_spec(nplanet, moon_strs) if moon_strs else []
     moon_ids = [v if v >= 100 else 100 * nplanet + v for v in moon_parsed]
 
@@ -169,7 +167,7 @@ def viewer_params_from_env() -> ViewerParams | None:
 
     center_mode = _get_env('center', 'body')
     if center_mode == 'J2000':
-        ra_type_raw = os.environ.get('center_ra_type', 'hours') or 'hours'  # noqa: SIM112
+        ra_type_raw = _get_env('center_ra_type', 'hours') or 'hours'
         is_ra_hours = _is_ra_hours_from_raw(ra_type_raw)
         try:
             ra_deg = _parse_sexagesimal_to_degrees(
@@ -242,8 +240,6 @@ def viewer_params_from_env() -> ViewerParams | None:
         observer = Observer(name=viewpoint)
 
     moon_tokens = _get_keys_env('moons')
-    from ephemeris_tools.planets import parse_moon_spec
-
     moon_ids = parse_moon_spec(planet_num, moon_tokens) if moon_tokens else None
     moremoons = (_get_env('moremoons') or '').strip().lower() in {'yes', 'y', 'true', '1'}
     rings_raw = _get_env('rings')
@@ -289,7 +285,7 @@ def viewer_params_from_env() -> ViewerParams | None:
     if additional_flag in {'yes', 'y', 'true', '1'}:
         extra_ra_s = _get_env('extra_ra', '')
         extra_dec_s = _get_env('extra_dec', '')
-        extra_ra_type_raw = os.environ.get('extra_ra_type', 'hours') or 'hours'  # noqa: SIM112
+        extra_ra_type_raw = _get_env('extra_ra_type', 'hours') or 'hours'
         is_extra_ra_hours = _is_ra_hours_from_raw(extra_ra_type_raw)
         if extra_ra_s.strip() and extra_dec_s.strip():
             try:
@@ -432,8 +428,6 @@ def tracker_params_from_env() -> TrackerParams | None:
     elif viewpoint:
         observer = Observer(name=viewpoint)
     moon_tokens = _get_keys_env('moons')
-    from ephemeris_tools.planets import parse_moon_spec
-
     moon_ids = parse_moon_spec(planet_num, moon_tokens) if moon_tokens else []
     rings_raw = _get_keys_env('rings')
     ring_names = [r.strip() for r in rings_raw if r.strip()] if rings_raw else None

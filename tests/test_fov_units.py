@@ -13,7 +13,7 @@ from ephemeris_tools.viewer import _fov_deg_from_unit
 def test_fov_deg_from_planet_radii(monkeypatch: pytest.MonkeyPatch) -> None:
     """Planet-radii units use observer range and equatorial radius (angular size)."""
     monkeypatch.setattr(
-        'ephemeris_tools.spice.geometry.planet_ranges',
+        'ephemeris_tools.viewer_helpers.planet_ranges',
         lambda _et, **_kwargs: (0.0, 1_000_000.0),
     )
     result = _fov_deg_from_unit(10.0, 'Neptune radii', et=0.0, cfg=NEPTUNE_CONFIG)
@@ -27,7 +27,7 @@ def test_fov_deg_from_kilometers(monkeypatch: pytest.MonkeyPatch) -> None:
     fov = 1000.0
     obs_dist = 1_000_000.0
     monkeypatch.setattr(
-        'ephemeris_tools.spice.geometry.planet_ranges',
+        'ephemeris_tools.viewer_helpers.planet_ranges',
         lambda _et: (0.0, obs_dist),
     )
     result = _fov_deg_from_unit(fov, 'kilometers', et=0.0, cfg=NEPTUNE_CONFIG)

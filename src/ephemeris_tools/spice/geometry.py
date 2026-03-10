@@ -10,6 +10,7 @@ from ephemeris_tools.constants import EARTH_ID, SUN_ID
 from ephemeris_tools.spice.bodmat import bodmat
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.observer import observer_state
+from ephemeris_tools.spice.orbits import moon_distances
 from ephemeris_tools.spice.shifts import spkapp_shifted
 
 TWOPI = 2.0 * math.pi
@@ -269,7 +270,5 @@ def moon_tracker_offsets(et: float, moon_ids: list[int]) -> tuple[list[float], f
         Tuple of (list of offset angles in radians per moon, limb radius in
         radians).
     """
-    from ephemeris_tools.spice.orbits import moon_distances
-
     offsets, limb = moon_distances(et, moon_ids)
     return (list(offsets), float(limb))

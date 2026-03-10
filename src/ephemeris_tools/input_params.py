@@ -5,6 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, TextIO
 
+from ephemeris_tools.constants import (
+    COL_DISPLAY_TEMPLATES,
+    EPHEM_DESCRIPTIONS_BY_PLANET,
+    MCOL_DISPLAY_BY_ID,
+    PLANET_NUM_TO_NAME,
+)
+from ephemeris_tools.planets import get_moon_display_name
+
 if TYPE_CHECKING:
     from ephemeris_tools.params import EphemerisParams, TrackerParams, ViewerParams
 
@@ -58,14 +66,6 @@ def write_input_parameters_ephemeris(stream: TextIO, params: EphemerisParams) ->
         stream: Output text stream.
         params: Ephemeris parameters to summarize.
     """
-    from ephemeris_tools.constants import (
-        COL_DISPLAY_TEMPLATES,
-        EPHEM_DESCRIPTIONS_BY_PLANET,
-        MCOL_DISPLAY_BY_ID,
-        PLANET_NUM_TO_NAME,
-    )
-    from ephemeris_tools.planets import get_moon_display_name
-
     _w(stream, 'Input Parameters')
     _w(stream, '----------------')
     _w(stream, ' ')
@@ -523,12 +523,12 @@ def write_input_parameters_viewer(stream: TextIO, params: ViewerParams) -> None:
         arcpts_val = params.arcpts
         try:
             if arcpts_val is None:
-                arcpts_str = ''
+                arcpts_str = '4'
             else:
                 a = float(arcpts_val)
                 arcpts_str = str(int(a)) if a == int(a) else str(a)
         except (TypeError, ValueError):
-            arcpts_str = str(arcpts_val).strip() if arcpts_val is not None else ''
+            arcpts_str = str(arcpts_val).strip() if arcpts_val is not None else '4'
         _w(stream, f'      Arc weight: {arcpts_str} (points)')
 
     # Prime meridians (FORTRAN: 3 spaces)

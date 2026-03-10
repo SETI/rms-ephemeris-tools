@@ -7,9 +7,37 @@ import os
 import sys
 from typing import TextIO, TypedDict, cast
 
-from ephemeris_tools.constants import SPACECRAFT_IDS, SPACECRAFT_NAMES
-from ephemeris_tools.params import Observer, TrackerParams
+import cspyce
+
+from ephemeris_tools.constants import (
+    EARTH_ID,
+    EPHEM_DESCRIPTIONS_BY_PLANET,
+    SPACECRAFT_IDS,
+    SPACECRAFT_NAMES,
+    spacecraft_code_to_id,
+    spacecraft_name_to_code,
+)
+from ephemeris_tools.params import Observer, TrackerParams, parse_ring_spec
+from ephemeris_tools.rendering.draw_tracker import (
+    PLANET_GRAY,
+    RING_DATA,
+    draw_moon_tracks,
+)
 from ephemeris_tools.spice.common import get_state
+from ephemeris_tools.spice.geometry import moon_tracker_offsets
+from ephemeris_tools.spice.load import load_spacecraft, load_spice_files
+from ephemeris_tools.spice.observer import set_observer_id, set_observer_location
+from ephemeris_tools.time_utils import (
+    day_sec_from_tai,
+    hms_from_sec,
+    interval_seconds,
+    mjd_from_tai,
+    parse_datetime,
+    tai_from_day_sec,
+    tdb_from_tai,
+    ymd_from_day,
+)
+from ephemeris_tools.viewer import get_planet_config
 
 
 class _RunTrackerKwargs(TypedDict, total=False):
@@ -93,8 +121,6 @@ def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs
     xunit = params.xunit.lower()
     ring_options = None
     if params.ring_names:
-        from ephemeris_tools.params import parse_ring_spec
-
         ring_options = parse_ring_spec(params.planet_num, params.ring_names)
     return {
         'planet_num': params.planet_num,
@@ -159,21 +185,8 @@ def _run_tracker_impl(
     output_txt: TextIO | None = None,
 ) -> None:
     """Internal tracker implementation (flat kwargs from TrackerParams)."""
-    from ephemeris_tools.constants import EARTH_ID
-    from ephemeris_tools.spice.geometry import moon_tracker_offsets
-
     if moon_ids is None:
         moon_ids = []
-
-    from ephemeris_tools.spice.load import load_spice_files
-    from ephemeris_tools.spice.observer import set_observer_id, set_observer_location
-    from ephemeris_tools.time_utils import (
-        interval_seconds,
-        parse_datetime,
-        tai_from_day_sec,
-        tdb_from_tai,
-    )
-    from ephemeris_tools.viewer import get_planet_config
 
     ok, reason = load_spice_files(planet_num, ephem_version)
     if not ok:
@@ -185,9 +198,6 @@ def _run_tracker_impl(
             observer_altitude if observer_altitude is not None else 0.0,
         )
     else:
-        from ephemeris_tools.constants import spacecraft_code_to_id, spacecraft_name_to_code
-        from ephemeris_tools.spice.load import load_spacecraft
-
         code = spacecraft_name_to_code(viewpoint)
         if code is not None:
             sc_id = spacecraft_code_to_id(code)
@@ -289,18 +299,8 @@ def _run_tracker_impl(
     if not xscaled and not explicit_xrange:
         xrange_val = max(xrange_val if xrange_val is not None else 0.0, 10.0)
 
-    # Planet radius (km) for ring drawing - from SPICE to match FORTRAN.
-    import cspyce
-
     radii = cspyce.bodvrd(str(state.planet_id), 'RADII')
     rplanet_km = radii[0]
-
-    # Ring data: FORTRAN constants; ring_flags from ring_options if provided.
-    from ephemeris_tools.rendering.draw_tracker import (
-        PLANET_GRAY,
-        RING_DATA,
-        draw_moon_tracks,
-    )
 
     nrings, ring_rads_list, ring_grays_list = RING_DATA.get(planet_num, (0, [0.0], [0.75]))
     if ring_options:
@@ -312,10 +312,6 @@ def _run_tracker_impl(
 
     out_name = getattr(output_ps, 'name', None) if output_ps else None
     filename = str(out_name) if out_name else 'tracker.ps'
-
-    # Captions: Ephemeris and Viewpoint (match original FORTRAN output).
-    # FORTRAN: rcaptions(1) = WWW_GetKey('ephem')(5:) — kernel description.
-    from ephemeris_tools.constants import EPHEM_DESCRIPTIONS_BY_PLANET
 
     ephem_caption = EPHEM_DESCRIPTIONS_BY_PLANET.get(planet_num, 'DE440')
 
@@ -360,13 +356,6 @@ def _run_tracker_impl(
         )
 
     if output_txt:
-        from ephemeris_tools.time_utils import (
-            day_sec_from_tai,
-            hms_from_sec,
-            mjd_from_tai,
-            ymd_from_day,
-        )
-
         header = ' mjd        year mo dy hr mi   limb'
         for name in moon_names[:25]:
             # FORTRAN: moon_names are uppercase (transformed in tracker3_xxx.f)

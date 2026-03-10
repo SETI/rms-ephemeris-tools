@@ -259,6 +259,9 @@ def _run_viewer_impl(
             # center_ew='west' -> right ansa, 'east' -> left ansa.
             is_right_ansa = center_ansa_ew.strip().lower() == 'west'
             center_ra_rad, center_dec_rad = ansa_radec(et, ring_radius_km, is_right_ansa)
+            if (center_ra_rad, center_dec_rad) == (0.0, 0.0):
+                center_ra_rad = planet_ra
+                center_dec_rad = planet_dec
     elif center_mode == 'star':
         target_star = (center_star_name or '').strip()
         if len(target_star) == 0:

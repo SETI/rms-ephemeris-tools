@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Literal
 
+import cspyce
+
 if TYPE_CHECKING:
     import numpy as np
 
@@ -117,8 +119,6 @@ def compute_planet_grid(
         (limb_radius_plot, segments). Each segment is (points, line_type) with
         points in plot coordinates (origin at view center).
     """
-    import cspyce
-
     get_state()
     obs_pv = observer_state(et)
     planet_dpv, dt = cspyce.spkapp(planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')

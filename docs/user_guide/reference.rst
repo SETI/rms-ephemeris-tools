@@ -202,6 +202,10 @@ units, and instrument FOV names:
      - Voyager ISS Wide Angle Camera FOV
    * - ``Galileo SSI``
      - Galileo SSI FOV
+   * - ``Cassini VIMS``
+     - Cassini VIMS 64x64 FOV
+   * - ``Cassini UVIS``
+     - Cassini UVIS slit FOV
    * - ``LORRI``
      - New Horizons LORRI FOV
 

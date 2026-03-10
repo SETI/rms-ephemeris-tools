@@ -13,6 +13,14 @@ from ephemeris_tools.constants import (
     DEFAULT_INTERVAL,
     DEGREES_PER_HOUR_RA,
 )
+from ephemeris_tools.planets import (
+    JUPITER_CONFIG,
+    MARS_CONFIG,
+    NEPTUNE_CONFIG,
+    PLUTO_CONFIG,
+    SATURN_CONFIG,
+    URANUS_CONFIG,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -341,15 +349,6 @@ def parse_center(planet_num: int, tokens: list[str]) -> ViewerCenter:
     Returns:
         Parsed center as a ``ViewerCenter`` object.
     """
-    from ephemeris_tools.planets import (
-        JUPITER_CONFIG,
-        MARS_CONFIG,
-        NEPTUNE_CONFIG,
-        PLUTO_CONFIG,
-        SATURN_CONFIG,
-        URANUS_CONFIG,
-    )
-
     cfg_map = {
         4: MARS_CONFIG,
         5: JUPITER_CONFIG,

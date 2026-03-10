@@ -48,6 +48,14 @@ from ephemeris_tools.params import (
     EphemerisParams,
     _parse_observatory_coords,
 )
+from ephemeris_tools.planets import (
+    JUPITER_CONFIG,
+    MARS_CONFIG,
+    NEPTUNE_CONFIG,
+    PLUTO_CONFIG,
+    SATURN_CONFIG,
+    URANUS_CONFIG,
+)
 from ephemeris_tools.record import Record
 from ephemeris_tools.spice.geometry import (
     body_latlon,
@@ -66,6 +74,7 @@ from ephemeris_tools.spice.rings import ring_opening
 from ephemeris_tools.time_utils import (
     day_sec_from_tai,
     hms_from_sec,
+    interval_seconds,
     mjd_from_tai,
     parse_datetime,
     tai_from_day_sec,
@@ -205,8 +214,6 @@ def generate_ephemeris(params: EphemerisParams, output: TextIO | None = None) ->
     day2, sec2 = stop_parsed
     tai1 = tai_from_day_sec(day1, _normalized_start_sec(sec1, params.time_unit))
     tai2 = tai_from_day_sec(day2, sec2)
-    from ephemeris_tools.time_utils import interval_seconds
-
     dsec = interval_seconds(params.interval, params.time_unit)
     ntimes = int((tai2 - tai1) / dsec) + 1
     if ntimes < 2:
@@ -517,15 +524,6 @@ def _moon_prefix(moon_id: int, planet_num: int) -> str:
     Returns:
         Uppercased name prefix, 4 chars + '_', padded if needed.
     """
-    from ephemeris_tools.planets import (
-        JUPITER_CONFIG,
-        MARS_CONFIG,
-        NEPTUNE_CONFIG,
-        PLUTO_CONFIG,
-        SATURN_CONFIG,
-        URANUS_CONFIG,
-    )
-
     configs = {
         4: MARS_CONFIG,
         5: JUPITER_CONFIG,

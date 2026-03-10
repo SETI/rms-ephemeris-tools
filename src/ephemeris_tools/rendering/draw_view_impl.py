@@ -58,6 +58,10 @@ from ephemeris_tools.rendering.euclid import (
     eugeom,
     euview,
 )
+from ephemeris_tools.spice.bodmat import bodmat
+from ephemeris_tools.spice.common import get_state
+from ephemeris_tools.spice.observer import observer_state
+from ephemeris_tools.spice.shifts import spkapp_shifted
 
 
 @dataclass(frozen=True)
@@ -120,11 +124,6 @@ def draw_planetary_view(output: TextIO, options: DrawPlanetaryViewOptions) -> No
         options: Geometry and display options (obs_time, fov, center, planet,
             moons, rings, arcs, stars, title, captions). See DrawPlanetaryViewOptions.
     """
-    from ephemeris_tools.spice.bodmat import bodmat
-    from ephemeris_tools.spice.common import get_state
-    from ephemeris_tools.spice.observer import observer_state
-    from ephemeris_tools.spice.shifts import spkapp_shifted
-
     spice_state = get_state()
     planet_id = spice_state.planet_id
     planet_num = spice_state.planet_num

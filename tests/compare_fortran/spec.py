@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import parse_qs, quote, urlencode
 
+from ephemeris_tools.config import get_spice_path
 from ephemeris_tools.planets import (
     JUPITER_CONFIG,
     MARS_CONFIG,
@@ -483,26 +484,29 @@ class RunSpec:
         if p.get('query_string'):
             qs = str(p['query_string'])
             qs = _normalize_query_string(qs)
+            parsed = parse_qs(qs, keep_blank_values=True)
             # FORTRAN tracker requires xrange and xunit (PLOT_SCALE); inject defaults if missing.
             if self.tool == 'tracker':
-                parsed = parse_qs(qs, keep_blank_values=True)
                 if not parsed.get('xrange') or not (parsed['xrange'][0] or '').strip():
                     parsed['xrange'] = ['180']
                 if not parsed.get('xunit') or not (parsed['xunit'][0] or '').strip():
                     parsed['xunit'] = ['arcsec']
                 qs = urlencode(parsed, doseq=True)
             env['QUERY_STRING'] = qs
+            if parsed.get('planet') and (parsed['planet'][0] or '').strip():
+                env['NPLANET'] = str(int(parsed['planet'][0]))
+            elif parsed.get('abbrev'):
+                abbrev = (parsed['abbrev'][0] or '').strip().lower()
+                if abbrev in ABBREV_TO_PLANET:
+                    env['NPLANET'] = str(ABBREV_TO_PLANET[abbrev])
         else:
             pairs = _query_pairs(p, self.tool)
             env['QUERY_STRING'] = '&'.join(
                 f'{quote(name, safe="")}={quote(value, safe="")}' for name, value in pairs
             )
 
-        # Variables read via WWW_GetEnv (real env vars, not QUERY_STRING).
-        from ephemeris_tools.config import get_spice_path
-
         env['SPICE_PATH'] = get_spice_path()
-        if 'planet' in p:
+        if 'NPLANET' not in env and 'planet' in p:
             env['NPLANET'] = str(int(p['planet']))
         if self.tool == 'ephemeris' and table_path:
             env['EPHEM_FILE'] = table_path
@@ -596,7 +600,7 @@ class RunSpec:
                 args.append('--standard-star-catalog')
             if p.get('additional'):
                 args.append('--additional-star')
-            if 'torus' in p and p['torus'] is not None:
+            if p.get('torus'):
                 args.append('--io-torus')
             if 'torus_inc' in p and p['torus_inc'] is not None:
                 args.extend(['--io-torus-inc', str(p['torus_inc'])])
@@ -612,7 +616,11 @@ class RunSpec:
                 args.extend(['--extra-dec', str(p['extra_dec'])])
             if p.get('other'):
                 args.append('--other')
-                args.extend(str(o) for o in p['other'])
+                for o in p['other']:
+                    for body in str(o).split('#'):
+                        body = body.strip()
+                        if body:
+                            args.append(body)
             if 'labels' in p and p['labels'] is not None:
                 args.extend(['--labels', str(p['labels'])])
             if 'moonpts' in p and p['moonpts'] is not None:

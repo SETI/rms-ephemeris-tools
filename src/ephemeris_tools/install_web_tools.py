@@ -11,6 +11,7 @@ import argparse
 import logging
 import shutil
 import sys
+from importlib import resources
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -18,24 +19,33 @@ logger = logging.getLogger(__name__)
 
 def _source_root() -> Path:
     """Return the path to the bundled web/tools directory (ephemeris_tools._web_tools)."""
-    from importlib import resources
-
     files = resources.files('ephemeris_tools._web_tools')
     return Path(str(files))
 
 
-def install_web_tools(dest_dir: Path) -> int:
+def install_web_tools(dest_dir: str | Path) -> int:
     """Copy all files from the bundled web/tools into dest_dir.
 
     Preserves directory structure (e.g. samples/). Skips __init__.py.
     Creates dest_dir and any subdirectories as needed.
 
     Parameters:
-        dest_dir: Target directory to copy files into.
+        dest_dir: Target directory to copy files into. Accepts a string,
+            :class:`~pathlib.Path`, or any :class:`os.PathLike`.
 
     Returns:
         0 on success, 1 on error.
+
+    Raises:
+        TypeError: If *dest_dir* is not a string or path-like object.
     """
+    try:
+        dest_dir = Path(dest_dir)
+    except TypeError:
+        raise TypeError(
+            f'dest_dir must be a string or path-like object, got {type(dest_dir).__name__}'
+        ) from None
+
     src = _source_root()
     if not src.is_dir():
         logger.error('Bundled web/tools source not found at %s', src)
