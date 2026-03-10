@@ -147,7 +147,8 @@ can be mixed (e.g. ``--rings main 62`` for Saturn).
      - Name(s)
      - Description
    * - 71
-     - alpha, beta, eta, gamma, delta, epsilon
+     - examples: alpha, beta, eta, gamma, delta, epsilon (any ring name
+       maps to this code)
      - All Uranus rings (Six, Five, Four, Alpha, Beta, Eta, Gamma, Delta,
        Lambda, Epsilon, Nu, Mu). Any ring name maps to the same code.
 
@@ -567,7 +568,8 @@ Viewer star catalogs and plot options
    Label size for moons and stars. Only the size word is required:
    ``small``, ``medium``, or ``large`` (case-insensitive). Full strings
    like ``Small (6 points)`` are also accepted. The number of points
-   is implied by the size; you do not need to specify it.
+   is implied by the size; you do not need to specify it. Quote values
+   containing spaces or parentheses (e.g. ``--labels "Small (6 points)"``).
 
 **Blank disks** (``--blank-disks``)
    Flag: when present, white out planet and moon disks. Omit for normal
@@ -575,17 +577,20 @@ Viewer star catalogs and plot options
 
 **Ring opacity** (``--ring-opacity``, Saturn only)
    Ring rendering style. Values: ``Transparent``, ``Semi-transparent (2x file size)``,
-   ``Opaque``.
+   ``Opaque``. Quote values containing spaces or parentheses
+   (e.g. ``--ring-opacity "Semi-transparent (2x file size)"``).
 
 **Ring pericenter markers** (``--ring-pericenter-markers``)
    Saturn: ``None``, ``F Ring``. Uranus: ``None``, ``Epsilon Ring only``,
    ``All rings``. ``--ring-pericenter-size`` sets the marker size in points
-   (default ``4``).
+   (default ``4``). Quote multi-word or parenthesized values
+   (e.g. ``--ring-pericenter-markers "Epsilon Ring only"``).
 
 **Neptune arc model** (``--neptune-arc-model``, Neptune only)
    Arc motion model. Values: ``#1 (820.1194 deg/day)``, ``#2 (820.1118 deg/day)``,
    ``#3 (820.1121 deg/day)``. ``--neptune-arc-thickness`` sets the arc
-   line weight in points (default ``4``).
+   line weight in points (default ``4``). Quote values containing spaces or
+   parentheses (e.g. ``--neptune-arc-model "#1 (820.1194 deg/day)"``).
 
 **Io torus** (``--io-torus``, ``--io-torus-inc``, ``--io-torus-rad``; Jupiter only)
    ``--io-torus``: flag; when present, show the Io plasma torus. Omit to

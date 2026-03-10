@@ -302,12 +302,22 @@ def _run_viewer_impl(
     if moon_ids:
         track_moon_ids = [tid for tid in track_moon_ids if tid in moon_ids]
     if moremoons:
-        irregular_ids = {
-            m.id for m in cfg.moons if m.id != cfg.planet_id and getattr(m, 'is_irregular', False)
-        }
-        for mid in irregular_ids:
-            if mid not in track_moon_ids:
-                track_moon_ids.append(mid)
+        track_moon_ids_set = set(track_moon_ids)
+        for m in cfg.moons:
+            if (
+                m.id != cfg.planet_id
+                and getattr(m, 'is_irregular', False)
+                and m.id not in track_moon_ids_set
+            ):
+                track_moon_ids.append(m.id)
+                track_moon_ids_set.add(m.id)
+    if moon_ids and not track_moon_ids:
+        logger.warning(
+            'Moon selection %r matched no moons for planet %s; showing all moons.',
+            moon_ids,
+            planet_num,
+        )
+        track_moon_ids = [m.id for m in cfg.moons if m.id != cfg.planet_id]
     id_to_name = {m.id: m.name for m in cfg.moons}
 
     # Table: planet first, then moons (same order as FORTRAN moon_flags).
@@ -471,15 +481,9 @@ def _run_viewer_impl(
             for i in range(1, len(f_moon_ids)):
                 if f_moon_ids[i] not in moon_ids:
                     f_moon_flags[i] = False
-            # Fallback: if selection filtered out every moon (e.g. wrong planet or
-            # parse mismatch), show all moons so we do not emit a diagram with no
-            # moons when the user requested a valid group (e.g. 609 = S1-S9).
+            # Fallback: if selection filtered out every moon, show all (track_moon_ids
+            # was already expanded earlier so FOV table and caption match).
             if not any(f_moon_flags[1:]):
-                logger.warning(
-                    'Moon selection %r matched no moons for planet %s; showing all moons.',
-                    moon_ids,
-                    planet_num,
-                )
                 for i in range(1, len(f_moon_flags)):
                     f_moon_flags[i] = True
         if moremoons:

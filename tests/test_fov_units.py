@@ -28,7 +28,7 @@ def test_fov_deg_from_kilometers(monkeypatch: pytest.MonkeyPatch) -> None:
     obs_dist = 1_000_000.0
     monkeypatch.setattr(
         'ephemeris_tools.viewer_helpers.planet_ranges',
-        lambda _et: (0.0, obs_dist),
+        lambda _et, **_kwargs: (0.0, obs_dist),
     )
     result = _fov_deg_from_unit(fov, 'kilometers', et=0.0, cfg=NEPTUNE_CONFIG)
     expected = fov * math.degrees(math.asin(1.0 / obs_dist))

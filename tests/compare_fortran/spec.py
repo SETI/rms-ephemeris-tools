@@ -431,6 +431,8 @@ def _query_pairs(p: dict[str, Any], tool: str) -> list[tuple[str, str]]:
             pairs.append(('arcpts', str(p['arcpts'])))
         if 'additional' in p and p['additional'] is not None:
             pairs.append(('additional', str(p['additional'])))
+        if p.get('standard'):
+            pairs.append(('standard-star-catalog', 'true'))
         if 'extra_ra' in p and p['extra_ra'] is not None:
             pairs.append(('extra_ra', str(p['extra_ra'])))
         if 'extra_ra_type' in p and p['extra_ra_type'] is not None:
@@ -496,7 +498,7 @@ class RunSpec:
             if parsed.get('planet') and (parsed['planet'][0] or '').strip():
                 env['NPLANET'] = str(int(parsed['planet'][0]))
             elif parsed.get('abbrev'):
-                abbrev = (parsed['abbrev'][0] or '').strip().lower()
+                abbrev = (parsed['abbrev'][0] or '').strip().lower()[:3]
                 if abbrev in ABBREV_TO_PLANET:
                     env['NPLANET'] = str(ABBREV_TO_PLANET[abbrev])
         else:
@@ -505,7 +507,8 @@ class RunSpec:
                 f'{quote(name, safe="")}={quote(value, safe="")}' for name, value in pairs
             )
 
-        env['SPICE_PATH'] = get_spice_path()
+        if 'SPICEPATH' not in env and 'SPICE_PATH' not in env:
+            env['SPICE_PATH'] = get_spice_path()
         if 'NPLANET' not in env and 'planet' in p:
             env['NPLANET'] = str(int(p['planet']))
         if self.tool == 'ephemeris' and table_path:
