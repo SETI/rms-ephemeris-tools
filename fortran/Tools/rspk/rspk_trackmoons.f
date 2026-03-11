@@ -150,9 +150,9 @@ c Internal variables
         character*8             planetstr
         character*24            tempstr
 
-c Planet names
-        character*8             planet_names(4:8)/ 'Mars', 'Jupiter',
-     &                                  'Saturn', 'Uranus', 'Neptune' /
+c Planet names (4=Mars .. 9=Pluto)
+        character*8             planet_names(4:9)/ 'Mars', 'Jupiter',
+     &                         'Saturn', 'Uranus', 'Neptune', 'Pluto' /
 
         double precision        PLOT_HEIGHT, BAND_WIDTH
         data                    PLOT_HEIGHT/612.d0/
@@ -659,7 +659,7 @@ c corresponding to a major mark.
         dutc_ref = FJUL_DUTCofTAI(tai1, secs)
 
         if (mark1_imins .gt. MINS_PER_DAY) then
-                call FJUL_YMDofDUTC(dutc, y, m, d)
+                call FJUL_YMDofDUTC(dutc_ref, y, m, d)
                 dutc_ref = dutc_ref - mod(d-1, mark1_imins/MINS_PER_DAY)
         end if
 

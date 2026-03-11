@@ -9,6 +9,7 @@ from ephemeris_tools.time_utils import (
     day_sec_from_tai,
     parse_datetime,
     tai_from_day_sec,
+    yd_from_day,
     ymd_from_day,
 )
 
@@ -20,7 +21,7 @@ def _yt_lines(text: str) -> list[str]:
 
 
 def test_label_yaxis_case_6_017_first_major_tick_and_spacing() -> None:
-    """Case 6_017: first major is FEB-19 and has 4 minors before MAR-01."""
+    """Case 6_017: first major is FEB-21 and has 3 minors before MAR-01."""
     out = StringIO()
     parsed1 = parse_datetime('1550-02-17 00:00:00')
     parsed2 = parse_datetime('1550-04-20 00:00:00')
@@ -37,13 +38,14 @@ def test_label_yaxis_case_6_017_first_major_tick_and_spacing() -> None:
         dt=86400.0,
         day_sec_from_tai=day_sec_from_tai,
         ymd_from_day=ymd_from_day,
+        yd_from_day_fn=yd_from_day,
         tai_from_day_sec=tai_from_day_sec,
     )
     lines = _yt_lines(out.getvalue())
     major_indexes = [i for i, line in enumerate(lines) if ' YT1' in line]
-    assert '(1550-FEB-19' in lines[major_indexes[0]]
+    assert '(1550-FEB-21' in lines[major_indexes[0]]
     assert '(MAR-01' in lines[major_indexes[1]]
-    assert major_indexes[1] - major_indexes[0] - 1 == 4
+    assert major_indexes[1] - major_indexes[0] - 1 == 3
 
 
 def test_label_yaxis_case_7_027_first_major_tick_and_no_mar_31() -> None:
@@ -64,6 +66,7 @@ def test_label_yaxis_case_7_027_first_major_tick_and_no_mar_31() -> None:
         dt=36000.0,
         day_sec_from_tai=day_sec_from_tai,
         ymd_from_day=ymd_from_day,
+        yd_from_day_fn=yd_from_day,
         tai_from_day_sec=tai_from_day_sec,
     )
     lines = _yt_lines(out.getvalue())

@@ -493,7 +493,7 @@
                         </li>
                         <!--#if expr="v('PREFIX') == ''"-->
                         <li>
-                            <!--#echo var='PLANET'--> projected equatorial radius
+                            <!--#echo var='PLANET'--> projected equatorial radius (arcsec)
                             <div class="indent">
                                 Adds  a column containing the projected equatorial radius of <!--#echo var='PLANET'-->
                                 as seen from the observer, in arcseconds.
@@ -541,7 +541,7 @@
                             </div>
                         </li>
                         <li>
-                            <!--#echo var='PLANET'--> projected equatorial radius
+                            <!--#echo var='PLANET'--> projected equatorial radius (deg)
                             <div class="indent">
                                 Adds  a column containing the projected equatorial radius of <!--#echo var='PLANET'-->
                                 as seen from the observer, in degrees.

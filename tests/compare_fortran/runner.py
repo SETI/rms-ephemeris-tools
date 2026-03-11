@@ -8,7 +8,49 @@ import sys
 from pathlib import Path
 from urllib.parse import parse_qs
 
-from tests.compare_fortran.spec import RunSpec
+from ephemeris_tools.config import get_spice_path
+from tests.compare_fortran.spec import ABBREV_TO_PLANET, RunSpec, _normalize_query_string
+
+# Defaults for tracker when QUERY_STRING omits them (FORTRAN requires xrange/xunit).
+DEFAULT_TRACKER_XRANGE = '180'
+DEFAULT_TRACKER_XUNIT = 'arcsec'
+
+
+def _env_from_query_string(query_string: str) -> dict[str, str]:
+    """Build CGI-style env from a query string to match parse_cgi.sh behavior.
+
+    We do not run web/cgi-bin/tools/parse_cgi.sh; this replicates it so the
+    test harness exercises the same env shape as real CGI.
+
+    - Every param key from the query is present in env (do not skip empty
+      values). Real CGI exports "$key"="$val" even when val is empty, so
+      "present but empty" matches production and avoids bugs that depend on
+      key in os.environ.
+    - Multi-valued params (e.g. columns=1&columns=2) are stored as a single
+      env var with values joined by '#' (e.g. columns=1#2), matching the
+      second loop in parse_cgi.sh. Python params_env._get_keys_env() expects
+      this #-joined form when reading multi-valued keys.
+    - We do not set key#1, key#2, ... ; real CGI only exports the single
+      key with #-joined value, so we match that to exercise the same code path.
+
+    Parameters:
+        query_string: URL query string (e.g. key1=val1&key2=val2). Multi-valued
+            keys yield a single env entry with values joined by '#'; empty
+            values are preserved.
+
+    Returns:
+        dict[str, str]: Environment-like mapping of parameter names to string
+        values (one key per query param, #-joined for multi-valued).
+    """
+    parsed = parse_qs(query_string, keep_blank_values=True)
+    env: dict[str, str] = {}
+    for key, values in parsed.items():
+        if not key:
+            continue
+        # Same as parse_cgi.sh: multi-valued params get #-joined; empty
+        # values are still exported (use first value or '').
+        env[key] = '#'.join(values)
+    return env
 
 
 def run_python(
@@ -25,19 +67,31 @@ def run_python(
     tracker text table or viewer FOV table when applicable.
     """
     env = os.environ.copy()
+    env.setdefault('SPICE_PATH', get_spice_path())
     if spec.params.get('query_string'):
-        query_string = str(spec.params['query_string'])
+        # URL/test-file: use the same env vars for both Python and FORTRAN.
+        # Python is run with --cgi and reads from env; FORTRAN gets QUERY_STRING.
+        # Normalize (strip values) so FORTRAN does not crash on leading space; both see same params.
+        query_string = _normalize_query_string(str(spec.params['query_string']))
+        env.update(_env_from_query_string(query_string))
+        # FORTRAN requires xrange/xunit for tracker; inject defaults so both get same params.
+        if spec.tool == 'tracker':
+            xrange_val = env.get('xrange')
+            if xrange_val is None or len(xrange_val) == 0 or xrange_val == '':
+                env['xrange'] = DEFAULT_TRACKER_XRANGE
+            xunit_val = env.get('xunit')
+            if xunit_val is None or len(xunit_val) == 0 or xunit_val == '':
+                env['xunit'] = DEFAULT_TRACKER_XUNIT
+
+        # Match real CGI: shell scripts set NPLANET from abbrev (abbrev_to_planet)
+        # and export it; the form sends abbrev=, not NPLANET. So when the query
+        # contains abbrev, set NPLANET from it. spec.params['planet'] (e.g. from
+        # spec_from_query_input) overrides when present.
         parsed = parse_qs(query_string, keep_blank_values=True)
-        for key, values in parsed.items():
-            if not values or all(v == '' for v in values):
-                continue
-            first_non_empty = next((v for v in values if v != ''), None)
-            if first_non_empty is None:
-                continue
-            env[key] = first_non_empty
-            if len(values) > 1:
-                for idx, value in enumerate(values, start=1):
-                    env[f'{key}#{idx}'] = value
+        abbrev_vals = parsed.get('abbrev', [])
+        abbrev_first = (abbrev_vals[0] or '').strip().lower()[:3] if abbrev_vals else ''
+        if abbrev_first and abbrev_first in ABBREV_TO_PLANET:
+            env['NPLANET'] = str(ABBREV_TO_PLANET[abbrev_first])
         if 'planet' in spec.params:
             try:
                 env['NPLANET'] = str(int(spec.params['planet']))
@@ -45,6 +99,11 @@ def run_python(
                 raise ValueError(
                     f"spec.params['planet'] must be numeric, got {spec.params['planet']!r}"
                 ) from e
+
+        # Real CGI sets REQUEST_METHOD (e.g. GET); FORTRAN getcgivars and
+        # Python may rely on it when comparing behavior.
+        env.setdefault('REQUEST_METHOD', 'GET')
+
         if out_table and spec.tool == 'ephemeris':
             env['EPHEM_FILE'] = str(out_table)
         if out_ps and spec.tool == 'tracker':
@@ -57,6 +116,7 @@ def run_python(
             env['VIEWER_TEXTFILE'] = str(out_txt)
         cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main', spec.tool, '--cgi']
     else:
+        # No query_string: spec came from direct args (e.g. --planet 6 --time ...); use CLI.
         cmd = [python_exe or sys.executable, '-m', 'ephemeris_tools.cli.main']
         cmd.extend(spec.cli_args_for_python())
         if out_table and spec.tool == 'ephemeris':
@@ -94,6 +154,8 @@ def run_fortran(
     after setting env (so you can use $EPHEM_FILE in the string).
     """
     env = os.environ.copy()
+    # Ensure FORTRAN uses same SPICE_PATH as Python for identical kernel loading
+    env.setdefault('SPICE_PATH', get_spice_path())
     table_path = str(out_table) if out_table else ''
     ps_path = str(out_ps) if out_ps else ''
     txt_path = str(out_txt) if out_txt else ''

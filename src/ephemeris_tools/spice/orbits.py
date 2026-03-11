@@ -6,17 +6,14 @@ Ported from rspk_orbitopen, rspk_moondist.
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
 
 import cspyce
+import numpy as np
 
 from ephemeris_tools.spice.bodmat import bodmat as planet_bodmat
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.observer import observer_state
 from ephemeris_tools.spice.shifts import spkapp_shifted
-
-if TYPE_CHECKING:
-    import numpy as np
 
 TWOPI = 2.0 * math.pi
 
@@ -72,8 +69,6 @@ def moon_distances(et: float, moon_ids: list[int]) -> tuple[np.ndarray, float]:
     Returns:
         Tuple of (offsets array in radians, limb radius in radians).
     """
-    import numpy as np
-
     state = get_state()
     obs_pv = observer_state(et)
     planet_dpv, dt = cspyce.spkapp(state.planet_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')

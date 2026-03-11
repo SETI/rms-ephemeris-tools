@@ -8,7 +8,10 @@ from ephemeris_tools.rendering.escher.constants import (
     _GRAY,
     BUFSZ,
     MAXX,
+    MAXY,
     MINWIDTH,
+    MINX,
+    MINY,
 )
 from ephemeris_tools.rendering.escher.state import EscherState
 
@@ -304,8 +307,6 @@ def escl07(hmin: int, hmax: int, vmin: int, vmax: int, state: EscherState) -> No
         vmin, vmax: Vertical line bounds.
         state: Escher state (file may be closed on full-page clear).
     """
-    from ephemeris_tools.rendering.escher.constants import MAXX, MAXY, MINX, MINY
-
     if state.outuni is None:
         return
     if hmin == MINX and hmax == MAXX and vmin == MINY and vmax == MAXY:
@@ -338,6 +339,4 @@ def espl07() -> tuple[int, int, int, int]:
     Returns:
         Tuple (MINX, MAXX, MINY, MAXY) for the device.
     """
-    from ephemeris_tools.rendering.escher.constants import MAXX, MAXY, MINX, MINY
-
     return (MINX, MAXX, MINY, MAXY)

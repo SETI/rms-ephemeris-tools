@@ -1,5 +1,5 @@
 <!--#set var="PLANET"   value="Pluto"           -->
-<!--#set var="VERSION"  value="3.1"             -->
+<!--#set var="VERSION"  value="3.2"             -->
 <!--#set var="YMD"      value="2022-08-03"      -->
 <!--#set var="UPDATED"  value="August 20, 2023"  -->
 <!--#set var="TOOL"     value="viewer3"         -->
@@ -42,14 +42,14 @@
             <div class="indent">
                 <input type="text" name="fov" size="12" maxlength="50" autocomplete="on" aria-label="field of view"/>
                 <select name="fov_unit" autocomplete="on" aria-label="field of view unit">
-                     <option> seconds of arc
-                     <option> degrees
-                     <option> milliradians
-                     <option> microradians
-                     <option> Pluto radii (1153 km)
-                     <option selected> Pluto-Charon separations (19,571 km)
-                     <option> kilometers
-                     <option> LORRI FOVs
+                     <option value="seconds of arc"> seconds of arc
+                     <option value="degrees"> degrees
+                     <option value="milliradians"> milliradians
+                     <option value="microradians"> microradians
+                     <option value="Pluto radii (1153 km)"> Pluto radii (1153 km)
+                     <option value="Pluto-Charon separations (19,571 km)" selected> Pluto-Charon separations (19,571 km)
+                     <option value="kilometers"> kilometers
+                     <option value="LORRI FOVs"> LORRI FOVs
                 </select>
                 <strong>(Required)</strong>
               </div>
@@ -59,34 +59,34 @@
                   <li>
                       <label><input type="radio" name="center" value="body" checked  autocomplete="on"/> Body:</label>
                       <select name="center_body" autocomplete="on" aria-label="select body">
-                          <option> Barycenter
-                          <option selected> Pluto
-                          <option> Charon (P1)
-                          <option> Nix (P2)
-                          <option> Hydra (P3)
-                          <option> Kerberos (P4)
-                          <option> Styx (P5)
+                          <option value="Barycenter"> Barycenter
+                          <option value="Pluto" selected> Pluto
+                          <option value="Charon (P1)"> Charon (P1)
+                          <option value="Nix (P2)"> Nix (P2)
+                          <option value="Hydra (P3)"> Hydra (P3)
+                          <option value="Kerberos (P4)"> Kerberos (P4)
+                          <option value="Styx (P5)"> Styx (P5)
                       </select>
                   </li>
                   <li>
                       <label><input type="radio" name="center" value="ansa"  autocomplete="on"/> Ring ansa:</label>
                       <select name="center_ansa" autocomplete="on" aria-label="select ring ansa">
-                          <option>          Styx
-                          <option>          Nix
-                          <option>          Kerberos
-                          <option selected> Hydra
+                          <option value="Styx"> Styx
+                          <option value="Nix"> Nix
+                          <option value="Kerberos"> Kerberos
+                          <option value="Hydra" selected> Hydra
                       </select>
                       <select name="center_ew" autocomplete="on" aria-label="select ring ansa direction">
-                          <option selected> east
-                          <option>          west
+                          <option value="east" selected> east
+                          <option value="west"> west
                       </select>
                   </li>
                   <li>
                       <label><input type="radio" name="center" value="J2000"  autocomplete="on"/>J2000 RA and Dec:</label>
                       <input type="text" name="center_ra" size="12" maxlength="50"  autocomplete="on" aria-label="J2000 RA and Dec"/>
                       <select name="center_ra_type" autocomplete="on" aria-label="select diagram center RA type">
-                        <option selected> hours
-                        <option>          degrees
+                        <option value="hours" selected> hours
+                        <option value="degrees"> degrees
                       </select>
                       <input type="text" name="center_dec" size="12" maxlength="50"  autocomplete="on" aria-label="degrees"/> degrees
                   </li>
@@ -107,10 +107,10 @@
                 <li>
                     <input type="radio" name="viewpoint" value="observatory" checked autocomplete="on" aria-label="viewpoint select observatory"/> Observatory:
                     <select name="observatory" autocomplete="on" aria-label="viewpoint observatory">
-                      <option selected> Earth's center
-                      <option> New Horizons
-                      <option> HST
-                      <option> JWST
+                      <option value="Earth's center" selected> Earth's center
+                      <option value="New Horizons"> New Horizons
+                      <option value="HST"> HST
+                      <option value="JWST"> JWST
                     <!--#include file="OBSERVATORIES.html"-->
                     </select>
                 </li>
@@ -119,8 +119,8 @@
                     Lat: <input type="text" name="latitude"  size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint latitude"/>
                     Lon: <input type="text" name="longitude" size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint longitude"/>
                     <select name="lon_dir" autocomplete="on" aria-label="viewpoint longitude direction">
-                      <option selected> east
-                      <option> west
+                      <option value="east" selected> east
+                      <option value="west"> west
                     </select>
                     Alt: <input type="text" name="altitude" size="12" maxlength="50" value="" autocomplete="on" aria-label="viewpoint altitude"/> (m)
                 </li>
@@ -173,8 +173,8 @@
                     <label><input type="checkbox" name="additional" value="Yes"  autocomplete="on"/> Additional star:</label>
                     RA = <input type="text" name="extra_ra" size="12" maxlength="50"  autocomplete="on" aria-label="RA ="/>
                     <select name="extra_ra_type" autocomplete="on" aria-label="select additional star RA type">
-                        <option selected> hours
-                        <option> degrees
+                        <option value="hours" selected> hours
+                        <option value="degrees"> degrees
                     </select>
                     Dec = <input type="text" name="extra_dec"  size="12" maxlength="50"  autocomplete="on" aria-label="Dec ="/>
                     Label = <input type="text" name="extra_name" size="12" maxlength="50"  autocomplete="on" aria-label="Label ="/>
@@ -201,10 +201,10 @@
                 <li>
                     <a href="viewer3_<!--#echo var='ABBREV'-->_help.shtml#LABELS" target="_blank">Moon & Star Labels:</a>
                       <select name="labels" autocomplete="on" aria-label="moon and star labels"/>
-                        <option>          None
-                        <option selected> Small (6 points)
-                        <option>          Medium (9 points)
-                        <option>          Large (12 points)
+                        <option value="None"> None
+                        <option value="Small (6 points)" selected> Small (6 points)
+                        <option value="Medium (9 points)"> Medium (9 points)
+                        <option value="Large (12 points)"> Large (12 points)
                     </select>
                 </li>
                 <li class="pb-1">

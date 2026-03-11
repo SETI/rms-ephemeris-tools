@@ -39,6 +39,15 @@ params
    :show-inheritance:
    :exclude-members: __dict__,__hash__,__module__,__weakref__,__annotations__
 
+params_env
+----------
+
+.. automodule:: ephemeris_tools.params_env
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: __dict__,__hash__,__module__,__weakref__,__annotations__
+
 record
 ------
 
@@ -97,6 +106,24 @@ viewer
 ------
 
 .. automodule:: ephemeris_tools.viewer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: __dict__,__hash__,__module__,__weakref__,__annotations__
+
+viewer_helpers
+--------------
+
+.. automodule:: ephemeris_tools.viewer_helpers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: __dict__,__hash__,__module__,__weakref__,__annotations__
+
+install_web_tools
+-----------------
+
+.. automodule:: ephemeris_tools.install_web_tools
    :members:
    :undoc-members:
    :show-inheritance:

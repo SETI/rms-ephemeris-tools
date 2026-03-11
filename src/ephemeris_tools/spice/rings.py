@@ -13,6 +13,7 @@ import cspyce
 from ephemeris_tools.constants import SUN_ID
 from ephemeris_tools.spice.bodmat import bodmat as planet_bodmat
 from ephemeris_tools.spice.common import get_state
+from ephemeris_tools.spice.geometry import planet_ranges
 from ephemeris_tools.spice.observer import observer_state
 
 TWOPI = 2.0 * math.pi
@@ -148,13 +149,21 @@ def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, floa
         is_right: True for right ansa, False for left ansa.
 
     Returns:
-        Tuple of (ra, dec) in radians.
+        Tuple (ra_offset, dec_offset) in radians. When the computed ratio is
+        outside [-1.0, 1.0] (invalid ansa geometry), ansa_radec returns the
+        sentinel (0.0, 0.0); callers should check for this instead of
+        expecting an exception.
 
     Raises:
-        ValueError: If geometry is edge-on (denom ~ 0).
-    """
-    from ephemeris_tools.spice.geometry import planet_ranges
+        ValueError: If geometry is edge-on (denom ~ 0). No exception is raised
+        for the out-of-range ratio case; callers must detect the (0.0, 0.0)
+        sentinel.
 
+    Notes:
+        The (0.0, 0.0) sentinel for out-of-range geometry mirrors FORTRAN
+        behavior for observer-too-close or extreme opening geometries; tests
+        may assert ansa_radec returns (0.0, 0.0) for such cases.
+    """
     _, obs_dist = planet_ranges(et)
     geom = ring_opening(et)
     denom = obs_dist * math.cos(geom.obs_b)
@@ -163,7 +172,10 @@ def ansa_radec(et: float, radius_km: float, is_right: bool) -> tuple[float, floa
             f'Ring ansa calculation undefined for edge-on geometry: obs_dist*cos(obs_b)={denom!r}'
         )
     ratio = radius_km / denom
-    ratio = max(-1.0, min(1.0, ratio))
+    # Match observed FORTRAN behavior for invalid ansa geometry
+    # (observer too close / extreme opening): axis labels are centered at 0.
+    if not (-1.0 <= ratio <= 1.0):
+        return (0.0, 0.0)
     offset = math.asin(ratio)
     if is_right:
         lon = 0.5 * math.pi - offset

@@ -66,12 +66,15 @@ def test_tracker_matches_fortran_time_grid_split(monkeypatch: pytest.MonkeyPatch
     plot_dts: list[float] = []
 
     monkeypatch.setattr(
-        'ephemeris_tools.spice.load.load_spice_files',
+        'ephemeris_tools.tracker.load_spice_files',
         lambda planet_num, ephem_version: (True, ''),
     )
-    monkeypatch.setattr('ephemeris_tools.spice.observer.set_observer_id', lambda obs_id: None)
     monkeypatch.setattr(
-        'ephemeris_tools.viewer.get_planet_config',
+        'ephemeris_tools.tracker.set_observer_id',
+        lambda obs_id: None,
+    )
+    monkeypatch.setattr(
+        'ephemeris_tools.tracker.get_planet_config',
         lambda planet_num: SimpleNamespace(
             moons=[
                 SimpleNamespace(id=599, name='Jupiter'),
@@ -84,7 +87,7 @@ def test_tracker_matches_fortran_time_grid_split(monkeypatch: pytest.MonkeyPatch
         lambda: SimpleNamespace(planet_id=599),
     )
     monkeypatch.setattr(cspyce, 'bodvrd', lambda body, item: [71492.0, 0.0, 0.0])
-    monkeypatch.setattr('ephemeris_tools.time_utils.tdb_from_tai', lambda tai: tai)
+    monkeypatch.setattr('ephemeris_tools.tracker.tdb_from_tai', lambda tai: tai)
 
     def _fake_moon_tracker_offsets(et: float, moon_ids: list[int]) -> tuple[list[float], float]:
         del moon_ids
@@ -95,11 +98,11 @@ def test_tracker_matches_fortran_time_grid_split(monkeypatch: pytest.MonkeyPatch
         return ([(et - first_et) / 1000.0], 0.0)
 
     monkeypatch.setattr(
-        'ephemeris_tools.spice.geometry.moon_tracker_offsets',
+        'ephemeris_tools.tracker.moon_tracker_offsets',
         _fake_moon_tracker_offsets,
     )
     monkeypatch.setattr(
-        'ephemeris_tools.rendering.draw_tracker.draw_moon_tracks',
+        'ephemeris_tools.tracker.draw_moon_tracks',
         lambda *args, **kwargs: plot_dts.append(float(kwargs['dt'])),
     )
 
@@ -136,12 +139,15 @@ def test_tracker_preserves_user_arcsec_xrange_below_ten(monkeypatch: pytest.Monk
     captured_xranges: list[float] = []
 
     monkeypatch.setattr(
-        'ephemeris_tools.spice.load.load_spice_files',
+        'ephemeris_tools.tracker.load_spice_files',
         lambda planet_num, ephem_version: (True, ''),
     )
-    monkeypatch.setattr('ephemeris_tools.spice.observer.set_observer_id', lambda obs_id: None)
     monkeypatch.setattr(
-        'ephemeris_tools.viewer.get_planet_config',
+        'ephemeris_tools.tracker.set_observer_id',
+        lambda obs_id: None,
+    )
+    monkeypatch.setattr(
+        'ephemeris_tools.tracker.get_planet_config',
         lambda planet_num: SimpleNamespace(
             moons=[
                 SimpleNamespace(id=899, name='Neptune'),
@@ -154,13 +160,13 @@ def test_tracker_preserves_user_arcsec_xrange_below_ten(monkeypatch: pytest.Monk
         lambda: SimpleNamespace(planet_id=899),
     )
     monkeypatch.setattr(cspyce, 'bodvrd', lambda body, item: [24764.0, 0.0, 0.0])
-    monkeypatch.setattr('ephemeris_tools.time_utils.tdb_from_tai', lambda tai: tai)
+    monkeypatch.setattr('ephemeris_tools.tracker.tdb_from_tai', lambda tai: tai)
     monkeypatch.setattr(
-        'ephemeris_tools.spice.geometry.moon_tracker_offsets',
+        'ephemeris_tools.tracker.moon_tracker_offsets',
         lambda et, moon_ids: ([0.00001], 0.0),
     )
     monkeypatch.setattr(
-        'ephemeris_tools.rendering.draw_tracker.draw_moon_tracks',
+        'ephemeris_tools.tracker.draw_moon_tracks',
         lambda *args, **kwargs: captured_xranges.append(float(kwargs['xrange'])),
     )
 

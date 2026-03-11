@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
 
 import cspyce
+import numpy as np
 
 from ephemeris_tools.constants import EARTH_ID
 from ephemeris_tools.spice.common import get_state
-
-if TYPE_CHECKING:
-    import numpy as np
 
 # GRS 80 (FORTRAN parameters)
 EARTH_RAD_KM = 6378.137
@@ -65,8 +62,6 @@ def observer_state(et: float) -> np.ndarray:
     Returns:
         Length-6 array: position (3) and velocity (3) in km and km/s.
     """
-    import numpy as np
-
     state = get_state()
     obs_pv = list(cspyce.spkssb(state.obs_id, et, 'J2000'))
     if not state.obs_is_set:

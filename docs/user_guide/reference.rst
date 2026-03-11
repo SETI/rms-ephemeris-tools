@@ -3,7 +3,7 @@
 Argument reference
 ===================
 
-This page documents the accepted values for key CLI arguments.
+This page documents the accepted values for CLI arguments.
 
 You can pass **IDs** (integers) or **names** (case-insensitive strings) for
 ``--columns``, ``--mooncols``, ``--moons``, and ``--planet``, and mix them
@@ -38,15 +38,18 @@ name:
 Viewpoint and observatory (``--viewpoint``, ``--observatory``)
 ---------------------------------------------------------------
 
-The ``--viewpoint`` argument selects the *type* of observer position:
+``--viewpoint`` selects the *type* of observer: ``observatory`` (default) or
+``latlon``. It does not take a spacecraft name. To observe from a spacecraft,
+use ``--viewpoint observatory`` and set ``--observatory`` to the spacecraft or
+observatory name (e.g. ``--observatory Cassini``, not ``--viewpoint cas``).
 
 - ``observatory`` (default): Observe from a named observatory or spacecraft.
-  The specific name is given by ``--observatory`` (default: ``"Earth's Center"``).
+  The name is given by ``--observatory`` (default: ``"Earth's center"``).
 - ``latlon``: Observe from a geographic position on Earth, specified with
   ``--latitude``, ``--longitude``, ``--lon-dir`` (east/west), and ``--altitude``.
 
-When ``--viewpoint`` is ``observatory``, the ``--observatory`` argument accepts
-the following spacecraft names or abbreviations (case-insensitive):
+When ``--viewpoint`` is ``observatory``, ``--observatory`` accepts the
+following spacecraft names or abbreviations (case-insensitive):
 
 .. list-table:: Accepted observatory/spacecraft names
    :header-rows: 1
@@ -55,7 +58,7 @@ the following spacecraft names or abbreviations (case-insensitive):
    * - Full Name
      - Abbreviation
      - NAIF Code
-   * - Earth's Center
+   * - Earth's center
      - (default)
      -
    * - Voyager 1
@@ -141,11 +144,13 @@ can be mixed (e.g. ``--rings main 62`` for Saturn).
    :widths: 10 20 40
 
    * - Code
-     - Name
+     - Name(s)
      - Description
    * - 71
-     - epsilon
-     - Epsilon ring
+     - examples: alpha, beta, eta, gamma, delta, epsilon (any ring name
+       maps to this code)
+     - All Uranus rings (Six, Five, Four, Alpha, Beta, Eta, Gamma, Delta,
+       Lambda, Epsilon, Nu, Mu). Any ring name maps to the same code.
 
 **Neptune** (``--planet neptune``)
 
@@ -161,6 +166,52 @@ can be mixed (e.g. ``--rings main 62`` for Saturn).
      - Neptune rings (Galle, Le Verrier, Adams)
 
 Mars and Pluto have no ring options.
+
+FOV unit (``--fov-unit``)
+--------------------------
+
+The ``--fov-unit`` argument accepts angle units, distance units, planet-relative
+units, and instrument FOV names:
+
+.. list-table:: FOV unit values
+   :header-rows: 1
+   :widths: 25 50
+
+   * - Value
+     - Meaning
+   * - ``deg``
+     - Degrees (default)
+   * - ``arcmin``
+     - Arc minutes
+   * - ``arcsec``
+     - Arc seconds
+   * - ``mrad``
+     - Milliradians
+   * - ``urad``
+     - Microradians
+   * - ``km``
+     - Kilometres (converted using observer range)
+   * - ``<Planet> radii``
+     - Planet equatorial radii (e.g. ``Saturn radii``, ``Neptune radii``)
+   * - ``Cassini ISS narrow``
+     - Cassini ISS Narrow Angle Camera FOV
+   * - ``Cassini ISS wide``
+     - Cassini ISS Wide Angle Camera FOV
+   * - ``Voyager ISS narrow``
+     - Voyager ISS Narrow Angle Camera FOV
+   * - ``Voyager ISS wide``
+     - Voyager ISS Wide Angle Camera FOV
+   * - ``Galileo SSI``
+     - Galileo SSI FOV
+   * - ``Cassini VIMS``
+     - Cassini VIMS 64x64 FOV
+   * - ``Cassini UVIS``
+     - Cassini UVIS slit FOV
+   * - ``LORRI``
+     - New Horizons LORRI FOV
+
+Use quotes for multi-word values so the shell does not split them (e.g.
+``--fov-unit "Saturn radii"`` or ``--fov-unit "Cassini ISS narrow"``).
 
 Ephemeris column index (``--columns``)
 ----------------------------------------
@@ -179,70 +230,70 @@ raddeg, lphase, sunsep, lsep.
      - Name
      - Description
    * - 1
-     - ``COL_MJD``
+     - mjd
      - Modified Julian Date
    * - 2
-     - ``COL_YMDHM``
+     - ymdhm
      - Date/time (year-month-day hour:min)
    * - 3
-     - ``COL_YMDHMS``
+     - ymdhms
      - Date/time (year-month-day hour:min:sec)
    * - 4
-     - ``COL_YDHM``
+     - ydhm
      - Year and day-of-year + hour:min
    * - 5
-     - ``COL_YDHMS``
+     - ydhms
      - Year and day-of-year + hour:min:sec
    * - 6
-     - ``COL_OBSDIST``
+     - obsdist
      - Observer–planet distance (km)
    * - 7
-     - ``COL_SUNDIST``
+     - sundist
      - Sun–planet distance (km)
    * - 8
-     - ``COL_PHASE``
+     - phase
      - Phase angle (deg)
    * - 9
-     - ``COL_OBSOPEN``
+     - obsopen
      - Ring opening angle to observer (deg)
    * - 10
-     - ``COL_SUNOPEN``
+     - sunopen
      - Ring opening angle to Sun (deg)
    * - 11
-     - ``COL_OBSLON``
+     - obslon
      - Sub-observer longitude (deg)
    * - 12
-     - ``COL_SUNLON``
+     - sunlon
      - Sub-solar longitude (deg)
    * - 13
-     - ``COL_SUBOBS``
+     - subobs
      - Sub-observer latitude (deg)
    * - 14
-     - ``COL_SUBSOL``
+     - subsol
      - Sub-solar latitude (deg)
    * - 15
-     - ``COL_RADEC``
+     - radec
      - RA and Dec (deg)
    * - 16
-     - ``COL_EARTHRD``
+     - earthrd
      - Earth range and declination (deg)
    * - 17
-     - ``COL_SUNRD``
+     - sunrd
      - Sun range and declination (deg)
    * - 18
-     - ``COL_RADIUS``
+     - radius
      - Apparent radius (arcsec)
    * - 19
-     - ``COL_RADDEG``
+     - raddeg
      - Apparent radius (deg)
    * - 20
-     - ``COL_LPHASE``
+     - lphase
      - Lunar phase angle (deg)
    * - 21
-     - ``COL_SUNSEP``
+     - sunsep
      - Sun separation (deg)
    * - 22
-     - ``COL_LSEP``
+     - lsep
      - Lunar separation (deg)
 
 Moon column index (``--mooncols``)
@@ -261,31 +312,31 @@ orblon, orbopen.
      - Name
      - Description
    * - 1
-     - ``MCOL_OBSDIST``
+     - obsdist
      - Observer–moon distance (km)
    * - 2
-     - ``MCOL_PHASE``
+     - phase
      - Phase angle (deg)
    * - 3
-     - ``MCOL_SUBOBS``
-     - Sub-observer lat (deg)
+     - subobs
+     - Sub-observer lat and long (deg)
    * - 4
-     - ``MCOL_SUBSOL``
-     - Sub-solar lat (deg)
+     - subsol
+     - Sub-solar lat and long (deg)
    * - 5
-     - ``MCOL_RADEC``
+     - radec
      - RA and Dec (deg)
    * - 6
-     - ``MCOL_OFFSET``
+     - offset
      - Offset from planet (arcsec)
    * - 7
-     - ``MCOL_OFFDEG``
+     - offdeg
      - Offset (deg)
    * - 8
-     - ``MCOL_ORBLON``
+     - orblon
      - Orbital longitude (deg)
    * - 9
-     - ``MCOL_ORBOPEN``
+     - orbopen
      - Orbital opening angle (deg)
 
 Moon index (``--moons``)
@@ -484,3 +535,65 @@ Moon order is fixed per planet. Below: index to moon name for each planet. Names
      - Kerberos
    * - 5
      - Styx
+
+.. _reference-moremoons:
+
+Additional moons (``--moremoons``)
+----------------------------------
+
+``--moremoons`` is used only by the **viewer** command. It is a flag:
+presence turns on the feature; it does not take a value.
+
+- **Omitted**: Only the moons selected by ``--moons`` are displayed.
+  Irregular moons are not added.
+- **Present** (e.g. ``--moremoons``): In addition to ``--moons``, the
+  viewer displays *all* irregular moons for that planet.
+
+Which moons count as "irregular" is planet-specific (e.g. Jupiter:
+Himalia, Elara; Saturn: Phoebe and many others).
+
+Viewer star catalogs and plot options
+-------------------------------------
+
+**Standard star catalog** (``--standard-star-catalog``)
+   Flag: when present, overlay the planet’s standard star list (e.g.
+   ``starlist_sat.txt`` for Saturn). Omit for no overlay.
+
+**Additional star** (``--additional-star``)
+   Flag: when present, overlay one user-defined star; provide
+   ``--extra-ra`` and ``--extra-dec`` (and optionally ``--extra-name``,
+   ``--extra-ra-type``). Omit for no additional star.
+
+**Moon labels** (``--labels``)
+   Label size for moons and stars. Only the size word is required:
+   ``small``, ``medium``, or ``large`` (case-insensitive). Full strings
+   like ``Small (6 points)`` are also accepted. The number of points
+   is implied by the size; you do not need to specify it. Quote values
+   containing spaces or parentheses (e.g. ``--labels "Small (6 points)"``).
+
+**Blank disks** (``--blank-disks``)
+   Flag: when present, white out planet and moon disks. Omit for normal
+   disks.
+
+**Ring opacity** (``--ring-opacity``, Saturn only)
+   Ring rendering style. Values: ``Transparent``, ``Semi-transparent (2x file size)``,
+   ``Opaque``. Quote values containing spaces or parentheses
+   (e.g. ``--ring-opacity "Semi-transparent (2x file size)"``).
+
+**Ring pericenter markers** (``--ring-pericenter-markers``)
+   Saturn: ``None``, ``F Ring``. Uranus: ``None``, ``Epsilon Ring only``,
+   ``All rings``. ``--ring-pericenter-size`` sets the marker size in points
+   (default ``4``). Quote multi-word or parenthesized values
+   (e.g. ``--ring-pericenter-markers "Epsilon Ring only"``).
+
+**Neptune arc model** (``--neptune-arc-model``, Neptune only)
+   Arc motion model. Values: ``#1 (820.1194 deg/day)``, ``#2 (820.1118 deg/day)``,
+   ``#3 (820.1121 deg/day)``. ``--neptune-arc-thickness`` sets the arc
+   line weight in points (default ``4``). Quote values containing spaces or
+   parentheses (e.g. ``--neptune-arc-model "#1 (820.1194 deg/day)"``).
+
+**Io torus** (``--io-torus``, ``--io-torus-inc``, ``--io-torus-rad``; Jupiter only)
+   ``--io-torus``: flag; when present, show the Io plasma torus. Omit to
+   hide.
+   ``--io-torus-inc``: inclination in degrees (default ``6.8``).
+   ``--io-torus-rad``: radius in km (default ``422000.0``).

@@ -13,7 +13,8 @@ import pytest
 
 from ephemeris_tools.constants import EARTH_ID
 from ephemeris_tools.planets import SATURN_CONFIG
-from ephemeris_tools.spice.load import load_spice_files
+from ephemeris_tools.spice.common import get_state
+from ephemeris_tools.spice.load import load_spacecraft, load_spice_files
 from ephemeris_tools.spice.observer import set_observer_id
 from ephemeris_tools.time_utils import tai_from_day_sec, tdb_from_tai
 from ephemeris_tools.viewer import _propagated_saturn_f_ring, run_viewer
@@ -182,17 +183,26 @@ class TestHighPriorityDifferences:
     def test_radec_offset_units_spacecraft_observer(self) -> None:
         """Test DIFF-004: RA/Dec offset units for spacecraft observer (degrees).
 
-        Skipped when Cassini (or equivalent) spacecraft SPICE kernels are not
-        available; otherwise runs like other integration tests.
+        Uses Cassini at Saturn (CAS, planet 6). load_spice_files and
+        load_spacecraft resolve the SPICE kernel tree dynamically. Skipped
+        when Saturn (planet 6) kernels or Cassini spacecraft kernels are
+        unavailable.
         """
-        from ephemeris_tools.spice.load import load_spacecraft
-
-        success = load_spacecraft(sc_id='CAS', planet=6, version=0, set_obs=True)
-        if not success:
+        ok, error = load_spice_files(planet=6, version=0, force=True)
+        if not ok:
+            pytest.skip(f'Planet kernels not available: {error}')
+        if not load_spacecraft(sc_id='CAS', planet=6, version=0, set_obs=False):
             pytest.skip('Cassini spacecraft kernels not available')
 
         txt_out = StringIO()
-
+        state = get_state()
+        saved_obs = (
+            state.obs_id,
+            state.obs_is_set,
+            state.obs_lat,
+            state.obs_lon,
+            state.obs_alt,
+        )
         try:
             run_viewer(
                 viewer_params_from_legacy_kwargs(
@@ -205,24 +215,24 @@ class TestHighPriorityDifferences:
                     output_txt=txt_out,
                 )
             )
+            txt_content = txt_out.getvalue()
+            # For spacecraft observer, header should show degree units
+            assert 'dRA (deg)' in txt_content, 'Spacecraft observer should use degrees'
+            assert 'dDec (deg)' in txt_content, 'Spacecraft observer should use degrees'
+            # Should NOT show arcsec units for offset columns
+            lines = txt_content.split('\n')
+            header_line = next((line for line in lines if 'dRA' in line and 'dDec' in line), None)
+            assert header_line is not None, 'Header line with dRA and dDec not found in output'
+            # In header for spacecraft, should be "(deg)" not "(")"
+            assert '(")' not in header_line or header_line.count('(deg)') > 0, (
+                'Spacecraft observer should use degrees for offsets'
+            )
         except (KeyError, OSError) as e:
             if 'RADII' in str(e) or 'KERNELVARNOTFOUND' in str(e) or 'NOLOADEDFILES' in str(e):
                 pytest.skip(f'SPICE kernel data not available: {e}')
             raise
-
-        txt_content = txt_out.getvalue()
-
-        # For spacecraft observer, header should show degree units
-        assert 'dRA (deg)' in txt_content, 'Spacecraft observer should use degrees'
-        assert 'dDec (deg)' in txt_content, 'Spacecraft observer should use degrees'
-        # Should NOT show arcsec units for offset columns
-        lines = txt_content.split('\n')
-        header_line = next((line for line in lines if 'dRA' in line and 'dDec' in line), None)
-        assert header_line is not None, 'Header line with dRA and dDec not found in output'
-        # In header for spacecraft, should be "(deg)" not "(")"
-        assert '(")' not in header_line or header_line.count('(deg)') > 0, (
-            'Spacecraft observer should use degrees for offsets'
-        )
+        finally:
+            state.obs_id, state.obs_is_set, state.obs_lat, state.obs_lon, state.obs_alt = saved_obs
 
     def test_all_fixes_integrated(self) -> None:
         """Integration test: all high-priority fixes work together."""

@@ -16,7 +16,7 @@ def test_viewer_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv('center', 'body')
     monkeypatch.setenv('center_body', 'Neptune')
     monkeypatch.setenv('viewpoint', 'observatory')
-    monkeypatch.setenv('observatory', "Earth's Center")
+    monkeypatch.setenv('observatory', "Earth's center")
     monkeypatch.setenv('moons', '802 Triton & Nereid')
     monkeypatch.setenv('rings', 'LeVerrier, Adams')
     params = viewer_params_from_env()
@@ -75,7 +75,17 @@ def test_viewer_params_from_env_title_labels_and_moonpts(monkeypatch: pytest.Mon
 
 
 def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch: pytest.MonkeyPatch) -> None:
-    """J2000 CGI center supports sexagesimal RA/Dec parsing."""
+    """J2000 CGI center supports sexagesimal RA/Dec parsing.
+
+    Parameters:
+        monkeypatch: Pytest fixture to set environment variables.
+
+    Returns:
+        None.
+
+    Raises:
+        AssertionError: If parsed center RA or Dec do not match expected values.
+    """
     monkeypatch.setenv('NPLANET', '9')
     monkeypatch.setenv('time', '2018-08-15 05:32:32')
     monkeypatch.setenv('center', 'J2000')
@@ -87,14 +97,86 @@ def test_viewer_params_from_env_j2000_sexagesimal(monkeypatch: pytest.MonkeyPatc
     assert params.center.mode == 'J2000'
     assert params.center.ra_deg is not None
     assert params.center.dec_deg is not None
-    assert abs(params.center.ra_deg - 290.5436195833333) < 1e-9
-    assert abs(params.center.dec_deg - (-21.980283333333334)) < 1e-9
+    assert params.center.ra_deg == pytest.approx(290.5436195833333)
+    assert params.center.dec_deg == pytest.approx(-21.980283333333334)
+
+
+def test_viewer_params_from_env_j2000_center_ra_type_leading_space_degrees(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """J2000 center_ra_type ' degrees' (leading space) is degrees.
+
+    URL decoding turns + into space; when stripped we get 'degrees', so RA is
+    interpreted as degrees (e.g. 16.9444 degrees not hours).
+
+    Parameters:
+        monkeypatch: Pytest fixture to set environment variables.
+
+    Returns:
+        None.
+
+    Raises:
+        AssertionError: If parsed center mode, RA, or Dec do not match expected.
+    """
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2022-08-06 16:17:51')
+    monkeypatch.setenv('center', 'J2000')
+    monkeypatch.setenv('center_ra', '16.9444')
+    monkeypatch.setenv('center_ra_type', ' degrees')
+    monkeypatch.setenv('center_dec', '-31.4681')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.center.mode == 'J2000'
+    ra_deg = params.center.ra_deg
+    assert ra_deg is not None
+    assert ra_deg == pytest.approx(16.9444)
+    assert params.center.dec_deg is not None
+    assert params.center.dec_deg == pytest.approx(-31.4681)
+
+
+def test_viewer_params_from_env_j2000_center_ra_type_plus_degrees_is_hours(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """J2000 center_ra_type '+degrees' (leading plus) is hours to match FORTRAN.
+
+    Parameters:
+        monkeypatch: Pytest fixture to set environment variables.
+
+    Returns:
+        None.
+
+    Raises:
+        AssertionError: If parsed RA (in degrees) or Dec do not match expected.
+    """
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2007-02-19 15:01:20')
+    monkeypatch.setenv('center', 'J2000')
+    monkeypatch.setenv('center_ra', '3.2636')
+    monkeypatch.setenv('center_ra_type', '+degrees')
+    monkeypatch.setenv('center_dec', '67.5189')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.center.mode == 'J2000'
+    assert params.center.ra_deg is not None
+    assert params.center.dec_deg is not None
+    assert params.center.ra_deg == pytest.approx(3.2636 * 15.0)
+    assert params.center.dec_deg == pytest.approx(67.5189)
 
 
 def test_viewer_params_from_env_standard_stars_from_standard(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Standard stars flag comes from env 'standard', not 'additional'."""
+    """Standard stars flag comes from env 'standard', not 'additional'.
+
+    Parameters:
+        monkeypatch: Pytest fixture to set environment variables.
+
+    Returns:
+        None.
+
+    Raises:
+        AssertionError: If show_standard_stars or extra_star are not as expected.
+    """
     monkeypatch.setenv('NPLANET', '6')
     monkeypatch.setenv('time', '2025-01-01 12:00')
     monkeypatch.setenv('standard', 'Yes')
@@ -182,3 +264,36 @@ def test_viewer_params_from_env_latlon_west_longitude(monkeypatch: pytest.Monkey
     assert params.observer.longitude_deg == -116.865
     assert params.observer.lon_dir == 'west'
     assert params.observer.altitude_m == 1712.0
+
+
+def test_viewer_params_from_env_lon_dir_legacy_leading_space(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """lon_dir with leading space (legacy form) is treated as west."""
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2000-01-01 00:00')
+    monkeypatch.setenv('viewpoint', 'latlon')
+    monkeypatch.setenv('latitude', '0')
+    monkeypatch.setenv('longitude', '100')
+    monkeypatch.setenv('lon_dir', ' west')
+    monkeypatch.setenv('altitude', '0')
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.observer.longitude_deg == -100.0
+
+
+def test_viewer_params_from_env_fov_unit_legacy_leading_space(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """fov_unit with leading space (legacy form) accepted; _get_env strips to 'degrees'."""
+    monkeypatch.setenv('NPLANET', '5')
+    monkeypatch.setenv('time', '2000-01-01 00:00')
+    monkeypatch.setenv('fov', '1')
+    monkeypatch.setenv('fov_unit', ' degrees')
+    monkeypatch.setenv('center', 'body')
+    monkeypatch.setenv('center_body', 'Jupiter')
+    monkeypatch.setenv('viewpoint', 'observatory')
+    monkeypatch.setenv('observatory', "Earth's center")
+    params = viewer_params_from_env()
+    assert params is not None
+    assert params.fov_unit == 'degrees'

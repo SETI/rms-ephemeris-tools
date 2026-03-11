@@ -64,7 +64,8 @@ c*******************************************************************************
 
         integer         p, v, load_version
         logical         loaded
-        character*256   filename
+        character*256   filename, base_path, full_path
+        integer         k
 
 c Anticipate failure
         RSPK_LoadFiles = .FALSE.
@@ -72,16 +73,29 @@ c Anticipate failure
 c Make sure second and subsequent calls are compatible
         if (planet_num .ne. 0 .and. iplanet .ne. planet_num) return
 
+c Use SPICE_PATH from environment if set; else SPICEPATH; else default
+        call GETENV('SPICE_PATH', base_path)
+        if (base_path(1:1) .eq. ' ') call GETENV('SPICEPATH', base_path)
+        if (base_path(1:1) .eq. ' ') base_path = SPICE_PATH
+        k = len_trim(base_path)
+        if (base_path(k:k) .ne. '/') then
+            base_path = base_path(1:k) // '/'
+            k = k + 1
+        endif
+
 c Load the kernel pool if necessary
         if (.not. pool_loaded) then
-            call FURNSH(SPICE_PATH // 'leapseconds.ker')
-            call FURNSH(SPICE_PATH // 'p_constants.ker')
+            full_path = base_path(1:k) // 'leapseconds.ker'
+            call FURNSH(full_path)
+            full_path = base_path(1:k) // 'p_constants.ker'
+            call FURNSH(full_path)
 
             pool_loaded = .TRUE.
         end if
 
 c Open the configuration file
-        open (lunit, file=DATA_PATH // 'SPICE_planets.txt',
+        full_path = base_path(1:k) // 'SPICE_planets.txt'
+        open (lunit, file=full_path,
      &        status='old')
 
 c Find the matching planet and version
@@ -97,7 +111,8 @@ c       If version is zero, match whatever we find first
 
 c       Load planet ephemeris files
             if (p .eq. iplanet .and. v .eq. load_version) then
-                call FURNSH(SPICE_PATH // filename)
+                full_path = base_path(1:k) // filename
+                call FURNSH(full_path)
                 loaded = .TRUE.
             end if
 

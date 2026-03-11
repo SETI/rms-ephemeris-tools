@@ -1,6 +1,7 @@
 """Configuration: SPICE paths and temp/starlist paths from environment."""
 
 import os
+from importlib.resources import files
 from pathlib import Path
 
 # Paths (from tools.inc and rspk_common.inc); env var overrides with sensible defaults.
@@ -34,6 +35,30 @@ def get_starlist_path() -> str:
         Path string.
     """
     return os.environ.get('STARLIST_PATH', DEFAULT_STARLIST_PATH)
+
+
+def get_starlist_candidate_paths(starlist_filename: str) -> list[Path]:
+    """Return candidate paths for a starlist file for both checkout and installed use.
+
+    Tries STARLIST_PATH first, then the bundled ephemeris_tools._web_tools
+    package resource so starlists are found when the package is installed.
+
+    Parameters:
+        starlist_filename: Basename of the starlist file (e.g. starlist_sat.txt).
+
+    Returns:
+        List of Path candidates in order of preference; callers should use the
+        first path that exists.
+    """
+    candidates: list[Path] = [Path(get_starlist_path()) / starlist_filename]
+    try:
+        pkg = files('ephemeris_tools._web_tools')
+        pkg_path = Path(str(pkg))
+        if pkg_path.is_dir():
+            candidates.append(pkg_path / starlist_filename)
+    except (ImportError, OSError, TypeError):
+        pass
+    return candidates
 
 
 def get_leapsecs_path() -> str:

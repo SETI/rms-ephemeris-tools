@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 import cspyce
+import numpy as np
 
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.observer import observer_state
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 def _is_moon(body_id: int) -> bool:
@@ -53,8 +50,6 @@ def bodmat(body_id: int, et: float) -> np.ndarray:
     Returns:
         3x3 rotation matrix (J2000 to body-fixed). Identity on failure for moons.
     """
-    import numpy as np
-
     state = get_state()
     for i in range(state.nshifts):
         if state.shift_id[i] == body_id:
@@ -107,8 +102,6 @@ def _spkez_state(state_planet: object) -> list[float]:
     Returns:
         List of 6 floats: position (3) and velocity (3).
     """
-    import numpy as np
-
     arr = np.asarray(state_planet, dtype=np.float64)
     flat = arr.flatten()
     return [float(flat[i]) for i in range(min(6, len(flat)))]
@@ -127,8 +120,6 @@ def bodmat_from_orbit(body_id: int, et: float) -> np.ndarray:
     Returns:
         3x3 rotation matrix (J2000 to body-fixed).
     """
-    import numpy as np
-
     state = get_state()
     obs_pv = observer_state(et)
     _body_dpv, lt = cspyce.spkapp(body_id, et, 'J2000', obs_pv[:6].tolist(), 'LT')
@@ -164,8 +155,6 @@ def bodmat_from_orbit(body_id: int, et: float) -> np.ndarray:
 
 def _identity_rotmat() -> np.ndarray:
     """Return 3x3 identity matrix (used when orbit geometry is degenerate)."""
-    import numpy as np
-
     return np.eye(3, dtype=np.float64)
 
 
@@ -183,8 +172,6 @@ def _bodmat_from_orbit_fallback(
     Returns:
         3x3 rotation matrix.
     """
-    import numpy as np
-
     state = get_state()
     planet_frame = _body_fixed_frame(state.planet_id)
     planet_mat = cspyce.pxform(planet_frame, 'J2000', et)

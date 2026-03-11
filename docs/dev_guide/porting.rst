@@ -51,6 +51,23 @@ followed:
    compiled mapping every Python function to its FORTRAN counterpart with a
    match status.  This table was reviewed to confirm complete coverage.
 
+5. **Random URL comparison** — Thousands of random CGI URLs were generated per
+   tool (using ``scripts/generate_random_query_urls.py``) and run through both
+   the FORTRAN binaries and the Python CLI.  Outputs were compared with
+   ``python -m tests.compare_fortran`` to catch regressions and edge cases
+   beyond the initial parameter sweeps.  The script
+   ``scripts/run-random-fortran-comparisons.sh`` runs both URL generation and
+   FORTRAN comparison for ephemeris, tracker, and viewer in one go.
+
+6. **Hand-written unit test URLs** — The hand-written test URL lists in the
+   ``test_files`` directory (``viewer-test-urls.txt``, ``tracker-test-urls.txt``,
+   ``ephemeris-test-urls.txt``) were run against both FORTRAN and Python and
+   compared.  To re-run this comparison, use
+   ``scripts/run-fortran-comparison-test-files.sh`` (see
+   :ref:`comparison_workflows`).  The same URL sets are used by the
+   server-comparison tests (``tests.compare_servers``) to compare live server
+   output against golden copies.
+
 FORTRAN bugs
 ------------
 

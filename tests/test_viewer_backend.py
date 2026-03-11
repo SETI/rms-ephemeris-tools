@@ -23,6 +23,7 @@ from ephemeris_tools.viewer import (
     _resolve_viewer_ring_flags,
     _viewer_call_kwargs_from_params,
 )
+from ephemeris_tools.viewer_helpers import _resolve_center_body_id
 
 
 def test_viewer_call_kwargs_from_params_j2000_center() -> None:
@@ -194,6 +195,19 @@ def test_resolve_center_ansa_radius_jupiter_named_ring() -> None:
     """Jupiter named ansa ring maps to FORTRAN-equivalent radius."""
     radius = _resolve_center_ansa_radius_km(JUPITER_CONFIG, 'Main Ring')
     assert radius == 129000.0
+
+
+def test_resolve_center_body_id_barycenter_pluto() -> None:
+    """Pluto viewer center 'Barycenter' resolves to barycenter ID (match FORTRAN)."""
+    assert _resolve_center_body_id(PLUTO_CONFIG, 'Barycenter') == 9
+    assert _resolve_center_body_id(PLUTO_CONFIG, 'barycenter') == 9
+    assert _resolve_center_body_id(PLUTO_CONFIG, ' Barycenter ') == 9
+
+
+def test_resolve_center_body_id_barycenter_other_planets() -> None:
+    """Non-Pluto configs have no barycenter_id; 'Barycenter' falls back to planet."""
+    assert _resolve_center_body_id(JUPITER_CONFIG, 'Barycenter') == 599
+    assert _resolve_center_body_id(MARS_CONFIG, 'barycenter') == 499
 
 
 def test_viewer_call_kwargs_from_params_passes_extra_star() -> None:

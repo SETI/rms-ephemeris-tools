@@ -160,10 +160,8 @@ def _rspk_write_label(
             secs1 += _MAXSECS
     fsign = 1.0 if secs1 >= 0 else -1.0
     fsecs = abs(secs1)
-    if offset == 'B':
-        ims = _fortran_nint(fsecs * 1000.0 + 1.0e-9)
-    else:
-        ims = _fortran_nint(fsecs * 1000.0)
+    # For offset 'B', small bias avoids IEEE754 underestimation at half-ms (Fortran rounding).
+    ims = _fortran_nint(fsecs * 1000.0 + (1e-9 if offset == 'B' else 0.0))
     isec = ims // 1000
     ims = ims - 1000 * isec
     imin = isec // 60
@@ -332,9 +330,12 @@ def _rspk_draw_bodies(
             eubody(ibody, 1, 0, 1, bl1, bl2, 0, euclid_state, view_state, escher_state)
             eubody(ibody, 0, 0, 1, 0, 0, 0, euclid_state, view_state, escher_state)
         escher_state.drawn = False
+        segbuf_len_before = len(view_state.segbuf)
         eslwid(body_diampts - bpts, escher_state)
         eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, view_state, escher_state)
-        if update_names and bvis and not escher_state.drawn and bi < len(body_names):
+        drew_body = escher_state.drawn or len(view_state.segbuf) > segbuf_len_before
+        no_line_pass = bl1 == NO_LINE and bl2 == NO_LINE and bl3 == NO_LINE
+        if update_names and bvis and not (drew_body or no_line_pass) and bi < len(body_names):
             body_names[bi] = ' '
     eslwid(0.0, escher_state)
 

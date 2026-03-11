@@ -549,11 +549,12 @@ c***********************************************************************
             status = WWW_GetKey('latitude', string(2:))
             string(LASTNB(string)+1:) = ','
             status = WWW_GetKey('longitude', string(LASTNB(string)+2:))
+            string(LASTNB(string)+1:) = ' '
             status = WWW_GetKey('lon_dir',   string(LASTNB(string)+2:))
             string(LASTNB(string)+1:) = ','
             status = WWW_GetKey('altitude', string(LASTNB(string)+2:))
             string(LASTNB(string)+1:) = ')'
-            rcaptions(3) = string
+            rcaptions(ncaptions) = string
         else
             status = WWW_GetKey('observatory', string)
             status = WWW_GetKey('sc_trajectory', string2)

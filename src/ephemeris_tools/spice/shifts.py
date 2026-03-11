@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import cspyce
+import numpy as np
 
 from ephemeris_tools.spice.common import MAXSHIFTS, get_state
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 def set_shift(body_id: int, dt: float) -> None:
@@ -59,8 +55,6 @@ def spkapp_shifted(
     Returns:
         Tuple of (body state 6-vector, light-time in seconds).
     """
-    import numpy as np
-
     state = get_state()
     obs = obs_pv if hasattr(obs_pv, '__len__') else np.array(obs_pv)
     for i in range(state.nshifts):

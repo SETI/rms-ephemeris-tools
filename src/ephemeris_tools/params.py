@@ -13,6 +13,14 @@ from ephemeris_tools.constants import (
     DEFAULT_INTERVAL,
     DEGREES_PER_HOUR_RA,
 )
+from ephemeris_tools.planets import (
+    JUPITER_CONFIG,
+    MARS_CONFIG,
+    NEPTUNE_CONFIG,
+    PLUTO_CONFIG,
+    SATURN_CONFIG,
+    URANUS_CONFIG,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -341,15 +349,6 @@ def parse_center(planet_num: int, tokens: list[str]) -> ViewerCenter:
     Returns:
         Parsed center as a ``ViewerCenter`` object.
     """
-    from ephemeris_tools.planets import (
-        JUPITER_CONFIG,
-        MARS_CONFIG,
-        NEPTUNE_CONFIG,
-        PLUTO_CONFIG,
-        SATURN_CONFIG,
-        URANUS_CONFIG,
-    )
-
     cfg_map = {
         4: MARS_CONFIG,
         5: JUPITER_CONFIG,
@@ -378,12 +377,17 @@ def parse_center(planet_num: int, tokens: list[str]) -> ViewerCenter:
         except ValueError:
             pass
 
-    # Ring ansa name with optional east/west.
+    # Ring ansa name with optional east/west (full or single-letter).
     ew = 'east'
     ansa_tokens = normalized
-    if normalized[-1].lower() in ('east', 'west'):
-        ew = normalized[-1].lower()
-        ansa_tokens = normalized[:-1]
+    if len(normalized) >= 1:
+        last = normalized[-1].lower()
+        if last in ('east', 'west'):
+            ew = last
+            ansa_tokens = normalized[:-1]
+        elif last in ('e', 'w'):
+            ew = 'east' if last == 'e' else 'west'
+            ansa_tokens = normalized[:-1]
     ansa_candidate = ' '.join(ansa_tokens).lower()
     ring_name_map = {
         ring.name.lower(): ring.name
@@ -466,11 +470,11 @@ def parse_observer(tokens: list[str]) -> Observer:
         ValueError: If the input looks numeric but is not a valid triplet.
     """
     if len(tokens) == 0:
-        return Observer(name="Earth's Center")
+        return Observer(name="Earth's center")
 
     normalized = [tok.strip() for tok in tokens if tok.strip()]
     if len(normalized) == 0:
-        return Observer(name="Earth's Center")
+        return Observer(name="Earth's center")
 
     if len(normalized) == 3:
         try:
@@ -494,7 +498,7 @@ def parse_observer(tokens: list[str]) -> Observer:
 
     name = ' '.join(normalized)
     if name.lower() in {'earth', "earth's center", 'earths center'}:
-        name = "Earth's Center"
+        name = "Earth's center"
     return Observer(name=name)
 
 
@@ -738,12 +742,34 @@ class ViewerDisplayInfo:
         moons_display: Moon selection display string.
         rings_display: Ring selection display string.
         viewpoint_display: Raw lat/lon/alt caption string from CGI, if present.
+        center_ra_display: Raw center RA text from CGI (for J2000 summary line).
+        center_ra_type_display: Raw center RA units text from CGI.
+        center_dec_display: Raw center Dec text from CGI (for J2000 summary line).
+        moonpts_display: Raw moon point-size text from CGI.
+        blank_display: Raw blank-disk toggle text from CGI.
+        meridians_display: Raw prime-meridians toggle text from CGI.
+        additional_display: Raw additional-star toggle text from CGI.
+        extra_name_display: Raw extra star name from CGI.
+        extra_ra_display: Raw extra star RA from CGI.
+        extra_ra_type_display: Raw extra star RA units from CGI.
+        extra_dec_display: Raw extra star Dec from CGI.
     """
 
     ephem_display: str | None = None
     moons_display: str | None = None
     rings_display: str | None = None
     viewpoint_display: str | None = None
+    center_ra_display: str | None = None
+    center_ra_type_display: str | None = None
+    center_dec_display: str | None = None
+    moonpts_display: str | None = None
+    blank_display: str | None = None
+    meridians_display: str | None = None
+    additional_display: str | None = None
+    extra_name_display: str | None = None
+    extra_ra_display: str | None = None
+    extra_ra_type_display: str | None = None
+    extra_dec_display: str | None = None
 
 
 @dataclass
@@ -774,6 +800,7 @@ class ViewerParams:
     torus: bool = False
     torus_inc: float = 6.8
     torus_rad: float = 422000.0
+    moremoons: bool = False
     title: str = ''
     display: ViewerDisplayInfo | None = None
     output_ps: TextIO | None = None
@@ -803,6 +830,7 @@ class TrackerParams:
     ephem_display: str | None = None
     moons_display: list[str] | None = None
     rings_display: list[str] | None = None
+    viewpoint_display: str | None = None
 
 
 @dataclass
@@ -815,9 +843,8 @@ class EphemerisParams:
     interval: float = DEFAULT_INTERVAL
     time_unit: str = 'hour'
     ephem_version: int = 0
-    observer: Observer = field(default_factory=Observer)
     viewpoint: str = 'Earth'
-    observatory: str = "Earth's Center"
+    observatory: str = "Earth's center"
     latitude_deg: float | None = None
     longitude_deg: float | None = None
     lon_dir: str = 'east'
@@ -827,6 +854,10 @@ class EphemerisParams:
     mooncols: list[int] = field(default_factory=list)
     moon_ids: list[int] = field(default_factory=list)
     output: TextIO | None = None
+    ephem_display: str | None = None
+    columns_display: list[str] | None = None
+    mooncols_display: list[str] | None = None
+    moons_display: list[str] | None = None
 
 
 def _safe_float(value: str, default: float) -> float:
@@ -835,6 +866,35 @@ def _safe_float(value: str, default: float) -> float:
         return float(value)
     except (ValueError, TypeError):
         return default
+
+
+def _is_ra_hours_from_raw(raw: str | None) -> bool:
+    """Return True if RA value should be interpreted as hours (else degrees).
+
+    Parameters:
+        raw: Input RA unit string (str or None). First character (after
+            exact-match check) determines units when not exactly 'degrees'/'hours'.
+
+    Returns:
+        True if RA should be interpreted as hours; False for degrees.
+
+    Raises:
+        None.
+
+    When the value (after strip) is exactly 'degrees' or 'hours', that is used
+    (so URL-encoded +degrees → " degrees" → degrees). Literal leading '+'
+    means hours. Otherwise match FORTRAN: first character 'd'/'D' → degrees.
+    """
+    if not raw:
+        return True
+    stripped = raw.strip().lower()
+    if stripped == 'degrees':
+        return False
+    if stripped == 'hours':
+        return True
+    if raw[:1] == '+':
+        return True
+    return raw[:1] not in ('d', 'D')
 
 
 def _get_env(key: str, default: str = '') -> str:
@@ -857,6 +917,10 @@ def _get_keys_env(key: str) -> list[str]:
             break
         if '#' in v:
             if from_single_key:
+                for part in v.split('#'):
+                    part = part.strip()
+                    if part:
+                        out.append(part)
                 break
             v = v.split('#')[0].strip()
         out.append(v)
