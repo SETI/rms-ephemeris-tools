@@ -14,6 +14,7 @@ from ephemeris_tools.rendering.draw_view_helpers import (
     _rspk_labels2,
 )
 from ephemeris_tools.rendering.escher import EscherState, EscherViewState, eslwid, eswrit
+from ephemeris_tools.rendering.escher.sink import EscherSink
 from ephemeris_tools.rendering.euclid import (
     STARFONT_PLUS,
     EuclidState,
@@ -45,11 +46,12 @@ def draw_view_box_labels_stars_close(
     star_diampts: float,
 ) -> None:
     """Draw box borders, axis labels, moon labels, stars, then euclr (port of RSPK_DrawView)."""
+    sink = EscherSink(view_state, escher_state)
     eswrit('%Draw box...', escher_state)
-    eutemp([-delta], [-delta], [-delta], [delta], 1, AXIS_LINE, view_state, escher_state)
-    eutemp([-delta], [delta], [delta], [delta], 1, AXIS_LINE, view_state, escher_state)
-    eutemp([delta], [delta], [delta], [-delta], 1, AXIS_LINE, view_state, escher_state)
-    eutemp([delta], [-delta], [-delta], [-delta], 1, AXIS_LINE, view_state, escher_state)
+    eutemp([-delta], [-delta], [-delta], [delta], 1, AXIS_LINE, sink)
+    eutemp([-delta], [delta], [delta], [delta], 1, AXIS_LINE, sink)
+    eutemp([delta], [delta], [delta], [-delta], 1, AXIS_LINE, sink)
+    eutemp([delta], [-delta], [-delta], [-delta], 1, AXIS_LINE, sink)
 
     _rspk_labels2(cmat, delta, AXIS_LINE, view_state, escher_state)
 
@@ -89,8 +91,7 @@ def draw_view_box_labels_stars_close(
             star_diampts / FOV_PTS,
             STAR_LINE,
             euclid_state,
-            view_state,
-            escher_state,
+            sink,
         )
         sname = star_names[i] if i < len(star_names) else ''
         if star_labels and sname.strip():

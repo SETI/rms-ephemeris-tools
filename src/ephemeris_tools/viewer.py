@@ -144,6 +144,9 @@ def _run_viewer_impl(
     extra_star_dec_deg: float | None = None,
     other_bodies: list[str] | None = None,
     title: str = '',
+    backend: str = 'mpl',
+    dpi: int = 150,
+    output_image: str | None = None,
 ) -> None:
     """Internal viewer implementation (flat kwargs from ViewerParams)."""
     cfg = get_planet_config(planet_num)
@@ -380,7 +383,7 @@ def _run_viewer_impl(
             scale,
         )
 
-    if output_ps:
+    if output_ps or (backend == 'mpl' and output_image):
         # Build caption strings matching FORTRAN viewer3_*.f exactly
         # In FORTRAN, lcaptions use ':' suffix, rcaptions come from CGI params
         lc: list[str] = []
@@ -712,4 +715,10 @@ def _run_viewer_impl(
             rcaptions=rc,
             align_loc=DEFAULT_ALIGN_LOC_POINTS,
         )
-        draw_planetary_view(output_ps, draw_options)
+        if backend == 'mpl' and output_image:
+            from ephemeris_tools.rendering.mpl.renderer_view import (  # noqa: PLC0415
+                draw_planetary_view_mpl,
+            )
+            draw_planetary_view_mpl(output_image, draw_options, dpi=dpi)
+        elif output_ps:
+            draw_planetary_view(output_ps, draw_options)

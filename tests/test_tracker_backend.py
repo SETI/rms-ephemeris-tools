@@ -187,3 +187,50 @@ def test_tracker_preserves_user_arcsec_xrange_below_ten(monkeypatch: pytest.Monk
     )
 
     assert captured_xranges == [5.0]
+
+
+def test_tracker_call_kwargs_passes_backend_defaults_to_mpl() -> None:
+    """TrackerParams default backend is 'mpl' and forwarded to kwargs."""
+    params = TrackerParams(
+        planet_num=6,
+        start_time='2025-01-01 00:00',
+        stop_time='2025-01-02 00:00',
+    )
+    kwargs = _tracker_call_kwargs_from_params(params)
+    assert kwargs['backend'] == 'mpl'
+
+
+def test_tracker_call_kwargs_passes_backend_escher() -> None:
+    """TrackerParams backend='escher' is forwarded correctly."""
+    params = TrackerParams(
+        planet_num=6,
+        start_time='2025-01-01 00:00',
+        stop_time='2025-01-02 00:00',
+        backend='escher',
+    )
+    kwargs = _tracker_call_kwargs_from_params(params)
+    assert kwargs['backend'] == 'escher'
+
+
+def test_tracker_call_kwargs_passes_dpi() -> None:
+    """TrackerParams dpi is forwarded to legacy kwargs."""
+    params = TrackerParams(
+        planet_num=6,
+        start_time='2025-01-01 00:00',
+        stop_time='2025-01-02 00:00',
+        dpi=72,
+    )
+    kwargs = _tracker_call_kwargs_from_params(params)
+    assert kwargs['dpi'] == 72
+
+
+def test_tracker_call_kwargs_passes_output_image() -> None:
+    """TrackerParams output_image path is forwarded to legacy kwargs."""
+    params = TrackerParams(
+        planet_num=6,
+        start_time='2025-01-01 00:00',
+        stop_time='2025-01-02 00:00',
+        output_image='/tmp/test_tracker.png',
+    )
+    kwargs = _tracker_call_kwargs_from_params(params)
+    assert kwargs['output_image'] == '/tmp/test_tracker.png'

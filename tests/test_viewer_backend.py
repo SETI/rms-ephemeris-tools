@@ -269,3 +269,35 @@ def test_fov_deg_from_unit_voyager_wide_matches_fortran_constant() -> None:
     """Voyager ISS wide-angle unit matches FORTRAN radian multiplier."""
     fov_deg = _fov_deg_from_unit(1.0, 'Voyager ISS wide angle FOVs')
     assert abs(fov_deg - 3.130068434799687) < 1e-12
+
+
+def test_viewer_call_kwargs_passes_backend_defaults_to_mpl() -> None:
+    """ViewerParams default backend is 'mpl' and forwarded to kwargs."""
+    params = ViewerParams(planet_num=6, time_str='2025-01-01 12:00')
+    kwargs = _viewer_call_kwargs_from_params(params)
+    assert kwargs['backend'] == 'mpl'
+
+
+def test_viewer_call_kwargs_passes_backend_escher() -> None:
+    """ViewerParams backend='escher' is forwarded correctly."""
+    params = ViewerParams(planet_num=6, time_str='2025-01-01 12:00', backend='escher')
+    kwargs = _viewer_call_kwargs_from_params(params)
+    assert kwargs['backend'] == 'escher'
+
+
+def test_viewer_call_kwargs_passes_dpi() -> None:
+    """ViewerParams dpi is forwarded to legacy kwargs."""
+    params = ViewerParams(planet_num=6, time_str='2025-01-01 12:00', dpi=300)
+    kwargs = _viewer_call_kwargs_from_params(params)
+    assert kwargs['dpi'] == 300
+
+
+def test_viewer_call_kwargs_passes_output_image() -> None:
+    """ViewerParams output_image path is forwarded to legacy kwargs."""
+    params = ViewerParams(
+        planet_num=6,
+        time_str='2025-01-01 12:00',
+        output_image='/tmp/test_viewer.png',
+    )
+    kwargs = _viewer_call_kwargs_from_params(params)
+    assert kwargs['output_image'] == '/tmp/test_viewer.png'

@@ -4,12 +4,7 @@ from __future__ import annotations
 
 import math
 
-from ephemeris_tools.rendering.escher import (
-    EscherState,
-    EscherViewState,
-    esdraw,
-    esdump,
-)
+from ephemeris_tools.rendering.protocols import SegmentSink
 from ephemeris_tools.rendering.euclid.constants import _PI, LIMFOV, STDSEG
 from ephemeris_tools.rendering.euclid.ellipse import _arderd, _asort, _ovrlap, _plpnts
 from ephemeris_tools.rendering.euclid.segment_plane import (
@@ -43,8 +38,7 @@ def eubody(
     dark: int,
     term: int,
     euclid_state: EuclidState,
-    view_state: EscherViewState,
-    escher_state: EscherState,
+    sink: SegmentSink,
 ) -> None:
     """Draw one ellipsoid body with terminator and optional grid (port of EUBODY).
 
@@ -61,8 +55,7 @@ def eubody(
         dark: Color for unlit regions.
         term: Color for terminator (lit/dark boundary).
         euclid_state: Euclid state from eugeom/euview.
-        view_state: Escher view state.
-        escher_state: Escher output state.
+        sink: Segment sink (Escher PostScript or matplotlib canvas).
     """
     st = euclid_state
     bi = body - 1  # 0-based index
@@ -492,7 +485,7 @@ def eubody(
                 if ndark_v == drkreq:
                     if noview:
                         bc, ec = _fovclp(bc, ec, st.cosfov)
-                    esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
+                    sink.draw(_v3t(bc), _v3t(ec), dark)
                 else:
                     bright_segs.append(bc)
                     bright_ends.append(ec)
@@ -500,7 +493,7 @@ def eubody(
                 if ndark_v == drkreq and nillum == srcreq - 1:
                     if noview:
                         bc, ec = _fovclp(bc, ec, st.cosfov)
-                    esdraw(_v3t(bc), _v3t(ec), term, view_state, escher_state)
+                    sink.draw(_v3t(bc), _v3t(ec), term)
 
         # Eclipse checks on remaining bright segments
         numseg_b = len(bright_segs)
@@ -511,7 +504,7 @@ def eubody(
                 ec = bright_ends[si]
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
+                sink.draw(_v3t(bc), _v3t(ec), dark)
             numseg_b = 0
 
         if npsecl == 0 and numseg_b > 0:
@@ -520,7 +513,7 @@ def eubody(
                 ec = bright_ends[si]
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
+                sink.draw(_v3t(bc), _v3t(ec), bright)
             numseg_b = 0
 
         # Per-segment eclipse check
@@ -591,13 +584,13 @@ def eubody(
             if notecl:
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
+                sink.draw(_v3t(bc), _v3t(ec), bright)
             else:
                 if noview:
                     bc, ec = _fovclp(bc, ec, st.cosfov)
-                esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
+                sink.draw(_v3t(bc), _v3t(ec), dark)
 
             si += 1
 
     # Flush segment buffer
-    esdump(view_state, escher_state)
+    sink.dump()

@@ -84,25 +84,45 @@ ephemeris-tools ephemeris --planet saturn --start "2025-01-01 00:00" --stop "202
 ### Moon tracker
 
 ```bash
-ephemeris-tools tracker --planet saturn --start "2025-01-01 00:00" --stop "2025-01-02 00:00" -o tracker.ps
+ephemeris-tools tracker --planet saturn --start "2025-01-01 00:00" --stop "2025-01-02 00:00" -o tracker.png
 ```
 
-To convert the PostScript output to PNG (requires Ghostscript):
+The default backend produces **PNG** (format inferred from the output file extension; PDF and SVG are also supported):
 
 ```bash
-gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=tracker.png tracker.ps
+ephemeris-tools tracker --planet saturn --start "2025-01-01 00:00" --stop "2025-01-02 00:00" -o tracker.svg
+ephemeris-tools tracker --planet saturn --start "2025-01-01 00:00" --stop "2025-01-02 00:00" -o tracker.pdf
+```
+
+Use `--dpi` to control raster resolution (default 150):
+
+```bash
+ephemeris-tools tracker ... -o tracker.png --dpi 300
+```
+
+To produce **legacy PostScript** output (requires Ghostscript for PNG conversion):
+
+```bash
+ephemeris-tools tracker --backend escher --planet saturn --start "2025-01-01 00:00" --stop "2025-01-02 00:00" -o tracker.ps
 ```
 
 ### Planet viewer
 
 ```bash
-ephemeris-tools viewer --planet saturn --time "2025-01-01 12:00" -o view.ps
+ephemeris-tools viewer --planet saturn --time "2025-01-01 12:00" -o view.png
 ```
 
-To convert the PostScript output to PNG (requires Ghostscript):
+Format is inferred from the output file extension (`.png`, `.pdf`, `.svg`, `.ps`/`.eps`):
 
 ```bash
-gs -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r150 -sOutputFile=view.png view.ps
+ephemeris-tools viewer --planet saturn --time "2025-01-01 12:00" -o view.pdf
+ephemeris-tools viewer --planet saturn --time "2025-01-01 12:00" -o view.svg --dpi 200
+```
+
+To produce **legacy PostScript** output (Escher backend):
+
+```bash
+ephemeris-tools viewer --backend escher --planet saturn --time "2025-01-01 12:00" -o view.ps
 ```
 
 # For developers

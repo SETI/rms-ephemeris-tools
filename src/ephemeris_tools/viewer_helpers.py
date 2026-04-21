@@ -108,6 +108,9 @@ class _RunViewerKwargs(TypedDict, total=True):
     extra_star_dec_deg: float | None
     other_bodies: list[str] | None
     title: str
+    backend: str
+    dpi: int
+    output_image: str | None
 
 
 _PLANET_CONFIGS = {
@@ -1046,6 +1049,9 @@ def _viewer_call_kwargs_from_params(params: ViewerParams) -> _RunViewerKwargs:
         'extra_star_dec_deg': params.extra_star.dec_deg if params.extra_star is not None else None,
         'other_bodies': params.other_bodies,
         'title': params.title,
+        'backend': params.backend,
+        'dpi': params.dpi,
+        'output_image': params.output_image,
     }
 
 

@@ -62,6 +62,9 @@ class _RunTrackerKwargs(TypedDict, total=False):
     observer_altitude: float | None
     output_ps: TextIO | None
     output_txt: TextIO | None
+    backend: str
+    dpi: int
+    output_image: str | None
 
 
 # Radians to arcsec for tracker plot (Earth observatories; RSPK_TrackMoons)
@@ -142,6 +145,9 @@ def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs
         'observer_altitude': params.observer.altitude_m,
         'output_ps': params.output_ps,
         'output_txt': params.output_txt,
+        'backend': params.backend,
+        'dpi': params.dpi,
+        'output_image': params.output_image,
     }
 
 
@@ -183,6 +189,9 @@ def _run_tracker_impl(
     sc_trajectory: int = 0,
     output_ps: TextIO | None = None,
     output_txt: TextIO | None = None,
+    backend: str = 'mpl',
+    dpi: int = 150,
+    output_image: str | None = None,
 ) -> None:
     """Internal tracker implementation (flat kwargs from TrackerParams)."""
     if moon_ids is None:
@@ -353,6 +362,35 @@ def _run_tracker_impl(
             align_loc=90.0 if use_doy_format else 180.0,
             filename=filename,
             use_doy_format=use_doy_format,
+        )
+    elif backend == 'mpl' and output_image:
+        from ephemeris_tools.rendering.mpl.renderer_tracker import (  # noqa: PLC0415
+            draw_moon_tracks_mpl,
+        )
+        draw_moon_tracks_mpl(
+            output_image,
+            planet_num=planet_num,
+            ntimes=ntimes,
+            time1_tai=tai1,
+            time2_tai=tai2,
+            dt=sample_dt,
+            xrange=xrange_val if xrange_val is not None else 100.0,
+            xscaled=xscaled,
+            moon_arcsec=moon_offsets_arcsec,
+            limb_arcsec=limb_arcsec,
+            moon_names=moon_names,
+            nrings=nrings,
+            ring_flags=ring_flags,
+            ring_rads_km=ring_rads_km,
+            ring_grays=ring_grays,
+            planet_gray=PLANET_GRAY,
+            rplanet_km=rplanet_km,
+            title=title or '',
+            ncaptions=ncaptions,
+            lcaptions=lcaptions,
+            rcaptions=rcaptions,
+            use_doy_format=use_doy_format,
+            dpi=dpi,
         )
 
     if output_txt:

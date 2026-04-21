@@ -4,12 +4,7 @@ from __future__ import annotations
 
 import math
 
-from ephemeris_tools.rendering.escher import (
-    EscherState,
-    EscherViewState,
-    esdraw,
-    esdump,
-)
+from ephemeris_tools.rendering.protocols import SegmentSink
 from ephemeris_tools.rendering.euclid.constants import LIMFOV, STDSEG
 from ephemeris_tools.rendering.euclid.ellipse import _ovrlap
 from ephemeris_tools.rendering.euclid.init_geom import euinit
@@ -41,8 +36,7 @@ def euring(
     bright: int,
     dark: int,
     euclid_state: EuclidState,
-    view_state: EscherViewState,
-    escher_state: EscherState,
+    sink: SegmentSink,
 ) -> None:
     """Draw an elliptical ring (port of EURING).
 
@@ -57,8 +51,7 @@ def euring(
         bright: Color code for lit portion.
         dark: Color code for unlit portion.
         euclid_state: Euclid state (from eugeom/euview).
-        view_state: Escher view state.
-        escher_state: Escher output state.
+        sink: Segment sink (Escher PostScript or matplotlib canvas).
     """
     st = euclid_state
     if not st.initialized:
@@ -254,7 +247,7 @@ def euring(
             ec = endseg_list[si]
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
+            sink.draw(_v3t(bc), _v3t(ec), dark)
         numseg = 0
 
     if npsecl == 0 and numseg > 0:
@@ -263,7 +256,7 @@ def euring(
             ec = endseg_list[si]
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
+            sink.draw(_v3t(bc), _v3t(ec), bright)
         numseg = 0
 
     # Per-segment eclipse check
@@ -328,12 +321,12 @@ def euring(
         if notecl:
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(_v3t(bc), _v3t(ec), bright, view_state, escher_state)
+            sink.draw(_v3t(bc), _v3t(ec), bright)
         else:
             if noview:
                 bc, ec = _fovclp(bc, ec, st.cosfov)
-            esdraw(_v3t(bc), _v3t(ec), dark, view_state, escher_state)
+            sink.draw(_v3t(bc), _v3t(ec), dark)
 
         si += 1
 
-    esdump(view_state, escher_state)
+    sink.dump()

@@ -12,6 +12,11 @@ These scripts run `ephemeris-tools` many times, varying one parameter (and some 
 | `test_viewer_param_sweep.sh` | viewer | `.ps` → `.png` | Yes (then PS removed) |
 | `test_tracker_param_sweep.sh` | tracker | `.ps` + `.txt` → `.png` + `.txt` | Yes (PS removed) |
 
+> **Note:** The viewer and tracker scripts explicitly pass `--backend escher` so
+> they continue to produce PostScript output for Ghostscript conversion.  The
+> default `mpl` backend produces PNG/PDF/SVG directly and does not require
+> Ghostscript.
+
 ## Usage
 
 ```bash
@@ -26,7 +31,7 @@ Optional: set `EPHEMERIS_TOOLS_CMD` to use a different command (e.g. `python -m 
 ## Requirements
 
 - **ephemeris-tools** on PATH (or install from repo: `pip install -e .`)
-- **viewer / tracker**: **ghostscript** (`gs`) for PostScript → PNG conversion
+- **viewer / tracker** (escher sweep scripts only): **ghostscript** (`gs`) for PostScript → PNG conversion
 
 ## What each script varies
 

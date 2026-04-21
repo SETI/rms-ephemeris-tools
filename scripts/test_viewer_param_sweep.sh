@@ -3,6 +3,9 @@
 # Writes PostScript then converts to PNG and removes PS. Outputs to obviously-named files.
 # Usage: ./scripts/test_viewer_param_sweep.sh [OUTDIR]
 # Requires: ephemeris-tools on PATH; ghostscript (gs) for PS->PNG.
+#
+# Uses --backend escher to produce PostScript output (the mpl backend is the
+# default since v2; escher is retained here so ghostscript conversion still works).
 
 set -euo pipefail
 
@@ -25,7 +28,7 @@ fi
 BASE_TIME="2022-01-01 12:00"
 
 run() {
-    "$CMD" viewer --time "$BASE_TIME" "$@"
+    "$CMD" viewer --time "$BASE_TIME" --backend escher "$@"
 }
 
 ps2png_rm() {

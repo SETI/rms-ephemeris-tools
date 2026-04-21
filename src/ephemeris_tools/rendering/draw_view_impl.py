@@ -52,6 +52,7 @@ from ephemeris_tools.rendering.escher import (
     esfile,
     write_ps_header,
 )
+from ephemeris_tools.rendering.escher.sink import EscherSink
 from ephemeris_tools.rendering.euclid import (
     EuclidState,
     eubody,
@@ -681,7 +682,8 @@ def draw_planetary_view(output: TextIO, options: DrawPlanetaryViewOptions) -> No
 
         # Draw opaque ring invisibly
         eubody(
-            nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE, euclid_state, view_state, escher_state
+            nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE, euclid_state,
+            EscherSink(view_state, escher_state)
         )
 
         # Exterior rings
@@ -815,7 +817,8 @@ def draw_planetary_view(output: TextIO, options: DrawPlanetaryViewOptions) -> No
         )
 
         eubody(
-            nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE, euclid_state, view_state, escher_state
+            nbodies + 1, 0, 0, 1, NO_LINE, NO_LINE, NO_LINE, euclid_state,
+            EscherSink(view_state, escher_state)
         )
 
         _rspk_draw_rings(

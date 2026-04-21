@@ -399,10 +399,23 @@ def main() -> int:
     )
     track_parser.add_argument('--title', type=str, default='', help='Plot title; env: title')
     track_parser.add_argument(
-        '-o', '--output', type=str, default=None, help='PostScript file; env: TRACKER_POSTFILE'
+        '-o', '--output', type=str, default=None, help='Output image file (mpl: PNG/PDF/SVG; escher: .ps); env: TRACKER_POSTFILE'
     )
     track_parser.add_argument(
         '--output-txt', type=str, default=None, help='Text table file; env: TRACKER_TEXTFILE'
+    )
+    track_parser.add_argument(
+        '--backend',
+        type=str,
+        default='mpl',
+        choices=['mpl', 'escher'],
+        help='Rendering backend: mpl (PNG/PDF/SVG, default) or escher (legacy PostScript); env: BACKEND',
+    )
+    track_parser.add_argument(
+        '--dpi',
+        type=int,
+        default=150,
+        help='DPI for raster output (mpl backend only); env: DPI',
     )
     track_parser.add_argument('-v', '--verbose', action='store_true', help='Show INFO logs')
     track_parser.set_defaults(func=_tracker_cmd)
@@ -621,10 +634,23 @@ def main() -> int:
         help='Neptune arc weight in points; env: arcpts',
     )
     view_parser.add_argument(
-        '-o', '--output', type=str, default=None, help='PostScript file; env: VIEWER_POSTFILE'
+        '-o', '--output', type=str, default=None, help='Output image file (mpl: PNG/PDF/SVG; escher: .ps); env: VIEWER_POSTFILE'
     )
     view_parser.add_argument(
         '--output-txt', type=str, default=None, help='Field of View table file'
+    )
+    view_parser.add_argument(
+        '--backend',
+        type=str,
+        default='mpl',
+        choices=['mpl', 'escher'],
+        help='Rendering backend: mpl (PNG/PDF/SVG, default) or escher (legacy PostScript); env: BACKEND',
+    )
+    view_parser.add_argument(
+        '--dpi',
+        type=int,
+        default=150,
+        help='DPI for raster output (mpl backend only); env: DPI',
     )
     view_parser.add_argument('-v', '--verbose', action='store_true', help='Show INFO logs')
     view_parser.set_defaults(func=_viewer_cmd)
@@ -653,7 +679,17 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
         with contextlib.ExitStack() as stack:
             post_path = os.environ.get('TRACKER_POSTFILE')
             txt_path = os.environ.get('TRACKER_TEXTFILE')
-            if post_path:
+            backend = (os.environ.get('BACKEND') or 'mpl').strip().lower()
+            try:
+                dpi_val = int(os.environ.get('DPI') or '150')
+            except ValueError:
+                dpi_val = 150
+            params.backend = backend
+            params.dpi = dpi_val
+            if backend == 'mpl':
+                if post_path:
+                    params.output_image = post_path
+            elif post_path:
                 params.output_ps = stack.enter_context(open(post_path, 'w'))
             if txt_path:
                 params.output_txt = stack.enter_context(open(txt_path, 'w'))
@@ -720,15 +756,19 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
         xunit=args.xunit,
         title=(args.title or '').strip(),
         viewpoint_display=viewpoint_display,
+        backend=args.backend,
+        dpi=args.dpi,
     )
     write_input_parameters_tracker(sys.stdout, tracker_params)
     with contextlib.ExitStack() as stack:
-        out_ps = stack.enter_context(open(args.output, 'w')) if args.output is not None else None
+        if args.backend == 'escher' and args.output is not None:
+            tracker_params.output_ps = stack.enter_context(open(args.output, 'w'))
+        elif args.backend == 'mpl':
+            tracker_params.output_image = args.output
         out_txt = (
             stack.enter_context(open(args.output_txt, 'w')) if args.output_txt is not None else None
         )
         try:
-            tracker_params.output_ps = out_ps
             tracker_params.output_txt = out_txt
             run_tracker(tracker_params)
         except (ValueError, RuntimeError) as e:
@@ -756,7 +796,17 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
         with contextlib.ExitStack() as stack:
             post_path = os.environ.get('VIEWER_POSTFILE')
             txt_path = os.environ.get('VIEWER_TEXTFILE')
-            if post_path:
+            backend = (os.environ.get('BACKEND') or 'mpl').strip().lower()
+            try:
+                dpi_val = int(os.environ.get('DPI') or '150')
+            except ValueError:
+                dpi_val = 150
+            params.backend = backend
+            params.dpi = dpi_val
+            if backend == 'mpl':
+                if post_path:
+                    params.output_image = post_path
+            elif post_path:
                 params.output_ps = stack.enter_context(open(post_path, 'w'))
             if txt_path:
                 params.output_txt = stack.enter_context(open(txt_path, 'w'))
@@ -768,7 +818,10 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
                 return 1
 
     with contextlib.ExitStack() as stack:
-        out = stack.enter_context(open(args.output, 'w')) if args.output is not None else None
+        if args.backend == 'escher' and args.output is not None:
+            out = stack.enter_context(open(args.output, 'w'))
+        else:
+            out = None
         out_txt = (
             stack.enter_context(open(args.output_txt, 'w')) if args.output_txt is not None else None
         )
@@ -911,6 +964,9 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
             moremoons=args.moremoons,
             output_ps=out,
             output_txt=out_txt,
+            backend=args.backend,
+            dpi=args.dpi,
+            output_image=args.output if args.backend == 'mpl' else None,
         )
         write_input_parameters_viewer(sys.stdout, viewer_params)
         try:

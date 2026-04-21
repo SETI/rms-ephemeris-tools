@@ -8,8 +8,8 @@ completely behind others are properly obscured, and shadows cast by bodies
 onto other bodies are portrayed accurately. In addition to ellipsoids, Euclid
 can draw elliptical rings, stars, and figures overlaid onto the image plane.
 
-To use Euclid you must have a working copy of Escher — the subroutine package
-that draws vectors on the display device (here, PostScript via the Escher layer).
+To use Euclid you must supply a SegmentSink — either an EscherSink (wrapping
+the PostScript Escher layer) or an MplCanvas (for matplotlib output).
 
 Overview
 --------
@@ -33,10 +33,10 @@ Typical usage (single picture)::
     euclr(...)
     eugeom(...)
     for each body:
-        eubody(...)
+        eubody(..., sink)
 
-This package produces segment arrays for the Escher layer (ESDRAW/ESDUMP) so
-that viewer PostScript matches FORTRAN byte-for-byte.
+This package accepts a SegmentSink for output so that viewer output can be
+directed to PostScript (EscherSink) or matplotlib (MplCanvas).
 """
 
 from ephemeris_tools.rendering.euclid.body import eubody

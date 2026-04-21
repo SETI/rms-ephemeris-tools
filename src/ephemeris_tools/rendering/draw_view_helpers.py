@@ -15,6 +15,7 @@ from ephemeris_tools.rendering.escher import (
     esmove,
     eswrit,
 )
+from ephemeris_tools.rendering.escher.sink import EscherSink
 from ephemeris_tools.rendering.euclid import (
     EuclidState,
     eubody,
@@ -202,7 +203,8 @@ def _rspk_annotate(
     x = x + 0.7070 * radius
     y = y - 0.7070 * radius
     if abs(x) < delta and abs(y) < delta:
-        eutemp([x], [y], [x], [y], 1, 1, view_state, escher_state)
+        sink = EscherSink(view_state, escher_state)
+        eutemp([x], [y], [x], [y], 1, 1, sink)
         esmove(escher_state)
         name_safe = _rspk_escape(name)
         eswrit(f'({name_safe}) LabelBody', escher_state)
@@ -234,6 +236,7 @@ def _rspk_labels2(
     k1 = _fortran_nint((ra_sec - sdelta) / ds + 0.5)
     k2 = _fortran_nint((ra_sec + sdelta) / ds - 0.5)
     _eps = 1e-12
+    sink = EscherSink(view_state, escher_state)
     for k in range(k1, k2 + 1):
         s = k * ds
         length = dtick2
@@ -246,10 +249,10 @@ def _rspk_labels2(
             continue
         x = -cam[0] / cam[2]
         if abs(x) <= delta:
-            eutemp([x], [delta - length], [x], [delta], 1, ltype, view_state, escher_state)
+            eutemp([x], [delta - length], [x], [delta], 1, ltype, sink)
             if ismajor:
                 _rspk_write_label(s, 'B', escher_state)
-            eutemp([x], [-delta + length], [x], [-delta], 1, ltype, view_state, escher_state)
+            eutemp([x], [-delta + length], [x], [-delta], 1, ltype, sink)
     spr = dpr * 3600.0
     sdelta = delta * spr
     i = _NCHOICES
@@ -274,10 +277,10 @@ def _rspk_labels2(
             continue
         y = -cam[1] / cam[2]
         if abs(y) <= delta:
-            eutemp([-delta + length], [y], [-delta], [y], 1, ltype, view_state, escher_state)
+            eutemp([-delta + length], [y], [-delta], [y], 1, ltype, sink)
             if ismajor:
                 _rspk_write_label(s, 'L', escher_state)
-            eutemp([delta - length], [y], [delta], [y], 1, ltype, view_state, escher_state)
+            eutemp([delta - length], [y], [delta], [y], 1, ltype, sink)
 
 
 def _rspk_draw_bodies(
@@ -305,17 +308,18 @@ def _rspk_draw_bodies(
     escher_state: EscherState,
 ) -> None:
     """Draw all bodies (planet and moons) with terminators (port of RSPK_DrawBodies)."""
+    sink = EscherSink(view_state, escher_state)
     l1, l2, l3 = lit_line, dark_line, term_line
     isvis = l1 != 0 or l2 != 0 or l3 != 0
     if isvis:
         eswrit('%Draw planet...', escher_state)
     if isvis and prime_pts > 0.0:
         eslwid(prime_pts, escher_state)
-        eubody(1, 1, 0, 1, l1, l2, 0, euclid_state, view_state, escher_state)
-        eubody(1, 0, 0, 1, 0, 0, 0, euclid_state, view_state, escher_state)
+        eubody(1, 1, 0, 1, l1, l2, 0, euclid_state, sink)
+        eubody(1, 0, 0, 1, 0, 0, 0, euclid_state, sink)
     eslwid(0.0, escher_state)
-    eubody(1, pmerids, plats, 1, l1, l2, l3, euclid_state, view_state, escher_state)
-    eubody(2, 2, 1, 1, 0, 0, 0, euclid_state, view_state, escher_state)
+    eubody(1, pmerids, plats, 1, l1, l2, l3, euclid_state, sink)
+    eubody(2, 2, 1, 1, 0, 0, 0, euclid_state, sink)
     for ibody in range(3, nbodies + 1):
         bi = ibody - 1
         inner = (body_dist[bi] < mindist) if bi < len(body_dist) else False
@@ -327,12 +331,12 @@ def _rspk_draw_bodies(
         bpts = body_pts[bi] if bi < len(body_pts) else 0.0
         if bvis and prime_pts > 0.0 and body_diampts == 0.0 and bpts > body_diampts * 8.0:
             eslwid(prime_pts, escher_state)
-            eubody(ibody, 1, 0, 1, bl1, bl2, 0, euclid_state, view_state, escher_state)
-            eubody(ibody, 0, 0, 1, 0, 0, 0, euclid_state, view_state, escher_state)
+            eubody(ibody, 1, 0, 1, bl1, bl2, 0, euclid_state, sink)
+            eubody(ibody, 0, 0, 1, 0, 0, 0, euclid_state, sink)
         escher_state.drawn = False
         segbuf_len_before = len(view_state.segbuf)
         eslwid(body_diampts - bpts, escher_state)
-        eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, view_state, escher_state)
+        eubody(ibody, mmerids, mlats, 1, bl1, bl2, bl3, euclid_state, sink)
         drew_body = escher_state.drawn or len(view_state.segbuf) > segbuf_len_before
         no_line_pass = bl1 == NO_LINE and bl2 == NO_LINE and bl3 == NO_LINE
         if update_names and bvis and not (drew_body or no_line_pass) and bi < len(body_names):
@@ -365,6 +369,7 @@ def _rspk_draw_rings(
     escher_state: EscherState,
 ) -> None:
     """Draw all rings and arc segments (port of RSPK_DrawRings)."""
+    sink = EscherSink(view_state, escher_state)
     for iring in range(iring1, iring2 + 1):
         ri = iring - 1
         if ri < 0 or ri >= len(ring_flags) or not ring_flags[ri]:
@@ -372,7 +377,7 @@ def _rspk_draw_rings(
         draw_line = dark_line if ring_dark[ri] else lit_line
         eswrit(f'%Draw ring #{iring:2d}...', escher_state)
         if ring_dashed[ri]:
-            eswrit('[30 30] 0 setdash', escher_state)
+            sink.set_dashed(True)
         euring(
             ring_locs[ri],
             ring_axes1[ri],
@@ -381,11 +386,10 @@ def _rspk_draw_rings(
             draw_line,
             shadow_line,
             euclid_state,
-            view_state,
-            escher_state,
+            sink,
         )
         if ring_dashed[ri]:
-            eswrit('[] 0 setdash', escher_state)
+            sink.set_dashed(False)
     if nloops > 0:
         eswrit('%Draw arcs...', escher_state)
     eslwid(arc_width, escher_state)
@@ -402,8 +406,7 @@ def _rspk_draw_rings(
                 draw_line,
                 shadow_line,
                 euclid_state,
-                view_state,
-                escher_state,
+                sink,
             )
     eslwid(0.0, escher_state)
 

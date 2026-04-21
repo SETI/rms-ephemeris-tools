@@ -3,6 +3,9 @@
 # Writes PostScript and text table; converts PS to PNG and removes PS.
 # Usage: ./scripts/test_tracker_param_sweep.sh [OUTDIR]
 # Requires: ephemeris-tools on PATH; ghostscript (gs) for PS->PNG.
+#
+# Uses --backend escher to produce PostScript output (the mpl backend is the
+# default since v2; escher is retained here so ghostscript conversion still works).
 
 set -euo pipefail
 
@@ -26,7 +29,7 @@ BASE_START="2022-01-01 00:00"
 BASE_STOP="2022-01-02 00:00"
 
 run() {
-    "$CMD" tracker --start "$BASE_START" --stop "$BASE_STOP" "$@"
+    "$CMD" tracker --start "$BASE_START" --stop "$BASE_STOP" --backend escher "$@"
 }
 
 ps2png_rm() {

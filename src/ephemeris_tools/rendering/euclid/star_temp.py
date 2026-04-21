@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-from ephemeris_tools.rendering.escher import (
-    EscherState,
-    EscherViewState,
-    esdraw,
-    esdump,
-)
-from ephemeris_tools.rendering.escher.ps_output import espl07
+from ephemeris_tools.rendering.protocols import SegmentSink
 from ephemeris_tools.rendering.euclid.state import EuclidState
 from ephemeris_tools.rendering.euclid.vec_math import _mtxv
 
@@ -21,8 +15,7 @@ def eustar(
     fntscl: float,
     color: int,
     euclid_state: EuclidState,
-    view_state: EscherViewState,
-    escher_state: EscherState,
+    sink: SegmentSink,
 ) -> None:
     """Draw star/point markers with a line-segment font (port of EUSTAR).
 
@@ -37,8 +30,7 @@ def eustar(
         fntscl: Scale factor (0-1) for marker size vs display.
         color: Color code for drawing.
         euclid_state: Euclid state.
-        view_state: Escher view state.
-        escher_state: Escher output state.
+        sink: Segment sink (Escher PostScript or matplotlib canvas).
     """
     _ = nstars
     cam = euclid_state.camera
@@ -49,20 +41,19 @@ def eustar(
         return
     center_proj_x = -star[0] / star[2]
     center_proj_y = -star[1] / star[2]
-    if abs(view_state._ux) < 1.0e-12 or abs(view_state._uy) < 1.0e-12:
+
+    # Glyph scale derived from FOV: scale = fntscl * half_fov_width.
+    # This is mathematically equivalent to the original Escher pixel mapping
+    # (0.5 * fntscl * hspan * page_width / ux) which simplifies to fntscl * delta
+    # when the view region and FOV are both square.
+    x1, x2, y1, y2 = euclid_state.fov
+    fov_w = x2 - x1
+    fov_h = y2 - y1
+    if abs(fov_w) < 1.0e-12 or abs(fov_h) < 1.0e-12:
         return
-    left, right, bottom, top = espl07()
-    hspan = abs(view_state.view[1] - view_state.view[0])
-    vspan = abs(view_state.view[3] - view_state.view[2])
-    if hspan < 1.0e-12 or vspan < 1.0e-12:
-        raise ValueError(
-            f'Degenerate view_state.view: hspan={hspan}, vspan={vspan}, view={view_state.view}'
-        )
-    # ESSTAR maps glyph coordinates over a viewport-scaled box centered on the
-    # target point. The segment font is defined over a full-width range, so the
-    # viewport half-size factor is required for FORTRAN-equivalent glyph size.
-    dx_proj_scale = 0.5 * fntscl * hspan * abs(right - left) / abs(view_state._ux)
-    dy_proj_scale = 0.5 * fntscl * vspan * abs(top - bottom) / abs(view_state._uy)
+    dx_proj_scale = fntscl * fov_w / 2.0
+    dy_proj_scale = fntscl * fov_h / 2.0
+
     for i in range(min(fntsiz, len(font))):
         (fx1, fy1), (fx2, fy2) = font[i]
         proj_x1 = center_proj_x + (fx1 * dx_proj_scale)
@@ -71,8 +62,8 @@ def eustar(
         proj_y2 = center_proj_y + (fy2 * dy_proj_scale)
         beg = (-proj_x1 * star[2], -proj_y1 * star[2], star[2])
         end = (-proj_x2 * star[2], -proj_y2 * star[2], star[2])
-        esdraw(beg, end, color, view_state, escher_state)
-    esdump(view_state, escher_state)
+        sink.draw(beg, end, color)
+    sink.dump()
 
 
 def eutemp(
@@ -82,8 +73,7 @@ def eutemp(
     yend: list[float],
     nsegs: int,
     color: int,
-    view_state: EscherViewState,
-    escher_state: EscherState,
+    sink: SegmentSink,
 ) -> None:
     """Draw line-segment overlay on the image plane (port of EUTEMP).
 
@@ -97,11 +87,10 @@ def eutemp(
         yend: y-coordinates of segment ends.
         nsegs: Number of segments.
         color: Color code for drawing.
-        view_state: Escher view state.
-        escher_state: Escher output state.
+        sink: Segment sink (Escher PostScript or matplotlib canvas).
     """
     for i in range(nsegs):
         beg = (-xbegin[i], -ybegin[i], 1.0)
         end = (-xend[i], -yend[i], 1.0)
-        esdraw(beg, end, color, view_state, escher_state)
-    esdump(view_state, escher_state)
+        sink.draw(beg, end, color)
+    sink.dump()

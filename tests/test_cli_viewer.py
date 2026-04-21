@@ -57,3 +57,82 @@ def test_cli_viewer_simplified_args(monkeypatch) -> None:  # type: ignore[no-unt
     assert params.fov_value == 3.0
     assert params.fov_unit == 'Neptune radii'
     assert params.center.mode == 'ansa'
+
+
+def test_cli_viewer_backend_mpl_sets_output_image(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Viewer --backend mpl (default) stores output path as output_image, not output_ps."""
+    captured: dict = {}
+
+    monkeypatch.setattr('ephemeris_tools.cli.main.run_viewer', lambda p: captured.update(value=p))
+    monkeypatch.setattr(
+        'ephemeris_tools.input_params.write_input_parameters_viewer', lambda *_: None
+    )
+    monkeypatch.setattr(
+        sys,
+        'argv',
+        [
+            'ephemeris-tools', 'viewer',
+            '--planet', 'saturn',
+            '--time', '2025-01-01 12:00',
+            '-o', '/tmp/viewer_test.png',
+        ],
+    )
+    rc = cli_main.main()
+    assert rc == 0
+    params = captured['value']
+    assert params.backend == 'mpl'
+    assert params.output_image == '/tmp/viewer_test.png'
+    assert params.output_ps is None
+
+
+def test_cli_viewer_backend_escher_opens_output_ps(
+    monkeypatch, tmp_path  # type: ignore[no-untyped-def]
+) -> None:
+    """Viewer --backend escher opens output as a text file for PostScript."""
+    captured: dict = {}
+
+    monkeypatch.setattr('ephemeris_tools.cli.main.run_viewer', lambda p: captured.update(value=p))
+    monkeypatch.setattr(
+        'ephemeris_tools.input_params.write_input_parameters_viewer', lambda *_: None
+    )
+    ps_path = str(tmp_path / 'viewer_test.ps')
+    monkeypatch.setattr(
+        sys,
+        'argv',
+        [
+            'ephemeris-tools', 'viewer',
+            '--planet', 'saturn',
+            '--time', '2025-01-01 12:00',
+            '--backend', 'escher',
+            '-o', ps_path,
+        ],
+    )
+    rc = cli_main.main()
+    assert rc == 0
+    params = captured['value']
+    assert params.backend == 'escher'
+    assert params.output_ps is not None
+    assert params.output_image is None
+
+
+def test_cli_viewer_dpi_forwarded_to_params(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Viewer --dpi value is stored in params.dpi."""
+    captured: dict = {}
+
+    monkeypatch.setattr('ephemeris_tools.cli.main.run_viewer', lambda p: captured.update(value=p))
+    monkeypatch.setattr(
+        'ephemeris_tools.input_params.write_input_parameters_viewer', lambda *_: None
+    )
+    monkeypatch.setattr(
+        sys,
+        'argv',
+        [
+            'ephemeris-tools', 'viewer',
+            '--planet', 'saturn',
+            '--time', '2025-01-01 12:00',
+            '--dpi', '300',
+        ],
+    )
+    rc = cli_main.main()
+    assert rc == 0
+    assert captured['value'].dpi == 300

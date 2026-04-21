@@ -805,6 +805,9 @@ class ViewerParams:
     display: ViewerDisplayInfo | None = None
     output_ps: TextIO | None = None
     output_txt: TextIO | None = None
+    backend: str = 'mpl'
+    dpi: int = 150
+    output_image: str | None = None
 
 
 @dataclass
@@ -831,6 +834,9 @@ class TrackerParams:
     moons_display: list[str] | None = None
     rings_display: list[str] | None = None
     viewpoint_display: str | None = None
+    backend: str = 'mpl'
+    dpi: int = 150
+    output_image: str | None = None
 
 
 @dataclass

@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "cspyce>=2.3.0",
+    "matplotlib>=3.8",
     "numpy>=2.0",
     "rms-julian>=2.0"
 ]
