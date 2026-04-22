@@ -417,6 +417,16 @@ def main() -> int:
         default=150,
         help='DPI for raster output (mpl backend only); env: DPI',
     )
+    track_parser.add_argument(
+        '--track-color',
+        type=str,
+        default='black',
+        choices=['black', 'colored'],
+        help=(
+            'Moon track colour scheme (mpl backend only): black (default, '
+            'matches legacy) or colored (one colour per moon); env: TRACK_COLOR'
+        ),
+    )
     track_parser.add_argument('-v', '--verbose', action='store_true', help='Show INFO logs')
     track_parser.set_defaults(func=_tracker_cmd)
 
@@ -684,8 +694,12 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
                 dpi_val = int(os.environ.get('DPI') or '150')
             except ValueError:
                 dpi_val = 150
+            track_color = (os.environ.get('TRACK_COLOR') or 'black').strip().lower()
+            if track_color not in ('black', 'colored'):
+                track_color = 'black'
             params.backend = backend
             params.dpi = dpi_val
+            params.track_color = track_color
             if backend == 'mpl':
                 if post_path:
                     params.output_image = post_path
@@ -758,6 +772,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
         viewpoint_display=viewpoint_display,
         backend=args.backend,
         dpi=args.dpi,
+        track_color=args.track_color,
     )
     write_input_parameters_tracker(sys.stdout, tracker_params)
     with contextlib.ExitStack() as stack:

@@ -2,8 +2,9 @@
 
 Produces PNG/PDF/SVG/PS output via matplotlib savefig.  Ports the tick-spacing
 logic (STEP1/STEP1_MINS) and label anti-overlap logic from draw_tracker.py into
-idiomatic matplotlib axes.  Time increases downward; west (positive x) is to
-the right; planet/ring bands are gray filled regions.
+idiomatic matplotlib axes.  Time increases downward; the x-axis matches
+PostScript ``draw_moon_tracks`` (``SetLimits``): positive offsets on the left,
+negative on the right.  Planet/ring bands are gray filled regions.
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ def draw_moon_tracks_mpl(
     align_loc: float,
     use_doy_format: bool = False,
     dpi: int = 150,
+    track_color: str = 'black',
 ) -> None:
     """Render moon tracks to an image file using matplotlib.
 
@@ -73,6 +75,11 @@ def draw_moon_tracks_mpl(
         title, ncaptions, lcaptions, rcaptions, align_loc: Ornaments.
         use_doy_format: True for YYYY-DDD HHh y-axis labels.
         dpi: Output resolution.
+        track_color: Moon track colour scheme.  ``'black'`` (default) draws
+            every moon's track and label in solid black, matching the legacy
+            PostScript output.  ``'colored'`` assigns each moon a distinct
+            colour from matplotlib's default property cycle and uses that
+            colour for both the track line and its label.
     """
     import numpy as np  # noqa: PLC0415
     import matplotlib.pyplot as plt  # noqa: PLC0415
@@ -105,7 +112,7 @@ def draw_moon_tracks_mpl(
     fig, ax = figure_and_axes(
         fig_width_in=7.5,
         fig_height_in=10.0,
-        left=0.18, right=0.92, top=0.92, bottom=0.06,
+        left=0.18, right=0.92, top=0.92, bottom=0.16,
     )
 
     # Draw gray bands (rings, then planet) from inside out
@@ -140,15 +147,33 @@ def draw_moon_tracks_mpl(
     for i in range(max(0, ntimes - 1 - irecband), ntimes):
         excluded[i] = True
 
-    ax.set_prop_cycle(None)  # reset color cycle
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    mode = (track_color or 'black').strip().lower()
+    if mode == 'colored':
+        palette = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+        def _moon_color(imoon: int) -> str:
+            return palette[imoon % len(palette)]
+    else:
+        # Anything other than the exact string 'colored' falls back to black
+        # (matches the legacy PostScript backend and is the CLI default).
+        def _moon_color(imoon: int) -> str:
+            return 'black'
+
+    # Approximate data-units width of a moon-label character at fontsize=8 so we
+    # can choose whether to anchor the label to the right or left of its track
+    # point.  The worst case is a long all-caps moon name near the left edge
+    # (e.g. EUROPA in the 1615 Jupiter data).  When the right-anchored label
+    # would extend past the left side of the axes, flip it to left-anchored so
+    # it stays inside the plot area.
+    char_data_width = xrange * 0.012  # empirical: ~1.2% of half-range per char
 
     for imoon in range(nmoons):
         xs = moon_x(imoon)
-        color = colors[imoon % len(colors)]
-        ax.plot(xs, y_vals, lw=1.2, color=color, zorder=2)
+        color = _moon_color(imoon)
+        ax.plot(xs, y_vals, lw=1.5, color=color, zorder=2)
 
-        # Label at rightmost visible point outside exclusion zone
+        # Label at max-positive-x inside clip (east / left side of plot), same
+        # criterion as draw_tracker._plot_moon / PutLab.
         xmax = -1e37
         imax = -1
         for irec in range(ntimes):
@@ -158,22 +183,35 @@ def draw_moon_tracks_mpl(
                 imax = irec
         if xmax > -xrange and imax >= 0:
             mname = moon_names[imoon].strip().upper()
+            # Prefer right-aligned (label to the left of the track point),
+            # matching PS; flip to left-aligned if that would overflow the
+            # left-positive axis edge.
+            label_w = len(mname) * char_data_width
+            if xmax + label_w > xrange:
+                offset = (3, 0)
+                align = 'left'
+            else:
+                offset = (-3, 0)
+                align = 'right'
             ax.annotate(
                 mname,
                 xy=(xmax, y_vals[imax]),
-                xytext=(3, 0),
+                xytext=offset,
                 textcoords='offset points',
-                fontsize=7,
+                fontsize=8,
                 va='center',
+                ha=align,
                 color=color,
                 zorder=3,
+                clip_on=False,
             )
             for j in range(max(0, imax - irecband), min(ntimes, imax + irecband + 1)):
                 excluded[j] = True
 
-    # Axis limits and invert y (time increases downward)
-    ax.set_xlim(-xrange, xrange)
-    ax.set_ylim(ntimes, 1)  # invert y
+    # Axis limits: match PostScript SetLimits (X1=+xrange, X2=-xrange) so
+    # positive x is on the left.  Invert y so time increases downward.
+    ax.set_xlim(xrange, -xrange)
+    ax.set_ylim(ntimes, 1)
 
     # X-axis ticks (use draw_tracker.STEP1 spacing)
     x_ticks_major, x_ticks_minor, x_labels = _compute_x_ticks(xrange)
@@ -198,27 +236,32 @@ def draw_moon_tracks_mpl(
     if title and title.strip():
         fig.suptitle(title.strip(), fontsize=11, y=0.96)
 
-    # Captions
+    # Captions: centered under the plot, below the x-axis label.  Labels are
+    # right-aligned to a shared anchor and values are left-aligned from it,
+    # mirroring the PostScript layout (e.g. "Ephemeris:  JUP365 + DE440").
     if ncaptions > 0 and lcaptions:
         ax_pos = ax.get_position()
-        y_start = ax_pos.y0 - 0.01
-        line_h = 0.025
+        x_anchor = 0.5 * (ax_pos.x0 + ax_pos.x1)
+        gap = 0.006
+        y_start = ax_pos.y0 - 0.065
+        line_h = 0.022
         for i in range(min(ncaptions, len(lcaptions))):
             y_pos = y_start - i * line_h
-            if y_pos < 0.0:
+            if y_pos < 0.02:
                 break
             lc = lcaptions[i] if i < len(lcaptions) else ''
             rc = rcaptions[i] if i < len(rcaptions) else ''
-            fig.text(ax_pos.x0, y_pos, lc, ha='left', va='top',
-                     fontsize=7, fontweight='bold')
-            fig.text(ax_pos.x0 + 0.20, y_pos, rc, ha='left', va='top', fontsize=7)
+            fig.text(x_anchor - gap, y_pos, lc, ha='right', va='top',
+                     fontsize=9)
+            fig.text(x_anchor + gap, y_pos, rc, ha='left', va='top',
+                     fontsize=9)
 
-    # Footer
+    # Footer: centered at the bottom, small gray.
     fdate = datetime.now().strftime('%Y-%m-%d %H:%M')
     fig.text(
-        0.01, 0.005,
+        0.5, 0.012,
         f'Generated by the {planetstr} Tracker Tool, PDS Ring-Moon Systems Node, {fdate}',
-        ha='left', va='bottom', fontsize=5.5, color='#666666',
+        ha='center', va='bottom', fontsize=7, color='#555555',
     )
 
     fmt = infer_format(output_path)
@@ -370,4 +413,3 @@ def _apply_time_ticks(
     ax.set_yticks(minor_ticks, minor=True)  # type: ignore[union-attr]
     ax.tick_params(axis='y', which='major', length=5, left=True, right=True)  # type: ignore[union-attr]
     ax.tick_params(axis='y', which='minor', length=3, left=True, right=True)  # type: ignore[union-attr]
-    ax.set_ylabel('Time', fontsize=9)  # type: ignore[union-attr]

@@ -65,6 +65,7 @@ class _RunTrackerKwargs(TypedDict, total=False):
     backend: str
     dpi: int
     output_image: str | None
+    track_color: str
 
 
 # Radians to arcsec for tracker plot (Earth observatories; RSPK_TrackMoons)
@@ -148,6 +149,7 @@ def _tracker_call_kwargs_from_params(params: TrackerParams) -> _RunTrackerKwargs
         'backend': params.backend,
         'dpi': params.dpi,
         'output_image': params.output_image,
+        'track_color': params.track_color,
     }
 
 
@@ -192,6 +194,7 @@ def _run_tracker_impl(
     backend: str = 'mpl',
     dpi: int = 150,
     output_image: str | None = None,
+    track_color: str = 'black',
 ) -> None:
     """Internal tracker implementation (flat kwargs from TrackerParams)."""
     if moon_ids is None:
@@ -389,8 +392,10 @@ def _run_tracker_impl(
             ncaptions=ncaptions,
             lcaptions=lcaptions,
             rcaptions=rcaptions,
+            align_loc=90.0 if use_doy_format else 180.0,
             use_doy_format=use_doy_format,
             dpi=dpi,
+            track_color=track_color,
         )
 
     if output_txt:

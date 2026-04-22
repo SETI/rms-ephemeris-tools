@@ -837,6 +837,10 @@ class TrackerParams:
     backend: str = 'mpl'
     dpi: int = 150
     output_image: str | None = None
+    # Moon track colouring for the mpl backend: 'black' (default; matches the
+    # legacy PostScript output) or 'colored' (one colour per moon from
+    # matplotlib's default cycle).  Ignored by the escher backend.
+    track_color: str = 'black'
 
 
 @dataclass
