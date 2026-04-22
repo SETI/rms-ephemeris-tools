@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import os
 from dataclasses import dataclass, field
 from typing import TextIO
@@ -287,10 +288,17 @@ def parse_fov(tokens: list[str]) -> tuple[float, str]:
         if unit_raw.startswith(prefix):
             return (value, canonical)
 
-    if unit_raw.endswith(' radii'):
-        planet_name = unit_raw[:-6].strip()
+    # Planet radii – bare or with a parenthetical annotation, e.g.
+    # "Uranus radii", "Pluto radii (1153 km)".
+    radii_match = re.match(r'^(.+?)\s+radii(?:\s*\(.*\))?\s*$', unit_raw)
+    if radii_match:
+        planet_name = radii_match.group(1).strip()
         if planet_name in PLANET_NAME_TO_NUM:
             return (value, f'{planet_name.capitalize()} radii')
+
+    # Pluto-Charon separations, e.g. "Pluto-Charon separations (19,571 km)".
+    if 'pluto-charon' in unit_raw or 'pluto charon' in unit_raw:
+        return (value, 'Pluto-Charon separations')
 
     raise ValueError(f'Unknown FOV unit: {unit_raw!r}')
 
@@ -404,7 +412,9 @@ def parse_center(planet_num: int, tokens: list[str]) -> ViewerCenter:
 
     # Body lookup by planet name or moon names.
     body_candidate = ' '.join(normalized).lower()
-    if body_candidate == cfg.planet_name.lower():
+    # Strip designation suffix like "(N1)", "(U5)", "(P1)" for forgiving matching.
+    body_normalized = re.sub(r'\s*\([^)]*\)\s*$', '', body_candidate).strip()
+    if body_candidate == cfg.planet_name.lower() or body_normalized == cfg.planet_name.lower():
         return ViewerCenter(mode='body', body_name=cfg.planet_name)
     moon_name_map = {
         moon.name.lower(): moon.name
@@ -413,6 +423,8 @@ def parse_center(planet_num: int, tokens: list[str]) -> ViewerCenter:
     }
     if body_candidate in moon_name_map:
         return ViewerCenter(mode='body', body_name=moon_name_map[body_candidate])
+    if body_normalized in moon_name_map:
+        return ViewerCenter(mode='body', body_name=moon_name_map[body_normalized])
 
     # Fallback: star name.
     return ViewerCenter(mode='star', star_name=' '.join(normalized))

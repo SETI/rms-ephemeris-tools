@@ -290,8 +290,10 @@ class MplCanvas:
         """Draw all accumulated segments on *ax* as LineCollection objects.
 
         One LineCollection per distinct (gray, linewidth, dashed) group.
-        x increases to the *left* (RA increases east/left in standard sky
-        orientation) so the axes x-direction is inverted.
+
+        Axis limits match the PostScript ``esview`` / ``_esmap2`` mapping:
+        FOV *x* increases to the right; FOV *y* increases toward the bottom of
+        the figure (``uy`` is negative because the PS viewport has *v1* > *v2*).
 
         Parameters:
             ax: Target matplotlib Axes.
@@ -319,9 +321,8 @@ class MplCanvas:
             ax.add_collection(lc)
 
         # Set axis limits so that the FOV exactly fills the axes box.
-        # Invert x so that RA increases to the left (standard sky orientation).
-        ax.set_xlim(self._xmax, self._xmin)
-        ax.set_ylim(self._ymin, self._ymax)
+        ax.set_xlim(self._xmin, self._xmax)
+        ax.set_ylim(self._ymax, self._ymin)
 
     @property
     def fov(self) -> tuple[float, float, float, float]:

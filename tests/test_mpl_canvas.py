@@ -218,8 +218,8 @@ class TestMplCanvasMisc:
 
 
 class TestMplCanvasFinalize:
-    def test_finalize_inverts_x_axis(self) -> None:
-        """finalize() sets x-limits inverted (xmax, xmin) for sky orientation."""
+    def test_finalize_sets_x_limits_to_fov(self) -> None:
+        """finalize() sets x-limits to (xmin, xmax) matching PostScript esview."""
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
@@ -229,12 +229,13 @@ class TestMplCanvasFinalize:
         fig, ax = plt.subplots()
         canvas.finalize(ax)
         xlim = ax.get_xlim()
-        # x-axis inverted: left = xmax, right = xmin
-        assert xlim[0] > xlim[1]
+        assert xlim[0] < xlim[1]
+        assert math.isclose(xlim[0], -1.0)
+        assert math.isclose(xlim[1], 1.0)
         plt.close(fig)
 
-    def test_finalize_sets_y_limits_to_fov(self) -> None:
-        """finalize() sets y-limits to (ymin, ymax)."""
+    def test_finalize_inverts_y_axis(self) -> None:
+        """finalize() sets y-limits to (ymax, ymin) like PS (negative uy in esview)."""
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
@@ -244,8 +245,8 @@ class TestMplCanvasFinalize:
         fig, ax = plt.subplots()
         canvas.finalize(ax)
         ylim = ax.get_ylim()
-        assert math.isclose(ylim[0], -3.0)
-        assert math.isclose(ylim[1], 3.0)
+        assert math.isclose(ylim[0], 3.0)
+        assert math.isclose(ylim[1], -3.0)
         plt.close(fig)
 
     def test_finalize_empty_canvas_does_not_raise(self) -> None:

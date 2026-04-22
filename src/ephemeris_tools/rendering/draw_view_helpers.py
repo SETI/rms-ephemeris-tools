@@ -148,12 +148,11 @@ def _rspk_write_string(s: str, state: EscherState) -> None:
     eswrit(f'({_rspk_escape(s)})', state)
 
 
-def _rspk_write_label(
-    secs: float,
-    offset: str,
-    escher_state: EscherState,
-) -> None:
-    """Write a numeric label at the current point in deg/min/sec (port of RSPK_WriteLabel)."""
+def _rspk_format_label(secs: float, offset: str) -> str:
+    """Format RA or Dec tick label like RSPK_WriteLabel (sexagesimal, no PS escapes).
+
+    *offset* ``'B'`` is used for right ascension (wrap to 24h); ``'L'`` for declination.
+    """
     secs1 = secs
     if offset == 'B':
         secs1 = secs1 % _MAXSECS
@@ -177,6 +176,16 @@ def _rspk_write_label(
     s = s.lstrip()
     if fsign < 0:
         s = '-' + s
+    return s
+
+
+def _rspk_write_label(
+    secs: float,
+    offset: str,
+    escher_state: EscherState,
+) -> None:
+    """Write a numeric label at the current point in deg/min/sec (port of RSPK_WriteLabel)."""
+    s = _rspk_format_label(secs, offset)
     esmove(escher_state)
     safe = _rspk_escape(s)
     if offset == 'L':

@@ -204,7 +204,7 @@ def render_url(
         print(f'  mpl    → {mpl_png.name}')
     else:
         err = (mpl_result.stderr or '').strip()
-        print(f'  ERROR mpl (rc={mpl_result.returncode}): {err[:400]}', file=sys.stderr)
+        print(f'  ERROR mpl (rc={mpl_result.returncode}): {err[:2000]}', file=sys.stderr)
 
     # --- Escher backend → PS → Ghostscript → PNG ----------------------------
     escher_ps = out_dir / f'{stem}_escher.ps'
@@ -215,7 +215,7 @@ def render_url(
 
     if not escher_ps_ok:
         err = (escher_result.stderr or '').strip()
-        print(f'  ERROR escher (rc={escher_result.returncode}): {err[:400]}', file=sys.stderr)
+        print(f'  ERROR escher (rc={escher_result.returncode}): {err[:2000]}', file=sys.stderr)
         return mpl_ok, False
 
     escher_ok = _render_ps_to_png(escher_ps, escher_png, dpi=dpi)
