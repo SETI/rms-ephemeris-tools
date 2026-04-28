@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import Any
+
+import pytest
 
 from ephemeris_tools.cli import main as cli_main
 
 
-def test_cli_tracker_simplified_args(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_cli_tracker_simplified_args(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tracker CLI accepts simplified --observer and moon/ring names."""
     captured: dict[str, Any] = {}
 
@@ -51,9 +54,9 @@ def test_cli_tracker_simplified_args(monkeypatch) -> None:  # type: ignore[no-un
     assert 601 in params.moon_ids
 
 
-def test_cli_tracker_backend_mpl_sets_output_image(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_cli_tracker_backend_mpl_sets_output_image(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tracker --backend mpl (default) stores output path as output_image."""
-    captured: dict = {}
+    captured: dict[str, Any] = {}
 
     monkeypatch.setattr('ephemeris_tools.cli.main.run_tracker', lambda p: captured.update(value=p))
     monkeypatch.setattr(
@@ -79,10 +82,11 @@ def test_cli_tracker_backend_mpl_sets_output_image(monkeypatch) -> None:  # type
 
 
 def test_cli_tracker_backend_escher_opens_output_ps(
-    monkeypatch, tmp_path  # type: ignore[no-untyped-def]
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Tracker --backend escher opens output as a text file for PostScript."""
-    captured: dict = {}
+    captured: dict[str, Any] = {}
 
     monkeypatch.setattr('ephemeris_tools.cli.main.run_tracker', lambda p: captured.update(value=p))
     monkeypatch.setattr(
@@ -107,11 +111,12 @@ def test_cli_tracker_backend_escher_opens_output_ps(
     assert params.backend == 'escher'
     assert params.output_ps is not None
     assert params.output_image is None
+    assert params.output_ps.name == ps_path
 
 
-def test_cli_tracker_dpi_forwarded_to_params(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_cli_tracker_dpi_forwarded_to_params(monkeypatch: pytest.MonkeyPatch) -> None:
     """Tracker --dpi value is stored in params.dpi."""
-    captured: dict = {}
+    captured: dict[str, Any] = {}
 
     monkeypatch.setattr('ephemeris_tools.cli.main.run_tracker', lambda p: captured.update(value=p))
     monkeypatch.setattr(

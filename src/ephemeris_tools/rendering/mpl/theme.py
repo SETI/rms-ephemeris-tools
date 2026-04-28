@@ -65,12 +65,41 @@ def figure_and_axes(
     Avoids tight_layout to prevent matplotlib version-dependent layout drift.
 
     Parameters:
-        fig_width_in, fig_height_in: Figure size in inches.
-        left, right, top, bottom: Axes extent as fractions of figure size.
+        fig_width_in: Figure width in inches; must be positive.
+        fig_height_in: Figure height in inches; must be positive.
+        left: Axes left edge, fraction of figure width ``[0, 1]``; must be
+            strictly less than ``right``.
+        right: Axes right edge, fraction of figure width ``[0, 1]``.
+        top: Axes top edge, fraction of figure height ``[0, 1]``; must be
+            strictly greater than ``bottom``.
+        bottom: Axes bottom edge, fraction of figure height ``[0, 1]``.
 
     Returns:
-        (fig, ax) tuple.
+        ``(fig, ax)`` tuple.
+
+    Raises:
+        ValueError: Invalid figure size or axes extent (non-positive size,
+            bad ordering, or axis margins outside ``[0, 1]``).
     """
+    if fig_width_in <= 0 or fig_height_in <= 0:
+        raise ValueError(
+            'fig_width_in and fig_height_in must be positive; '
+            f'got fig_width_in={fig_width_in!r}, fig_height_in={fig_height_in!r}'
+        )
+    for name, v in (
+        ('left', left),
+        ('right', right),
+        ('top', top),
+        ('bottom', bottom),
+    ):
+        if not 0.0 <= v <= 1.0:
+            raise ValueError(f'{name} must be in [0, 1]; got {v!r}')
+    if not (left < right and bottom < top):
+        raise ValueError(
+            'Axes extent requires left < right and bottom < top; '
+            f'got left={left!r}, right={right!r}, bottom={bottom!r}, top={top!r}'
+        )
+
     import matplotlib  # noqa: PLC0415
     import matplotlib.pyplot as plt  # noqa: PLC0415
 

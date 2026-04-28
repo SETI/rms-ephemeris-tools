@@ -24,8 +24,10 @@ class TestEsclip:
         """Segment entirely inside the FOV is returned as-is."""
         x1, y1, x2, y2, inside = _esclip(-1, 1, -1, 1, -0.5, -0.5, 0.5, 0.5)
         assert inside
-        assert math.isclose(x1, -0.5) and math.isclose(y1, -0.5)
-        assert math.isclose(x2, 0.5) and math.isclose(y2, 0.5)
+        assert math.isclose(x1, -0.5)
+        assert math.isclose(y1, -0.5)
+        assert math.isclose(x2, 0.5)
+        assert math.isclose(y2, 0.5)
 
     def test_fully_outside_returns_false(self) -> None:
         """Segment entirely outside the FOV reports not inside."""
@@ -36,23 +38,29 @@ class TestEsclip:
         """Horizontal segment crossing the right boundary is clipped to x=1."""
         x1, y1, x2, y2, inside = _esclip(-1, 1, -1, 1, 0.5, 0.0, 1.5, 0.0)
         assert inside
-        assert math.isclose(x1, 0.5) and math.isclose(y1, 0.0)
-        assert math.isclose(x2, 1.0) and math.isclose(y2, 0.0)
+        assert math.isclose(x1, 0.5)
+        assert math.isclose(y1, 0.0)
+        assert math.isclose(x2, 1.0)
+        assert math.isclose(y2, 0.0)
 
     def test_crosses_top_edge(self) -> None:
         """Vertical segment crossing the top boundary is clipped to y=1."""
         x1, y1, x2, y2, inside = _esclip(-1, 1, -1, 1, 0.0, 0.5, 0.0, 1.5)
         assert inside
-        assert math.isclose(x1, 0.0) and math.isclose(y1, 0.5)
-        assert math.isclose(x2, 0.0) and math.isclose(y2, 1.0)
+        assert math.isclose(x1, 0.0)
+        assert math.isclose(y1, 0.5)
+        assert math.isclose(x2, 0.0)
+        assert math.isclose(y2, 1.0)
 
     def test_diagonal_spanning_fov(self) -> None:
         """Diagonal segment entering and exiting through non-corner edges is clipped."""
         # From (-2, 0) to (2, 0) — horizontal through centre
         x1, y1, x2, y2, inside = _esclip(-1, 1, -1, 1, -2.0, 0.0, 2.0, 0.0)
         assert inside
-        assert math.isclose(x1, -1.0) and math.isclose(y1, 0.0)
-        assert math.isclose(x2, 1.0) and math.isclose(y2, 0.0)
+        assert math.isclose(x1, -1.0)
+        assert math.isclose(y1, 0.0)
+        assert math.isclose(x2, 1.0)
+        assert math.isclose(y2, 0.0)
 
 
 # ---------------------------------------------------------------------------

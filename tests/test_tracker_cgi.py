@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ephemeris_tools.params import tracker_params_from_env
+from ephemeris_tools.params_env import tracker_params_from_env
 
 
 def test_tracker_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:

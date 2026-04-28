@@ -89,7 +89,22 @@ def eutemp(
         color: Color code for drawing.
         sink: Segment sink (Escher PostScript or matplotlib canvas).
     """
-    for i in range(nsegs):
+    if nsegs < 0:
+        raise ValueError(f'nsegs must be non-negative; got {nsegs}')
+    lens = (len(xbegin), len(ybegin), len(xend), len(yend))
+    if len(set(lens)) != 1:
+        raise ValueError(
+            'eutemp segment lists must have equal lengths; '
+            f'got len(xbegin)={lens[0]}, len(ybegin)={lens[1]}, '
+            f'len(xend)={lens[2]}, len(yend)={lens[3]}'
+        )
+    cap = lens[0]
+    if nsegs > cap:
+        raise ValueError(
+            f'nsegs={nsegs} exceeds coordinate list length {cap}'
+        )
+    n = min(nsegs, cap)
+    for i in range(n):
         beg = (-xbegin[i], -ybegin[i], 1.0)
         end = (-xend[i], -yend[i], 1.0)
         sink.draw(beg, end, color)

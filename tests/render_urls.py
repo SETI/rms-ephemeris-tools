@@ -265,6 +265,21 @@ def _expand_positional_urls(tokens: list[str]) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Render CGI viewer and tracker URLs to image files for regression checks.
+
+    Parses CLI arguments (positional URL tokens and/or ``-f``/``--url-file``,
+    required ``-o``/``--outdir``, optional ``--dpi`` defaulting to ``_DPI_DEFAULT``,
+    and ``--keep-ps``), expands positional paths that are files into URL lists,
+    creates the output directory if missing, and for each URL writes MPL and
+    Escher-derived PNGs (and optionally keeps intermediate PostScript).
+
+    Parameters:
+        argv: Command-line tokens without the program name; ``sys.argv[1:]``
+            when ``None`` (handled by ``argparse``).
+
+    Returns:
+        Integer exit code (0 on success, non-zero when fatal errors occur).
+    """
     parser = argparse.ArgumentParser(
         prog='render_urls',
         description='Render CGI viewer/tracker URLs with MPL and Escher (PS→PNG) backends.',

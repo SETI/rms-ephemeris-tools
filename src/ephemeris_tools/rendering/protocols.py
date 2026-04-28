@@ -30,18 +30,51 @@ class SegmentSink(Protocol):
             begin: Start point (x, y, z).
             end: End point (x, y, z).
             color: Integer color code 0-10 (0 = white, 1 = black, 2-10 = 0.1-0.9 gray).
+
+        Returns:
+            None
+
+        Raises:
+            TypeError: If ``begin``/``end`` are not length-3 numeric sequences.
+            ValueError: If ``color`` is outside the supported range, coordinates
+                are non-finite, or ``z`` is invalid for the implementation.
+
+        Notes:
+            Segments with endpoints behind the camera (``z <= 0``) are typically
+            clipped or ignored rather than drawn. Implementations should validate
+            inputs where practical so callers can rely on the errors above.
         """
         ...
 
     def dump(self) -> None:
-        """Flush any buffered segments to the output device."""
+        """Flush any buffered segments to the output device.
+
+        Returns:
+            None
+
+        Raises:
+            OSError: If the underlying device fails while flushing (e.g. broken
+                pipe or disk full when writing PostScript).
+        """
         ...
 
     def set_linewidth(self, pts: float) -> None:
         """Set current line width in PostScript points for subsequent segments.
 
         Parameters:
-            pts: Line width in points (0 resets to default).
+            pts: Line width in points; ``pts <= 0`` resets to a default width in
+                ``MplCanvas``; other implementations may match that behaviour or
+                raise ``ValueError`` for negative widths.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If an implementation rejects ``pts`` (e.g. invalid or
+                negative when not clamped).
+
+        Notes:
+            Affects all ``draw`` calls until the next ``set_linewidth``.
         """
         ...
 
@@ -50,5 +83,12 @@ class SegmentSink(Protocol):
 
         Parameters:
             dashed: True to draw dashed lines; False for solid.
+
+        Returns:
+            None
+
+        Raises:
+            None for normal use: implementations take a ``bool`` and should not
+            raise for valid input.
         """
         ...

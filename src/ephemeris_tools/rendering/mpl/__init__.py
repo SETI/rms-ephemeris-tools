@@ -1,10 +1,13 @@
-"""Matplotlib rendering backend for tracker and viewer tools.
+"""Matplotlib helpers for tracker and viewer tools.
 
-Provides MplCanvas (SegmentSink), ornament dataclasses, and renderer entry
-points that produce PNG/PDF/SVG output via matplotlib savefig.
+Exports ``MplCanvas`` (``SegmentSink`` implementation that buffers segments and
+draws them in ``finalize``) and small ornament dataclasses used when composing
+figures.  High-level rendering is invoked from
+``ephemeris_tools.rendering.mpl.renderer_view`` / ``renderer_tracker`` (not from
+this package's ``__all__``).
 
-All matplotlib imports are deferred to module level so that code paths using
-only the Escher backend do not load matplotlib.
+All heavy matplotlib imports stay inside those modules so Escher-only code
+paths avoid loading matplotlib at import time.
 """
 
 from ephemeris_tools.rendering.mpl.canvas import MplCanvas

@@ -24,13 +24,15 @@ from ephemeris_tools.params import (
     ViewerParams,
     _is_ra_hours_from_raw,
     _parse_sexagesimal_to_degrees,
-    ephemeris_params_from_env,
     parse_center,
     parse_column_spec,
     parse_fov,
     parse_mooncol_spec,
     parse_observer,
     parse_planet,
+)
+from ephemeris_tools.params_env import (
+    ephemeris_params_from_env,
     tracker_params_from_env,
     viewer_params_from_env,
 )
@@ -39,6 +41,22 @@ from ephemeris_tools.tracker import run_tracker
 from ephemeris_tools.viewer import run_viewer
 
 logger = logging.getLogger(__name__)
+
+# Subset of backends accepted from CLI flags and BACKEND environment variable.
+_ALLOWED_RENDER_BACKENDS: frozenset[str] = frozenset({'mpl', 'escher'})
+
+
+def _backend_from_env_or_default(env_value: str | None) -> str:
+    """Normalize BACKEND env to ``mpl`` or ``escher``; default ``mpl`` if missing or invalid."""
+    raw = (env_value or 'mpl').strip().lower()
+    if raw in _ALLOWED_RENDER_BACKENDS:
+        return raw
+    logger.warning(
+        'Ignoring invalid BACKEND=%r (allowed: %s); using mpl.',
+        env_value,
+        ', '.join(sorted(_ALLOWED_RENDER_BACKENDS)),
+    )
+    return 'mpl'
 
 
 def _configure_logging(verbose: bool = False) -> None:
@@ -399,7 +417,14 @@ def main() -> int:
     )
     track_parser.add_argument('--title', type=str, default='', help='Plot title; env: title')
     track_parser.add_argument(
-        '-o', '--output', type=str, default=None, help='Output image file (mpl: PNG/PDF/SVG; escher: .ps); env: TRACKER_POSTFILE'
+        '-o',
+        '--output',
+        type=str,
+        default=None,
+        help=(
+            'Output image file (mpl: PNG/PDF/SVG; escher: .ps); '
+            'env: TRACKER_POSTFILE'
+        ),
     )
     track_parser.add_argument(
         '--output-txt', type=str, default=None, help='Text table file; env: TRACKER_TEXTFILE'
@@ -644,7 +669,14 @@ def main() -> int:
         help='Neptune arc weight in points; env: arcpts',
     )
     view_parser.add_argument(
-        '-o', '--output', type=str, default=None, help='Output image file (mpl: PNG/PDF/SVG; escher: .ps); env: VIEWER_POSTFILE'
+        '-o',
+        '--output',
+        type=str,
+        default=None,
+        help=(
+            'Output image file (mpl: PNG/PDF/SVG; escher: .ps); '
+            'env: VIEWER_POSTFILE'
+        ),
     )
     view_parser.add_argument(
         '--output-txt', type=str, default=None, help='Field of View table file'
@@ -689,7 +721,7 @@ def _tracker_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
         with contextlib.ExitStack() as stack:
             post_path = os.environ.get('TRACKER_POSTFILE')
             txt_path = os.environ.get('TRACKER_TEXTFILE')
-            backend = (os.environ.get('BACKEND') or 'mpl').strip().lower()
+            backend = _backend_from_env_or_default(os.environ.get('BACKEND'))
             try:
                 dpi_val = int(os.environ.get('DPI') or '150')
             except ValueError:
@@ -811,7 +843,7 @@ def _viewer_cmd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> in
         with contextlib.ExitStack() as stack:
             post_path = os.environ.get('VIEWER_POSTFILE')
             txt_path = os.environ.get('VIEWER_TEXTFILE')
-            backend = (os.environ.get('BACKEND') or 'mpl').strip().lower()
+            backend = _backend_from_env_or_default(os.environ.get('BACKEND'))
             try:
                 dpi_val = int(os.environ.get('DPI') or '150')
             except ValueError:

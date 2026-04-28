@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, TextIO
+from typing import TextIO
 
 from ephemeris_tools.constants import (
     COL_DISPLAY_TEMPLATES,
@@ -11,10 +11,8 @@ from ephemeris_tools.constants import (
     MCOL_DISPLAY_BY_ID,
     PLANET_NUM_TO_NAME,
 )
+from ephemeris_tools.params import EphemerisParams, TrackerParams, ViewerParams
 from ephemeris_tools.planets import get_moon_display_name
-
-if TYPE_CHECKING:
-    from ephemeris_tools.params import EphemerisParams, TrackerParams, ViewerParams
 
 
 def _strip_cgi_code(s: str | None) -> str:

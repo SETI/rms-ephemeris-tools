@@ -149,9 +149,26 @@ def _rspk_write_string(s: str, state: EscherState) -> None:
 
 
 def _rspk_format_label(secs: float, offset: str) -> str:
-    """Format RA or Dec tick label like RSPK_WriteLabel (sexagesimal, no PS escapes).
+    """Format a sexagesimal tick label matching RSPK_WriteLabel (no PostScript escapes).
 
-    *offset* ``'B'`` is used for right ascension (wrap to 24h); ``'L'`` for declination.
+    Parameters:
+        secs: Value in **time-seconds** (RA, offset ``'B'``) or **arc-seconds**
+            (declination, offset ``'L'``), matching the tick-grid ``s`` argument
+            passed to the legacy label writer.
+        offset: ``'B'`` — right ascension: ``secs`` is wrapped to ``[0, 86400)``
+            (24h) before formatting. ``'L'`` — declination: signed arc-seconds;
+            no 24h wrap; negative values yield a leading minus on the formatted
+            string.
+
+    Returns:
+        Sexagesimal label string (space-separated fields, optional fractional
+        seconds trimmed like Fortran); safe for matplotlib text — not
+        PostScript-escaped.
+
+    Notes:
+        Uses ``_fortran_nint`` on milliseconds of ``abs(secs)``; for RA,
+        adds a tiny positive bias before rounding to match Fortran half-ms
+        behaviour. Sign is applied after stripping leading padding spaces.
     """
     secs1 = secs
     if offset == 'B':

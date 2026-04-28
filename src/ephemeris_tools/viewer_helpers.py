@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import TYPE_CHECKING, Any, TextIO, TypedDict, cast
+from typing import Any, TextIO, TypedDict, cast
 
 import cspyce
 import julian
@@ -34,6 +34,8 @@ from ephemeris_tools.planets import (
     PLUTO_CONFIG,
     SATURN_CONFIG,
     URANUS_CONFIG,
+    PlanetConfig,
+    RingSpec,
 )
 from ephemeris_tools.planets.saturn import FRING_DNODE_DT, FRING_DPERI_DT
 from ephemeris_tools.planets.uranus import (
@@ -54,9 +56,6 @@ from ephemeris_tools.spice.geometry import (
 from ephemeris_tools.spice.observer import observer_state
 from ephemeris_tools.spice.rings import ring_opening
 from ephemeris_tools.time_utils import day_from_ymd, tai_from_day_sec, tdb_from_tai
-
-if TYPE_CHECKING:
-    from ephemeris_tools.planets.base import PlanetConfig, RingSpec
 
 logger = logging.getLogger(__name__)
 

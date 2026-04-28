@@ -26,6 +26,7 @@ from ephemeris_tools.rendering.draw_view import (
     draw_planetary_view,
     radec_to_plot,
 )
+from ephemeris_tools.rendering.mpl.renderer_view import draw_planetary_view_mpl
 from ephemeris_tools.rendering.planet_grid import compute_planet_grid
 from ephemeris_tools.spice.geometry import (
     anti_sun,
@@ -68,7 +69,14 @@ from ephemeris_tools.viewer_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# Default DPI for matplotlib viewer output (matches ViewerParams default).
+DEFAULT_VIEW_DPI = 150
+# ``ps`` is an accepted alias for the legacy PostScript path (``escher`` / ``output_ps``).
+VIEWER_VALID_BACKENDS = frozenset({'mpl', 'escher', 'ps'})
+
 __all__ = [
+    'DEFAULT_VIEW_DPI',
+    'VIEWER_VALID_BACKENDS',
     '_fov_deg_from_unit',
     '_propagated_saturn_f_ring',
     '_resolve_center_ansa_radius_km',
@@ -145,10 +153,24 @@ def _run_viewer_impl(
     other_bodies: list[str] | None = None,
     title: str = '',
     backend: str = 'mpl',
-    dpi: int = 150,
+    dpi: int = DEFAULT_VIEW_DPI,
     output_image: str | None = None,
 ) -> None:
-    """Internal viewer implementation (flat kwargs from ViewerParams)."""
+    """Internal viewer implementation (flat kwargs from ViewerParams).
+
+    Parameters:
+        backend: ``'mpl'`` writes via matplotlib to ``output_image``; ``'escher'``
+            or ``'ps'`` selects the legacy PostScript stream ``output_ps``.
+        dpi: Dots per inch for raster output when ``backend == 'mpl'``.
+        output_image: Filesystem path for MPL output (format from extension).
+    """
+    b_in = (backend or 'mpl').strip().lower()
+    if b_in not in VIEWER_VALID_BACKENDS:
+        raise ValueError(
+            f'Invalid backend {backend!r}; allowed values are '
+            f"{', '.join(sorted(VIEWER_VALID_BACKENDS))} ('ps' is an alias for 'escher')."
+        )
+    backend = 'escher' if b_in in ('escher', 'ps') else 'mpl'
     cfg = get_planet_config(planet_num)
     if cfg is None:
         raise ValueError(f'Unknown planet number: {planet_num}')
@@ -716,9 +738,6 @@ def _run_viewer_impl(
             align_loc=DEFAULT_ALIGN_LOC_POINTS,
         )
         if backend == 'mpl' and output_image:
-            from ephemeris_tools.rendering.mpl.renderer_view import (  # noqa: PLC0415
-                draw_planetary_view_mpl,
-            )
             draw_planetary_view_mpl(output_image, draw_options, dpi=dpi)
         elif output_ps:
             draw_planetary_view(output_ps, draw_options)

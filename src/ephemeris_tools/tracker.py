@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 import os
 import sys
+import tempfile
+from pathlib import Path
 from typing import TextIO, TypedDict, cast
 
 import cspyce
@@ -23,6 +25,7 @@ from ephemeris_tools.rendering.draw_tracker import (
     RING_DATA,
     draw_moon_tracks,
 )
+from ephemeris_tools.rendering.mpl.renderer_tracker import draw_moon_tracks_mpl
 from ephemeris_tools.spice.common import get_state
 from ephemeris_tools.spice.geometry import moon_tracker_offsets
 from ephemeris_tools.spice.load import load_spacecraft, load_spice_files
@@ -72,6 +75,68 @@ class _RunTrackerKwargs(TypedDict, total=False):
 _RAD_TO_ARCSEC = 180.0 / math.pi * 3600.0
 # Radians to degrees for spacecraft observers (RSPK_TrackMoonC)
 _RAD_TO_DEG = 180.0 / math.pi
+
+
+def validate_tracker_output_image_path(
+    path: str | os.PathLike[str],
+    *,
+    allowed_bases: tuple[Path, ...] | None = None,
+) -> Path:
+    """Resolve *path* and ensure it lies under an allowed base directory.
+
+    Prevents writing MPL output outside expected locations (e.g. path
+    traversal via ``..`` resolved outside the project or temp tree).
+
+    Parameters:
+        path: Intended output file (image) path.
+        allowed_bases: Directories under which the resolved path must lie
+            (each expanded and resolved). Defaults to the current working
+            directory, system temp, and the user home directory.
+
+    Returns:
+        The resolved, absolute ``Path``.
+
+    Raises:
+        ValueError: If the path is invalid, escapes all allowed bases, or the
+            parent directory exists and is not writable.
+        OSError: If ``Path.resolve`` fails in an unexpected way.
+    """
+    p = Path(os.fspath(path)).expanduser()
+    try:
+        resolved = p.resolve()
+    except OSError as e:
+        raise ValueError(f'Invalid tracker output image path {path!r}: {e}') from e
+    if allowed_bases is None:
+        allowed_bases = (
+            Path.cwd(),
+            Path(tempfile.gettempdir()),
+            Path.home(),
+        )
+    bases_resolved: list[Path] = []
+    for b in allowed_bases:
+        try:
+            bases_resolved.append(b.expanduser().resolve())
+        except OSError:
+            continue
+    if not bases_resolved:
+        raise ValueError('No valid allowed_bases directories could be resolved')
+    for base in bases_resolved:
+        try:
+            resolved.relative_to(base)
+            break
+        except ValueError:
+            continue
+    else:
+        raise ValueError(
+            'Tracker MPL output path must lie under an allowed directory '
+            f'(resolved {resolved!s}; bases tried: '
+            + ', '.join(str(b) for b in bases_resolved)
+            + ')'
+        )
+    parent = resolved.parent
+    if parent.exists() and not os.access(parent, os.W_OK):
+        raise ValueError(f'Tracker output directory is not writable: {parent}')
+    return resolved
 
 
 def _ring_options_to_flags(planet_num: int, ring_options: list[int], nrings: int) -> list[bool]:
@@ -367,11 +432,9 @@ def _run_tracker_impl(
             use_doy_format=use_doy_format,
         )
     elif backend == 'mpl' and output_image:
-        from ephemeris_tools.rendering.mpl.renderer_tracker import (  # noqa: PLC0415
-            draw_moon_tracks_mpl,
-        )
+        out_path = validate_tracker_output_image_path(output_image)
         draw_moon_tracks_mpl(
-            output_image,
+            str(out_path),
             planet_num=planet_num,
             ntimes=ntimes,
             time1_tai=tai1,

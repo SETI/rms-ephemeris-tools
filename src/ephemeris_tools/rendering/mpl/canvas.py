@@ -211,6 +211,11 @@ class MplCanvas:
         ymin: float,
         ymax: float,
     ) -> None:
+        if not (xmin < xmax and ymin < ymax):
+            raise ValueError(
+                'MplCanvas FOV bounds require xmin < xmax and ymin < ymax; '
+                f'got xmin={xmin!r}, xmax={xmax!r}, ymin={ymin!r}, ymax={ymax!r}'
+            )
         self._xmin = xmin
         self._xmax = xmax
         self._ymin = ymin

@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import cspyce
-
-if TYPE_CHECKING:
-    import numpy as np
+import numpy as np
 
 from ephemeris_tools.constants import SUN_ID
 from ephemeris_tools.spice.bodmat import bodmat

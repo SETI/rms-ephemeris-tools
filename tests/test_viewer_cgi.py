@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ephemeris_tools.params import viewer_params_from_env
+from ephemeris_tools.params_env import viewer_params_from_env
 
 
 def test_viewer_params_from_env_basic(monkeypatch: pytest.MonkeyPatch) -> None:

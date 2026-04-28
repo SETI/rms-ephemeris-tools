@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-import re
 import os
+import re
 from dataclasses import dataclass, field
 from typing import TextIO
 
@@ -989,12 +989,6 @@ def _normalize_time_unit(value: str) -> str:
     return 'hour'
 
 
-from ephemeris_tools.params_env import (  # noqa: E402
-    ephemeris_params_from_env,
-    tracker_params_from_env,
-    viewer_params_from_env,
-)
-
 __all__ = [
     'COL_LSEP',
     'COL_MJD',
@@ -1028,7 +1022,6 @@ __all__ = [
     'ViewerCenter',
     'ViewerDisplayInfo',
     'ViewerParams',
-    'ephemeris_params_from_env',
     'parse_center',
     'parse_column_spec',
     'parse_fov',
@@ -1037,6 +1030,4 @@ __all__ = [
     'parse_planet',
     'parse_ring_spec',
     'parse_viewer_rings',
-    'tracker_params_from_env',
-    'viewer_params_from_env',
 ]
