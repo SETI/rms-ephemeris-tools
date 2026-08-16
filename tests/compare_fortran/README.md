@@ -194,12 +194,18 @@ This framework sets the output file paths to the paths under `-o`, so the FORTRA
 
 ```python
 from pathlib import Path
-from tests.compare_fortran import RunSpec, run_python, run_fortran, compare_tables, compare_postscript
+from tests.compare_fortran import (
+    RunSpec,
+    run_python,
+    run_fortran,
+    compare_tables,
+    compare_postscript,
+)
 
-spec = RunSpec("ephemeris", {"planet": 6, "start": "2022-01-01", "stop": "2022-01-02"})
-out = Path("/tmp/compare")
-run_python(spec, out_table=out / "py.txt")
-run_fortran(spec, ["/path/to/fortran/Tools/ephem3_xxx.bin"], out_table=out / "fort.txt")
-result = compare_tables(out / "py.txt", out / "fort.txt", lsd_tolerance=1)
+spec = RunSpec('ephemeris', {'planet': 6, 'start': '2022-01-01', 'stop': '2022-01-02'})
+out = Path('/tmp/compare')
+run_python(spec, out_table=out / 'py.txt')
+run_fortran(spec, ['/path/to/fortran/Tools/ephem3_xxx.bin'], out_table=out / 'fort.txt')
+result = compare_tables(out / 'py.txt', out / 'fort.txt', lsd_tolerance=1)
 print(result.same, result.message)
 ```
