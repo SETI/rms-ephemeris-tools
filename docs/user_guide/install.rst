@@ -6,7 +6,7 @@ Installation
 Install
 -------
 
-Requires **Python 3.10 or higher**.
+Requires **Python 3.11 or higher**.
 
 Create a virtual environment and install the package into it (do not install
 into system Python):
