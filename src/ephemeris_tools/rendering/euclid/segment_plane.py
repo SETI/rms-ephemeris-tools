@@ -313,15 +313,14 @@ def _plelsg(
                     else:
                         inelip[1] = True
                         inelip[2] = False
-            elif t_arr[3] >= 1.0:
-                if 0.0 < t_arr[2] < 1.0:
-                    subpnt += 1
-                    if denomp * num <= 0.0:
-                        inelip[1] = False
-                        inelip[2] = True
-                    else:
-                        inelip[1] = True
-                        inelip[2] = False
+            elif t_arr[3] >= 1.0 and 0.0 < t_arr[2] < 1.0:
+                subpnt += 1
+                if denomp * num <= 0.0:
+                    inelip[1] = False
+                    inelip[2] = True
+                else:
+                    inelip[1] = True
+                    inelip[2] = False
         else:
             inelip[1] = False
 
